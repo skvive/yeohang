@@ -13,4 +13,10 @@ body{background:#f9fbfb;color:#092d43;font-family:'Noto Sans KR',sans-serif}
 .stay-google-map{margin:14px 0 16px;border-radius:18px;overflow:hidden;border:1px solid #dce9eb;height:320px;background:#e7f1f1}
 .stay-google-map iframe{width:100%;height:100%;border:0}
 .stay-map-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 10px}
+.stay-book-panel{margin-top:22px}
+.stay-book-panel .booking-card{max-width:440px}
+.stay-book-inline{margin:16px 0 0}
+.stay-book-inline .btn-main,.headline-actions .btn-main{display:inline-flex;min-width:200px;border-radius:12px}
+.directory-item .stay-book-inline{margin-top:12px}
+.directory-item .btn-main{min-height:42px;font-size:12px;min-width:0}
 @media(max-width:350px){.detail-brand.detail-brand-v2{width:142px}.header-cta{max-width:94px;white-space:normal}}

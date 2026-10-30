@@ -23,6 +23,13 @@ export function agodaDeepLink(hotelId: string | number, extra: { checkIn?: strin
   return `https://www.agoda.com/partners/partnersearch.aspx?${params.toString()}`;
 }
 
+export function agodaBookUrl(p: { affiliate_url?: string | null; book_url?: string | null; agoda_hotel_id?: number | string | null }) {
+  const existing = String(p.affiliate_url || p.book_url || '').trim();
+  if (existing) return existing;
+  if (p.agoda_hotel_id != null && String(p.agoda_hotel_id) !== '') return agodaDeepLink(p.agoda_hotel_id);
+  return '';
+}
+
 export function mapAgodaCategory(raw: string) {
   const t = raw.toLowerCase();
   if (/hanok|한옥|traditional korean/.test(t)) return '한옥';

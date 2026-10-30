@@ -1,3 +1,4 @@
+import { agodaBookUrl } from '@/lib/agoda';
 import { CATEGORY_SLUGS, SITE_URL, type Property } from '@/lib/domain';
 
 type Prop = Property;
@@ -8,6 +9,20 @@ function e(v: unknown) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function AgodaBookButton({ href, className, label }: { href: string; className?: string; label?: string }) {
+  return (
+    <a
+      className={className || 'btn btn-main js-agoda-book'}
+      href={href}
+      target="_blank"
+      rel="nofollow sponsored noopener noreferrer"
+      data-agoda-book="1"
+    >
+      {label || '아고다에서 예약하기'}
+    </a>
+  );
 }
 
 export function StayChrome({ children }: { children: React.ReactNode }) {
@@ -75,6 +90,7 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
     ? `https://maps.google.com/maps?q=${p.lat},${p.lng}&ll=${p.lat},${p.lng}&z=16&hl=ko&output=embed`
     : `https://maps.google.com/maps?q=${encodeURIComponent(String(p.address || p.name))}&hl=ko&z=15&output=embed`;
   const amenities = ((p.amenities as string[]) || []).slice(0, 12);
+  const bookUrl = agodaBookUrl(p);
   return (
     <main id="content" className="detail-shell">
       <nav className="breadcrumbs" aria-label="현재 위치">
@@ -102,6 +118,11 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
             <span className="quiet-badge">{p.source === 'agoda' ? '예약·결제는 아고다에서 진행' : '예약 가능 여부 미확인'}</span>
           </div>
         </div>
+        {bookUrl ? (
+          <div className="headline-actions">
+            <AgodaBookButton href={bookUrl} />
+          </div>
+        ) : null}
       </section>
       <section className="gallery">
         <div className="gallery-cover">
@@ -125,6 +146,17 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
               : '실시간 요금·객실 재고는 연동되지 않았습니다. 최종 결정 전에 숙소 측에서 확인하세요.'}
           </p>
         </div>
+        {bookUrl ? (
+          <div className="stay-book-panel">
+            <div className="booking-card">
+              <span className="card-eyebrow">아고다 제휴 예약</span>
+              <h2>이 숙소 예약하기</h2>
+              <p className="subtle">요금·객실 재고 확인과 결제는 아고다 새 창에서 진행됩니다. 여행갈지도 화면은 그대로 남아 있습니다.</p>
+              <AgodaBookButton href={bookUrl} />
+              <p className="safe-note">아고다 파트너 링크로 이동합니다. 체크아웃이 완료된 예약에 대해 제휴 수수료가 정산됩니다.</p>
+            </div>
+          </div>
+        ) : null}
       </section>
       <section className="detail-section">
         <span className="section-kicker">시설</span>
@@ -165,11 +197,9 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         <p className="mini-info" id="stayGeoNote">
           {hasGeo ? '아고다 좌표를 구글 지도에 표시합니다. 내 위치를 허용하면 현재 위치에서 이 숙소까지 길을 안내합니다.' : '좌표가 없어 주소로 구글 지도를 엽니다.'}
         </p>
-        {p.affiliate_url ? (
-          <p>
-            <a className="btn btn-map" href={String(p.affiliate_url)} target="_blank" rel="nofollow sponsored noopener noreferrer">
-              아고다에서 예약·요금 확인 ↗
-            </a>
+        {bookUrl ? (
+          <p className="stay-book-inline">
+            <AgodaBookButton href={bookUrl} className="btn btn-main js-agoda-book" />
           </p>
         ) : p.source_url ? (
           <p>
@@ -193,6 +223,15 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
           ))}
         </div>
       </section>
+      {bookUrl ? (
+        <div className="mobile-booking-bar">
+          <div>
+            <small>아고다에서 예약</small>
+            <strong>{e(p.name)}</strong>
+          </div>
+          <AgodaBookButton href={bookUrl} label="아고다 예약" />
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -232,6 +271,11 @@ export function CategoryBody({ slug, rows }: { slug: string; rows: Prop[] }) {
                 </a>
               </h2>
               <p>주소: {e(p.address)}</p>
+              {agodaBookUrl(p) ? (
+                <p className="stay-book-inline">
+                  <AgodaBookButton href={agodaBookUrl(p)} label="아고다에서 예약하기" />
+                </p>
+              ) : null}
             </article>
           ))
         ) : (

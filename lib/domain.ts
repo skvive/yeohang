@@ -1,3 +1,5 @@
+import { agodaBookUrl } from '@/lib/agoda';
+
 export const DEMO_MODE = process.env.DEMO_MODE !== '0';
 export const SITE_URL = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://yeohang.lexid.site').replace(/\/$/, '');
 
@@ -269,9 +271,15 @@ export function mapProperty(row: Record<string, unknown>): Property {
     lat: row.lat == null ? null : Number(row.lat),
     lng: row.lng == null ? null : Number(row.lng),
     source: String(row.source || (publicRecord ? 'public' : 'seed')),
-    affiliate_url: String(row.affiliate_url || ''),
     agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
-    book_url: String(row.affiliate_url || ''),
+    affiliate_url: agodaBookUrl({
+      affiliate_url: String(row.affiliate_url || ''),
+      agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
+    }),
+    book_url: agodaBookUrl({
+      affiliate_url: String(row.affiliate_url || ''),
+      agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
+    }),
   };
 }
 
