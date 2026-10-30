@@ -38,6 +38,9 @@ export default function HomePage() {
             <a href="#images" data-nav="images">
               숙소 사진
             </a>
+            <a href="#places" data-nav="places">
+              국내 명소
+            </a>
             <a href="#journal" data-nav="journal">
               여행 저널
             </a>

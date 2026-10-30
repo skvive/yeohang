@@ -66,9 +66,10 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
           </a>
           <nav className="top-links" aria-label="상단 메뉴">
             <a href="/#discover">숙소 찾기</a>
+            <a href="/places">국내 명소</a>
+            <a href="/#shorts">여행 영상</a>
             <a href="/#kakao">톡 쿠폰</a>
             <a href="/#weekly">이번 주 혜택</a>
-            <a href="/#events">숙박 혜택</a>
             <a href="/#map">지역 지도</a>
           </nav>
           <a className="header-cta" href="/#discover">

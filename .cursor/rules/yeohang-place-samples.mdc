@@ -1,0 +1,13 @@
+---
+description: YEOHANG 국내 명소 샘플·큐레이션은 TourAPI/YouTube/Blogger 공식 API만 사용한다.
+globs: lib/place*.ts,lib/place.tsx,lib/tourapi.ts,lib/youtube-curate.ts,app/place/**/*.tsx,app/places/**/*.tsx,scripts/*place*
+alwaysApply: false
+---
+
+# 명소 페이지
+
+- 관광공사·유튜브·블로그 HTML을 긁지 않는다. TourAPI 4.0, YouTube Data API, Blogger API만 허용.
+- 새 샘플은 `lib/places-catalog.ts` + `scripts/seed-places.mjs`를 함께 수정한다.
+- 상세 `/place/[id]`는 소개, 지도, VisitKorea 링크, 쇼츠, 브이로그, 블로그, 근처 숙소를 빠짐없이 둔다.
+- 샘플 카피는 원문 2~4문장. VisitKorea 문장 복붙 금지.
+- 영상 슬롯이 비면 가짜 video id를 넣지 말고 유튜브 검색 URL을 건다.

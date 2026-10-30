@@ -30,6 +30,7 @@ import {
 } from '@/lib/deal';
 import { maskEmail, sha256, tokenHex, tokenUrl, uuid } from '@/lib/hash';
 import { adStatsFor, interpretQuery, logAdEvent, pickAd, pickStays } from '@/lib/ai-search';
+import { PLACE_CITIES, TRAVEL_CREATORS, getPlace, listPlaces, listPosts, listVideos, tourApiConfigured, youtubeConfigured } from '@/lib/places';
 import { openRouterConfigured } from '@/lib/openrouter';
 import {
   createAdCheckoutSession,
@@ -68,6 +69,8 @@ const PUBLIC_GET = new Set([
   '/home',
   '/deals',
   '/ad-products',
+  '/places',
+  '/media/curate',
 ]);
 
 function json(data: unknown, status = 200, cache = 'no-store') {
@@ -258,7 +261,11 @@ async function canEdit(user: SessionUser | null, propertyId: string) {
 export async function handleApi(req: Request, slug: string[]) {
   const path = '/' + slug.join('/');
   const url = new URL(req.url);
-  const me = req.method === 'GET' && PUBLIC_GET.has(path) ? null : await identity();
+  const publicRead =
+    (req.method === 'GET' && PUBLIC_GET.has(path)) ||
+    (req.method === 'GET' && slug[0] === 'places') ||
+    (req.method === 'GET' && path === '/media/curate');
+  const me = publicRead ? null : await identity();
 
   try {
     if (req.method === 'GET') {
@@ -274,6 +281,8 @@ export async function handleApi(req: Request, slug: string[]) {
           korea_only: process.env.KOREA_ONLY !== '0',
           agoda_affiliate: Boolean(process.env.AGODA_CID),
           trip_affiliate: hasTripAffiliate(),
+          tourapi_configured: tourApiConfigured(),
+          youtube_configured: youtubeConfigured(),
         });
       }
       if (path === '/agoda/status') {
@@ -597,6 +606,51 @@ export async function handleApi(req: Request, slug: string[]) {
           current,
           channel_url: process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || '',
           kakao_js_key: Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY),
+        });
+      }
+      if (path === '/places' || (slug[0] === 'places' && slug.length === 1)) {
+        const city = url.searchParams.get('city') || '';
+        const q = url.searchParams.get('q') || '';
+        const places = await listPlaces(city, q);
+        return json(
+          {
+            places,
+            cities: PLACE_CITIES,
+            creators: TRAVEL_CREATORS,
+            tourapi: tourApiConfigured(),
+            youtube: youtubeConfigured(),
+            count: places.length,
+          },
+          200,
+          CDN_CACHE,
+        );
+      }
+      if (slug[0] === 'places' && slug[1]) {
+        const place = await getPlace(slug[1]);
+        if (!place) return fail('명소를 찾을 수 없습니다.', 404);
+        const [videos, posts] = await Promise.all([listVideos(place.city, place.id), listPosts(place.city, place.id)]);
+        return json({
+          place,
+          videos,
+          shorts: videos.filter((v) => v.kind === 'shorts'),
+          posts,
+        });
+      }
+      if (path === '/media/curate') {
+        const city = url.searchParams.get('city') || '제주';
+        const videos = await listVideos(city);
+        const posts = await listPosts(city);
+        return json({
+          city,
+          videos,
+          shorts: videos.filter((v) => v.kind === 'shorts'),
+          posts,
+          creators: TRAVEL_CREATORS,
+          youtube: youtubeConfigured(),
+          search: {
+            videos: `https://www.youtube.com/results?search_query=${encodeURIComponent(city + ' 여행 브이로그')}`,
+            shorts: `https://www.youtube.com/results?search_query=${encodeURIComponent(city + ' 여행 #shorts')}`,
+          },
         });
       }
       if (path === '/ads/stats') {

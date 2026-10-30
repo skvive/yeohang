@@ -33,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/brand-v2.css" />
         <link rel="stylesheet" href="/deal.css" />
         <link rel="stylesheet" href="/ai-search.css" />
+        <link rel="stylesheet" href="/places.css" />
       </head>
       <body>{children}</body>
     </html>
