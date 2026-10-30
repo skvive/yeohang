@@ -1,5 +1,5 @@
 import { dbQuery } from '@/lib/db';
-import { mapProperty } from '@/lib/domain';
+import { LIST_COLUMNS, mapProperty } from '@/lib/domain';
 import { PropertyBody, StayChrome } from '@/lib/stay';
 import { notFound } from 'next/navigation';
 
@@ -13,10 +13,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const nearby = (
     p.lat != null && p.lng != null
       ? await dbQuery(
-          `SELECT * FROM properties WHERE active=true AND lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132 AND id<>$1 ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 6`,
+          `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132 AND id<>$1 ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 6`,
           [p.id, p.lat, p.lng],
         )
-      : await dbQuery(`SELECT * FROM properties WHERE active=true AND city=$1 AND id<>$2 ORDER BY name LIMIT 6`, [p.city, p.id])
+      : await dbQuery(`SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND city=$1 AND id<>$2 ORDER BY name LIMIT 6`, [p.city, p.id])
   ).map(mapProperty);
   return (
     <StayChrome>

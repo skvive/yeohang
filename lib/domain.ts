@@ -56,6 +56,9 @@ export type Property = Record<string, unknown> & {
   affiliate_url?: string;
   agoda_hotel_id?: number | null;
   book_url?: string;
+  star_rating?: number | null;
+  review_score?: number | null;
+  review_count?: number | null;
 };
 
 const CITY_KO: Record<string, string> = {
@@ -186,6 +189,21 @@ const GU_KO: Record<string, string> = {
   'myeongdong': '명동',
 };
 
+const ROAD_KO: Record<string, string> = { daero: '대로', ro: '로', gil: '길', dong: '동' };
+
+function roadStemKo(name: string) {
+  const key = name.toLowerCase();
+  if (CITY_KO[key]) return CITY_KO[key];
+  if (GU_KO[key]) return GU_KO[key].replace(/구$/, '');
+  const gu = GU_KO[`${key}-gu`];
+  if (gu) return gu.replace(/구$/, '');
+  for (const [en, ko] of Object.entries(GU_KO)) {
+    const stem = en.replace(/-gu$/, '');
+    if (stem === key) return ko.replace(/구$/, '');
+  }
+  return name;
+}
+
 function addressKo(raw: string) {
   let s = String(raw || '').trim();
   if (!s) return s;
@@ -196,6 +214,10 @@ function addressKo(raw: string) {
     const re = new RegExp(`\\b${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/-/g, '[- ]?')}\\b`, 'gi');
     s = s.replace(re, dict[en]);
   }
+  s = s.replace(/\b([A-Za-z][A-Za-z]*)-(daero|ro|gil|dong)\b/gi, (_, name: string, kind: string) => {
+    return `${roadStemKo(name)}${ROAD_KO[kind.toLowerCase()] || kind}`;
+  });
+  s = s.replace(/\b(\d+)\s+([가-힣]+(?:대로|로|길))\b/g, '$2 $1');
   s = s.replace(/\b(\d+)\s*ga\b/gi, '$1가');
   return s.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*$/, '').trim();
 }
@@ -280,11 +302,14 @@ export function mapProperty(row: Record<string, unknown>): Property {
       affiliate_url: String(row.affiliate_url || ''),
       agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
     }),
+    star_rating: row.star_rating == null || row.star_rating === '' ? null : Number(row.star_rating),
+    review_score: row.review_score == null || row.review_score === '' ? null : Number(row.review_score),
+    review_count: row.review_count == null || row.review_count === '' ? null : Number(row.review_count),
   };
 }
 
 export const LIST_COLUMNS =
-  'id, name, city, area, category, address, tagline, price, lat, lng, sponsored, amenities, image, photo_url, photo_license, photo_author, photo_credit, public_record, partner_verified, verified, active, source, agoda_hotel_id, affiliate_url, review_count, review_score';
+  'id, name, city, area, category, address, tagline, price, lat, lng, sponsored, amenities, image, photo_url, photo_license, photo_author, photo_credit, public_record, partner_verified, verified, active, source, agoda_hotel_id, affiliate_url, review_count, review_score, star_rating';
 
 export function listProperty(row: Record<string, unknown>) {
   const p = mapProperty(row);
