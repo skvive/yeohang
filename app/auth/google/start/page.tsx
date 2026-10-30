@@ -7,7 +7,7 @@ export default function GoogleStartPage() {
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     authClient
-      .signIn.social({ provider: 'google', callbackURL: '/#merchant', errorCallbackURL: '/auth/sign-in' })
+      .signIn.social({ provider: 'google', callbackURL: '/account', errorCallbackURL: '/auth/sign-in' })
       .catch((e) => setErr(e instanceof Error ? e.message : 'Google 로그인에 실패했습니다.'));
   }, []);
   return (

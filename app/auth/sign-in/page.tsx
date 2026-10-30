@@ -14,7 +14,7 @@ export default function SignInPage() {
       </div>
       <h1>로그인</h1>
       <p className="sub">Neon Auth · Google 계정으로 여행갈지도에 연결합니다.</p>
-      <OAuthButtons callbackURL="/#merchant" errorURL="/auth/sign-in" />
+      <OAuthButtons callbackURL="/account" errorURL="/auth/sign-in" />
       <div className="auth-divider">또는 이메일</div>
       <form action={formAction}>
         <div className="auth-field">

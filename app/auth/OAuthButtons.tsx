@@ -3,7 +3,7 @@
 import { authClient } from '@/lib/auth/client';
 import { useState } from 'react';
 
-export function OAuthButtons({ callbackURL = '/', errorURL = '/auth/sign-in' }: { callbackURL?: string; errorURL?: string }) {
+export function OAuthButtons({ callbackURL = '/account', errorURL = '/auth/sign-in' }: { callbackURL?: string; errorURL?: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
