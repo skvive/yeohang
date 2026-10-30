@@ -1,5 +1,7 @@
 import { createReadStream, readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { Readable, Transform } from 'node:stream';
+import { createInflateRaw } from 'node:zlib';
 import pg from 'pg';
 
 function loadEnv() {
@@ -13,12 +15,9 @@ function loadEnv() {
 }
 loadEnv();
 
-const file = process.argv[2];
-if (!file) {
-  console.error('Usage: node scripts/import-agoda-korea.mjs <Agoda_Hotels_EN.csv>');
-  process.exit(1);
-}
-
+const DEFAULT_FEED = 'https://affiliatefeed.agoda.com/hoteldatafiles/E342B777-64FD-4A49-9C9F-FEF4BA635863_EN.zip';
+const file = process.argv[2] || '';
+const feedUrl = (process.env.AGODA_HOTEL_FEED_URL || DEFAULT_FEED).trim();
 const url = process.env.DATABASE_URL;
 const cid = (process.env.AGODA_CID || '').trim();
 if (!url) {
@@ -85,6 +84,117 @@ function affiliateUrl(hotelId) {
   return `https://www.agoda.com/partners/partnersearch.aspx?${params.toString()}`;
 }
 
+function httpsPhoto(v) {
+  if (!v) return '';
+  if (v.startsWith('//')) return `https:${v}`;
+  if (v.startsWith('http://')) return `https://${v.slice(7)}`;
+  return v;
+}
+
+class ZipFirstFile extends Transform {
+  constructor() {
+    super();
+    this.buf = Buffer.alloc(0);
+    this.inflater = null;
+    this.passthrough = false;
+    this.started = false;
+  }
+  _transform(chunk, _enc, cb) {
+    try {
+      if (this.passthrough) {
+        this.push(chunk);
+        cb();
+        return;
+      }
+      if (this.inflater) {
+        this.inflater.write(chunk);
+        cb();
+        return;
+      }
+      this.buf = Buffer.concat([this.buf, chunk]);
+      if (this.buf.length < 30) {
+        cb();
+        return;
+      }
+      const sig = this.buf.readUInt32LE(0);
+      if (sig !== 0x04034b50) {
+        cb(new Error('not a zip local file (got ' + sig.toString(16) + ')'));
+        return;
+      }
+      const flags = this.buf.readUInt16LE(6);
+      const method = this.buf.readUInt16LE(8);
+      const nameLen = this.buf.readUInt16LE(26);
+      const extraLen = this.buf.readUInt16LE(28);
+      const headerLen = 30 + nameLen + extraLen;
+      if (this.buf.length < headerLen) {
+        cb();
+        return;
+      }
+      const name = this.buf.subarray(30, 30 + nameLen).toString('utf8');
+      console.log(`zip entry method=${method} flags=${flags} name=${name}`);
+      const rest = this.buf.subarray(headerLen);
+      this.buf = Buffer.alloc(0);
+      this.started = true;
+      if (method === 0) {
+        this.passthrough = true;
+        if (rest.length) this.push(rest);
+      } else if (method === 8) {
+        this.inflater = createInflateRaw();
+        this.inflater.on('data', (d) => this.push(d));
+        this.inflater.on('error', (err) => {
+          this.inflateErr = err;
+        });
+        if (rest.length) this.inflater.write(rest);
+      } else {
+        cb(new Error('unsupported zip method ' + method));
+        return;
+      }
+      cb();
+    } catch (err) {
+      cb(err);
+    }
+  }
+  _flush(cb) {
+    if (!this.inflater) {
+      cb();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      cb();
+    };
+    this.inflater.once('end', finish);
+    this.inflater.once('error', finish);
+    this.inflater.end();
+  }
+}
+
+async function openCsvStream() {
+  if (file && !/\.zip$/i.test(file)) {
+    console.log('reading csv', file);
+    return createReadStream(file);
+  }
+  if (file && /\.zip$/i.test(file)) {
+    console.log('reading zip', file);
+    const zip = new ZipFirstFile();
+    createReadStream(file).pipe(zip);
+    return zip;
+  }
+  console.log('downloading hotel feed');
+  const res = await fetch(feedUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 yeohang-agoda-import', Accept: '*/*' },
+    redirect: 'follow',
+  });
+  if (!res.ok || !res.body) throw new Error('feed HTTP ' + res.status);
+  const len = res.headers.get('content-length');
+  console.log('feed status', res.status, 'bytes', len || 'unknown');
+  const zip = new ZipFirstFile();
+  Readable.fromWeb(res.body).pipe(zip);
+  return zip;
+}
+
 const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
 await client.connect();
 
@@ -93,6 +203,7 @@ let seen = 0;
 let korea = 0;
 let upserted = 0;
 const batch = [];
+let partial = false;
 
 async function flush() {
   if (!batch.length) return;
@@ -101,11 +212,33 @@ async function flush() {
   const binds = [];
   let i = 1;
   for (const r of rows) {
-    binds.push(`($${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++})`);
+    binds.push(
+      `($${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++})`,
+    );
     values.push(
-      r.id, r.name, r.city, r.area, r.tagline, r.description, 1, r.lat, r.lng, r.amenities,
-      r.photo_url, r.category, r.address, r.source_url, r.photo_author, r.photo_credit, r.photo_license,
-      r.agoda_hotel_id, r.agoda_city_id, r.star_rating, r.review_score, r.review_count, r.affiliate_url,
+      r.id,
+      r.name,
+      r.city,
+      r.area,
+      r.tagline,
+      r.description,
+      1,
+      r.lat,
+      r.lng,
+      r.amenities,
+      r.photo_url,
+      r.category,
+      r.address,
+      r.source_url,
+      r.photo_author,
+      r.photo_credit,
+      r.photo_license,
+      r.agoda_hotel_id,
+      r.agoda_city_id,
+      r.star_rating,
+      r.review_score,
+      r.review_count,
+      r.affiliate_url,
     );
   }
   await client.query(
@@ -155,13 +288,20 @@ async function flush() {
 }
 
 try {
-  const rl = createInterface({ input: createReadStream(file, { encoding: 'utf8' }), crlfDelay: Infinity });
+  const input = await openCsvStream();
+  input.on('error', (err) => {
+    partial = true;
+    console.warn('stream error', err.message);
+  });
+  const rl = createInterface({ input, crlfDelay: Infinity });
   for await (const line of rl) {
     if (!headers.length) {
       headers = parseCsvLine(line).map(norm);
+      console.log('columns', headers.slice(0, 12).join(','));
       continue;
     }
     seen += 1;
+    if (seen % 200000 === 0) console.log(`scanned=${seen} korea=${korea} upserted=${upserted}`);
     const cols = parseCsvLine(line);
     const row = {};
     headers.forEach((h, ix) => {
@@ -176,7 +316,7 @@ try {
     const area = pick(row, ['areaname', 'area_name', 'area']) || city;
     const address = pick(row, ['address', 'addressline1', 'address_line_1']);
     const desc = pick(row, ['overview', 'description', 'hoteldescription']) || `${city} ${name}`.trim();
-    const photo = pick(row, ['photo1', 'photo_1', 'imageurl', 'image_url', 'hotelpicture']);
+    const photo = httpsPhoto(pick(row, ['photo1', 'photo_1', 'imageurl', 'image_url', 'hotelpicture']));
     const acc = pick(row, ['accommodationtype', 'accommodation_type', 'propertytype', 'property_type']);
     const cityId = pick(row, ['cityid', 'city_id']);
     const lat = pick(row, ['latitude', 'lat']);
@@ -210,11 +350,18 @@ try {
       affiliate_url: affiliateUrl(hotelId),
     });
     if (batch.length >= 200) await flush();
-    if (korea % 1000 === 0) console.log(`korea=${korea} upserted=${upserted} scanned=${seen}`);
+    if (korea % 2000 === 0) console.log(`korea=${korea} upserted=${upserted} scanned=${seen}`);
   }
   await flush();
   const count = await client.query(`SELECT COUNT(*)::int AS n FROM properties WHERE source='agoda' AND country_code='KR'`);
-  console.log(`done scanned=${seen} korea_rows=${korea} upserted=${upserted} db_agoda_kr=${count.rows[0].n} cid=${cid ? 'set' : 'missing'}`);
+  console.log(
+    `done scanned=${seen} korea_rows=${korea} upserted=${upserted} db_agoda_kr=${count.rows[0].n} cid=${cid ? 'set' : 'missing'} partial=${partial}`,
+  );
+  if (korea === 0) process.exitCode = 2;
+} catch (err) {
+  await flush().catch(() => {});
+  console.error('import failed', err);
+  process.exitCode = 1;
 } finally {
   await client.end();
 }

@@ -25,8 +25,11 @@
 
 ```powershell
 npm run db:migrate
-npm run db:import-agoda -- path\to\Agoda_Hotels_EN.csv
+npm run db:fetch-agoda
+# 또는 이미 받은 CSV: npm run db:import-agoda -- path\to\Agoda_Hotels_EN.csv
 ```
+
+로컬 ISP는 아고다 피드(~281MB)가 90초에서 끊기는 경우가 있어, 전체 적재는 Vercel 빌드에서 `IMPORT_AGODA=1` 로 한 번 실행합니다.
 
 CSV는 git에 넣지 않습니다. 전 세계 100만 행 규모이며 한국만 잘라 DB에 넣습니다.
 

@@ -80,7 +80,7 @@ export function mapProperty(row: Record<string, unknown>): Property {
     active: Boolean(row.active),
     public_record: publicRecord,
     partner_verified: Boolean(row.partner_verified),
-    price: publicRecord ? null : row.price == null ? null : Number(row.price),
+    price: publicRecord || String(row.source || '') === 'agoda' ? null : row.price == null ? null : Number(row.price),
     amenities: amenities ? amenities.split(',') : [],
     image_url: `/assets/listing-${image}.webp`,
     lat: row.lat == null ? null : Number(row.lat),

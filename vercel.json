@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run db:migrate && npm run db:seed && next build",
+  "buildCommand": "npm run db:migrate && npm run db:seed && node scripts/maybe-import-agoda.mjs && next build",
   "installCommand": "npm install"
 }

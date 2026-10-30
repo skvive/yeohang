@@ -111,28 +111,55 @@ async function searchProperties(q = '', city = '', maxPrice: number | null, lat:
   const filters = q ? extractSearch(q) : { city: '', amenities: [] as string[], max_price: null as number | null };
   city = city || filters.city;
   maxPrice = maxPrice || filters.max_price;
-  const where = DEMO_MODE ? 'WHERE active=true' : 'WHERE active=true AND (verified=true OR public_record=true)';
-  const rows = (await dbQuery(`SELECT * FROM properties ${where}`)).map(mapProperty);
-  const keywords = q.toLowerCase().split(/\s+/).filter((x) => x.length > 1);
+  const clauses = ['active=true'];
+  const params: unknown[] = [];
+  if (!DEMO_MODE) clauses.push(`(verified=true OR public_record=true OR source='agoda')`);
+  if (city) {
+    params.push(`%${city}%`);
+    clauses.push(`(city ILIKE $${params.length} OR area ILIKE $${params.length} OR name ILIKE $${params.length})`);
+  }
+  if (category) {
+    params.push(category);
+    clauses.push(`category = $${params.length}`);
+  }
+  const keywords = q.toLowerCase().split(/\s+/).filter((x) => x.length > 1).slice(0, 6);
+  for (const w of keywords) {
+    if (city && w === city.toLowerCase()) continue;
+    params.push(`%${w}%`);
+    clauses.push(
+      `(name ILIKE $${params.length} OR city ILIKE $${params.length} OR area ILIKE $${params.length} OR coalesce(address,'') ILIKE $${params.length} OR coalesce(category,'') ILIKE $${params.length} OR coalesce(tagline,'') ILIKE $${params.length})`,
+    );
+  }
+  const nearby = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+  if (nearby) clauses.push('lat IS NOT NULL AND lng IS NOT NULL');
+  const where = clauses.join(' AND ');
+  const total = Number((await dbQuery(`SELECT COUNT(*)::int AS n FROM properties WHERE ${where}`, params))[0]?.n || 0);
+  const selectParams = [...params];
+  let orderSql = 'sponsored DESC, coalesce(review_count,0) DESC, coalesce(review_score,0) DESC, name ASC';
+  if (nearby) {
+    selectParams.push(lat, lng);
+    orderSql = `(lat - $${selectParams.length - 1})^2 + (lng - $${selectParams.length})^2 ASC`;
+  }
+  const limit = nearby ? 80 : 120;
+  selectParams.push(limit);
+  const rows = (await dbQuery(`SELECT * FROM properties WHERE ${where} ORDER BY ${orderSql} LIMIT $${selectParams.length}`, selectParams)).map(mapProperty);
   const res: Array<ReturnType<typeof mapProperty> & { relevance_score: number; distance_km?: number }> = [];
   for (const p of rows) {
-    if (city && !String(p.city).includes(city) && !String(p.area).includes(city)) continue;
-    if (category && p.category !== category) continue;
-    if (maxPrice && (p.price == null || Number(p.price) > maxPrice)) continue;
+    if (maxPrice && p.source !== 'agoda' && (p.price == null || Number(p.price) > maxPrice)) continue;
     const amen = p.amenities as string[];
     if (filters.amenities.length && !filters.amenities.every((a) => amen.includes(a) || String(p.category).includes(a))) continue;
     const combined = [p.name, p.city, p.area, p.address, p.category, p.tagline, p.description, amen.join(',')].join(' ').toLowerCase();
     let score = keywords.reduce((s, x) => s + (combined.includes(x) ? (amen.includes(x) ? 3 : 1) : 0), 0);
     let distance_km: number | undefined;
-    if (lat != null && lng != null && p.lat != null && p.lng != null) {
-      distance_km = Math.round(haversine(lat, lng, p.lat, p.lng) * 10) / 10;
+    if (nearby && p.lat != null && p.lng != null) {
+      distance_km = Math.round(haversine(lat as number, lng as number, p.lat, p.lng) * 10) / 10;
       score += Math.max(0, 8 - distance_km * 0.3);
     }
     res.push({ ...p, relevance_score: Math.round(score * 10) / 10, distance_km });
   }
   const sponsored = res.filter((p) => p.sponsored).sort((a, b) => b.relevance_score - a.relevance_score || (a.distance_km || 9999) - (b.distance_km || 9999));
   let organic = res.sort((a, b) => b.relevance_score - a.relevance_score || (a.distance_km || 9999) - (b.distance_km || 9999));
-  if (lat != null && lng != null && !q && !city) {
+  if (nearby && !q && !city) {
     organic = [...organic].sort((a, b) => (a.distance_km || 99999) - (b.distance_km || 99999));
   }
   return {
@@ -140,8 +167,8 @@ async function searchProperties(q = '', city = '', maxPrice: number | null, lat:
     results: organic,
     interpretation: filters,
     engine: q ? 'rules-demo' : 'manual',
-    count: organic.length,
-    disclosure: '광고 파트너는 스폰서로 구분되며 공개자료 숙소는 요금·객실 재고와 업주 가입 상태를 별도 확인해야 합니다.',
+    count: total,
+    disclosure: '광고 파트너는 스폰서로 구분되며 아고다 제휴 숙소는 아고다에서 요금·예약을 확인합니다.',
   };
 }
 
@@ -187,16 +214,30 @@ export async function handleApi(req: Request, slug: string[]) {
       }
       if (path === '/prices') return json({ plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' });
       if (path === '/catalog/categories') {
-        const categories = await dbQuery(`SELECT category, COUNT(*)::int AS count FROM properties WHERE active=true AND public_record=true GROUP BY category ORDER BY category`);
-        const cities = await dbQuery(`SELECT city, COUNT(*)::int AS count FROM properties WHERE active=true AND public_record=true GROUP BY city ORDER BY count DESC, city`);
-        return json({ categories, cities, market: 'KR', claim: '공개자료 기반, 업주 가입 여부와 실시간 재고 미확인' });
+        const categories = await dbQuery(`SELECT category, COUNT(*)::int AS count FROM properties WHERE active=true GROUP BY category ORDER BY category`);
+        const cities = await dbQuery(`SELECT city, COUNT(*)::int AS count FROM properties WHERE active=true GROUP BY city ORDER BY count DESC, city LIMIT 40`);
+        return json({ categories, cities, market: 'KR', claim: '아고다 제휴·공개자료 기반, 실시간 재고는 아고다에서 확인' });
       }
       if (path === '/photos/search') {
         const cat = url.searchParams.get('category') || '';
         const city = url.searchParams.get('city') || '';
         const q = (url.searchParams.get('q') || '').toLowerCase().slice(0, 100);
-        const properties = (await dbQuery(`SELECT * FROM properties WHERE active=true AND public_record=true`)).map(mapProperty);
-        const matches = properties.filter((p) => (!cat || p.category === cat) && (!city || String(p.city).includes(city)) && (!q || `${p.name} ${p.city} ${p.address} ${p.category}`.toLowerCase().includes(q)));
+        const photoParams: unknown[] = [];
+        const photoWhere = ['active=true', `coalesce(photo_url,'') <> ''`];
+        if (cat) {
+          photoParams.push(cat);
+          photoWhere.push(`category = $${photoParams.length}`);
+        }
+        if (city) {
+          photoParams.push(`%${city}%`);
+          photoWhere.push(`city ILIKE $${photoParams.length}`);
+        }
+        if (q) {
+          photoParams.push(`%${q}%`);
+          photoWhere.push(`(name ILIKE $${photoParams.length} OR address ILIKE $${photoParams.length} OR city ILIKE $${photoParams.length})`);
+        }
+        photoParams.push(300);
+        const matches = (await dbQuery(`SELECT * FROM properties WHERE ${photoWhere.join(' AND ')} ORDER BY coalesce(review_count,0) DESC LIMIT $${photoParams.length}`, photoParams)).map(mapProperty);
         return json({
           count: matches.length,
           images: matches.slice(0, 300).map((p) => ({
@@ -260,7 +301,7 @@ export async function handleApi(req: Request, slug: string[]) {
       if (path === '/partner/overview') {
         if (!me) return fail('Google 로그인 필요', 401);
         const ids = me.admin
-          ? (await dbQuery(`SELECT id FROM properties`)).map((r) => String(r.id))
+          ? (await dbQuery(`SELECT id FROM properties WHERE coalesce(source,'') <> 'agoda'`)).map((r) => String(r.id))
           : (await dbQuery(`SELECT property_id FROM property_partners WHERE google_email=$1`, [me.email])).map((r) => String(r.property_id));
         const properties = [];
         const bookings = [];
@@ -275,7 +316,7 @@ export async function handleApi(req: Request, slug: string[]) {
       }
       if (path === '/admin/overview') {
         if (!me?.admin && !(DEMO_MODE && req.headers.get('X-Admin-Token') === process.env.ADMIN_TOKEN)) return fail('관리자 권한 필요', 403);
-        const properties = (await dbQuery(`SELECT * FROM properties ORDER BY name`)).map(mapProperty);
+        const properties = (await dbQuery(`SELECT * FROM properties WHERE coalesce(source,'') <> 'agoda' ORDER BY name`)).map(mapProperty);
         const bookings = await dbQuery(`SELECT b.*, p.name AS property_name FROM bookings b JOIN properties p ON p.id=b.property_id ORDER BY b.created_at DESC LIMIT 50`);
         const chats = await dbQuery(`SELECT c.*, p.name AS property_name FROM conversations c JOIN properties p ON p.id=c.property_id ORDER BY c.created_at DESC LIMIT 50`);
         const subscriptions = await dbQuery(`SELECT * FROM subscriptions ORDER BY created_at DESC LIMIT 50`);
