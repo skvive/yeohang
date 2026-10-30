@@ -149,6 +149,62 @@ function latinOnly(s: string) {
   return /[A-Za-z]/.test(s) && !/[가-힣]/.test(s);
 }
 
+const GU_KO: Record<string, string> = {
+  'jongno-gu': '종로구',
+  'jung-gu': '중구',
+  'yongsan-gu': '용산구',
+  'seongdong-gu': '성동구',
+  'gwangjin-gu': '광진구',
+  'dongdaemun-gu': '동대문구',
+  'jungnang-gu': '중랑구',
+  'seongbuk-gu': '성북구',
+  'gangbuk-gu': '강북구',
+  'dobong-gu': '도봉구',
+  'nowon-gu': '노원구',
+  'eunpyeong-gu': '은평구',
+  'seodaemun-gu': '서대문구',
+  'mapo-gu': '마포구',
+  'yangcheon-gu': '양천구',
+  'gangseo-gu': '강서구',
+  'guro-gu': '구로구',
+  'geumcheon-gu': '금천구',
+  'yeongdeungpo-gu': '영등포구',
+  'dongjak-gu': '동작구',
+  'gwanak-gu': '관악구',
+  'seocho-gu': '서초구',
+  'gangnam-gu': '강남구',
+  'songpa-gu': '송파구',
+  'gangdong-gu': '강동구',
+  'haeundae-gu': '해운대구',
+  'suyeong-gu': '수영구',
+  'nam-gu': '남구',
+  'buk-gu': '북구',
+  'seo-gu': '서구',
+  'dong-gu': '동구',
+  'myeongdong': '명동',
+};
+
+function addressKo(raw: string) {
+  let s = String(raw || '').trim();
+  if (!s) return s;
+  s = s.replace(/,?\s*South Korea\b/gi, '');
+  s = s.replace(/,?\s*Republic of Korea\b/gi, '');
+  const dict = { ...CITY_KO, ...GU_KO };
+  for (const en of Object.keys(dict).sort((a, b) => b.length - a.length)) {
+    const re = new RegExp(`\\b${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/-/g, '[- ]?')}\\b`, 'gi');
+    s = s.replace(re, dict[en]);
+  }
+  s = s.replace(/\b(\d+)\s*ga\b/gi, '$1가');
+  return s.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*$/, '').trim();
+}
+
+function tidyKoDesc(s: string) {
+  return s.replace(/([가-힣])은\/는/g, (_, c) => {
+    const jong = (c.charCodeAt(0) - 0xac00) % 28;
+    return c + (jong ? '은' : '는');
+  }).replace(/은\/는/g, '는');
+}
+
 function koAmenityToken(raw: string) {
   const t = raw.trim();
   if (!t) return t;
@@ -192,9 +248,11 @@ export function mapProperty(row: Record<string, unknown>): Property {
     city,
     area,
     category,
-    address: String(row.address || ''),
+    address: addressKo(String(row.address || '')),
     tagline: latinOnly(taglineRaw) ? [city, category].filter(Boolean).join(' · ') || '아고다 제휴 숙소' : taglineRaw,
-    description: latinOnly(desc) ? `${city}에 있는 ${category || '숙소'}입니다. 상세 안내는 아고다에서 확인하세요.` : desc,
+    description: latinOnly(desc)
+      ? `${city}에 있는 ${category || '숙소'}입니다. 상세 안내는 아고다에서 확인하세요.`
+      : tidyKoDesc(desc),
     source_url: String(row.source_url || ''),
     photo_url: String(row.photo_url || ''),
     photo_license: /agoda affiliate/i.test(license) ? '아고다 제휴 콘텐츠' : license,
