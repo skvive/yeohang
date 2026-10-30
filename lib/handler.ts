@@ -29,6 +29,15 @@ import {
   readCookie,
 } from '@/lib/deal';
 import { maskEmail, sha256, tokenHex, tokenUrl, uuid } from '@/lib/hash';
+import { adStatsFor, interpretQuery, logAdEvent, pickAd, pickStays } from '@/lib/ai-search';
+import { openRouterConfigured } from '@/lib/openrouter';
+import {
+  createAdCheckoutSession,
+  fulfillStripeSession,
+  retrieveStripeSession,
+  stripeConfigured,
+  type CheckoutProduct,
+} from '@/lib/stripe';
 
 type SessionUser = { email: string; admin: boolean };
 
@@ -58,6 +67,7 @@ const PUBLIC_GET = new Set([
   '/promos',
   '/home',
   '/deals',
+  '/ad-products',
 ]);
 
 function json(data: unknown, status = 200, cache = 'no-store') {
@@ -257,8 +267,9 @@ export async function handleApi(req: Request, slug: string[]) {
           ok: true,
           version: '2.0.0',
           google_oauth_configured: Boolean(process.env.NEON_AUTH_BASE_URL),
-          stripe_configured: Boolean(process.env.STRIPE_SECRET_KEY),
-          ai_configured: Boolean(process.env.OPENAI_API_KEY),
+          stripe_configured: stripeConfigured(),
+          ai_configured: openRouterConfigured(),
+          openrouter_configured: openRouterConfigured(),
           demo_mode: DEMO_MODE,
           korea_only: process.env.KOREA_ONLY !== '0',
           agoda_affiliate: Boolean(process.env.AGODA_CID),
@@ -280,9 +291,41 @@ export async function handleApi(req: Request, slug: string[]) {
           money: '체크아웃이 완료된 아고다 예약은 미국 달러 기준 4~5% 수수료가 정산되며, 월 최소 정산액은 200달러입니다. 트립닷컴은 기본 수수료 최대 7%, 웹 쿠키 30일입니다.',
         });
       }
-      if (path === '/prices') {
+      if (path === '/prices' || path === '/ad-products') {
+        let catalog = Object.entries(PRICES).map(([id, p]) => ({
+          id,
+          name: p.name,
+          amount_krw: p.amount,
+          interval: p.interval ? 'month' : 'once',
+          features: p.features,
+          slot: id === 'content-pack' ? 'content' : 'ai_search',
+        }));
+        try {
+          const rows = await dbQuery(`SELECT * FROM ad_products WHERE active=true ORDER BY amount_krw ASC`);
+          if (rows.length) {
+            catalog = rows.map((r) => ({
+              id: String(r.id),
+              name: String(r.name),
+              amount_krw: Number(r.amount_krw),
+              interval: String(r.interval) === 'once' ? 'once' : 'month',
+              features: String(r.features || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+              slot: String(r.slot || 'ai_search'),
+            }));
+          }
+        } catch {
+          /* sql/008_ai_ads.sql 이전 */
+        }
         return json(
-          { plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' },
+          {
+            plans: PRICES,
+            products: catalog,
+            currency: 'KRW',
+            stripe_configured: stripeConfigured(),
+            tax_note: '제시 요금은 운영자가 생성한 광고 상품이며, 부가세·환불정책은 실제 계약 시 확정합니다.',
+          },
           200,
           CDN_CACHE,
         );
@@ -455,7 +498,18 @@ export async function handleApi(req: Request, slug: string[]) {
           bookings.push(...(await dbQuery(`SELECT b.*, p.name AS property_name FROM bookings b JOIN properties p ON p.id=b.property_id WHERE b.property_id=$1 ORDER BY b.created_at DESC LIMIT 30`, [pid])));
           chats.push(...(await dbQuery(`SELECT c.*, p.name AS property_name FROM conversations c JOIN properties p ON p.id=c.property_id WHERE c.property_id=$1 ORDER BY c.created_at DESC LIMIT 30`, [pid])));
         }
-        return json({ properties, bookings, chats, subscriptions: [], search_count: 0, is_partner: true });
+        let ad_stats: Awaited<ReturnType<typeof adStatsFor>> = [];
+        let subscriptions: Record<string, unknown>[] = [];
+        try {
+          subscriptions = await dbQuery(
+            `SELECT * FROM subscriptions WHERE property_id = ANY($1::text[]) ORDER BY created_at DESC LIMIT 50`,
+            [ids],
+          );
+          ad_stats = await adStatsFor(ids);
+        } catch {
+          ad_stats = [];
+        }
+        return json({ properties, bookings, chats, subscriptions, ad_stats, search_count: 0, is_partner: true });
       }
       if (path === '/admin/overview') {
         if (!me?.admin && !(DEMO_MODE && req.headers.get('X-Admin-Token') === process.env.ADMIN_TOKEN)) return fail('관리자 권한 필요', 403);
@@ -464,7 +518,13 @@ export async function handleApi(req: Request, slug: string[]) {
         const chats = await dbQuery(`SELECT c.*, p.name AS property_name FROM conversations c JOIN properties p ON p.id=c.property_id ORDER BY c.created_at DESC LIMIT 50`);
         const subscriptions = await dbQuery(`SELECT * FROM subscriptions ORDER BY created_at DESC LIMIT 50`);
         const search = await dbQuery(`SELECT COUNT(*)::int AS n FROM analytics WHERE event='search'`);
-        return json({ properties, bookings, chats, subscriptions, search_count: search[0]?.n || 0 });
+        let ad_stats: Awaited<ReturnType<typeof adStatsFor>> = [];
+        try {
+          ad_stats = await adStatsFor(properties.map((p) => p.id));
+        } catch {
+          ad_stats = [];
+        }
+        return json({ properties, bookings, chats, subscriptions, ad_stats, search_count: search[0]?.n || 0 });
       }
       if (path === '/privacy/export') {
         if (!me) return fail('구글 로그인 필요', 401);
@@ -538,6 +598,36 @@ export async function handleApi(req: Request, slug: string[]) {
           channel_url: process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || '',
           kakao_js_key: Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY),
         });
+      }
+      if (path === '/ads/stats') {
+        if (!me) return fail('구글 로그인 필요', 401);
+        const pid = String(url.searchParams.get('property_id') || '');
+        const ids = pid
+          ? [(await canEdit(me, pid)) ? pid : '']
+          : me.admin
+            ? (await dbQuery(`SELECT id FROM properties LIMIT 200`)).map((r) => String(r.id))
+            : (await dbQuery(`SELECT property_id FROM property_partners WHERE google_email=$1`, [me.email])).map((r) =>
+                String(r.property_id),
+              );
+        const clean = ids.filter(Boolean);
+        if (!clean.length) return fail('숙소 관리 권한이 없습니다.', 403);
+        try {
+          return json({ stats: await adStatsFor(clean) });
+        } catch {
+          return json({ stats: [], notice: 'sql/008_ai_ads.sql 마이그레이션이 필요합니다.' });
+        }
+      }
+      if (path === '/checkout/confirm') {
+        const sessionId = String(url.searchParams.get('session_id') || '');
+        if (!sessionId) return fail('세션이 없습니다.');
+        if (!stripeConfigured()) return fail('결제 키가 설정되지 않았습니다.', 503);
+        try {
+          const session = await retrieveStripeSession(sessionId);
+          const done = await fulfillStripeSession(session);
+          return json(done);
+        } catch (err) {
+          return fail(err instanceof Error ? err.message : '결제 확인 실패', 400);
+        }
       }
       return fail('경로를 찾을 수 없습니다.', 404);
     }
@@ -800,8 +890,147 @@ export async function handleApi(req: Request, slug: string[]) {
         return fail('타임딜을 확인하지 못했습니다.', 503);
       }
     }
+    if (path === '/ai/search') {
+      const q = String(x.q || x.query || '').trim().slice(0, 300);
+      if (q.length < 2) return fail('검색어를 입력해 주세요.');
+      try {
+        const { interpretation, engine, model } = await interpretQuery(q);
+        const stays = await pickStays(interpretation, 5);
+        const ad = await pickAd(interpretation.city, stays.map((s) => s.id));
+        if (ad) await logAdEvent(ad.id, 'impression', q);
+        await dbQuery(`INSERT INTO analytics(event) VALUES ('ai_search')`);
+        return json({
+          query: q,
+          answer: interpretation.answer,
+          stays,
+          sights: interpretation.sights,
+          ad,
+          interpretation: {
+            city: interpretation.city,
+            category: interpretation.category,
+            amenities: interpretation.amenities,
+            max_price: interpretation.max_price,
+          },
+          engine,
+          model,
+          disclosure:
+            '광고는 월구독 파트너 1건만 별도 표시합니다. 추천 숙소는 여행갈지도 등록 자료이며 실시간 요금·재고는 제휴사에서 확인하세요.',
+        });
+      } catch (err) {
+        console.error(err);
+        return fail('AI 검색을 처리하지 못했습니다.', 503);
+      }
+    }
+    if (path === '/ads/event') {
+      const pid = String(x.property_id || '').slice(0, 80);
+      const kind = String(x.kind || '') === 'click' ? 'click' : '';
+      if (!pid || !kind) return fail('광고 클릭만 기록합니다.');
+      await logAdEvent(pid, 'click', String(x.query || '').slice(0, 200), String(x.product_id || ''));
+      return json({ ok: true });
+    }
+    if (path === '/ad-products') {
+      const adminOk = Boolean(me?.admin || (process.env.ADMIN_TOKEN && req.headers.get('X-Admin-Token') === process.env.ADMIN_TOKEN));
+      if (!adminOk) return fail('상품 생성은 운영자만 가능합니다.', 403);
+      const name = String(x.name || '').trim().slice(0, 80);
+      const amount = Math.round(Number(x.amount_krw || x.amount || 0));
+      const interval = String(x.interval || 'month') === 'once' ? 'once' : 'month';
+      const slot = String(x.slot || 'ai_search').slice(0, 32);
+      const features = Array.isArray(x.features) ? x.features.map((f) => String(f)).join(',') : String(x.features || '');
+      if (!name || amount < 10000 || amount > 5000000) return fail('상품명과 1만~500만 원 사이 금액을 입력하세요.');
+      const id = String(x.id || `ad-${tokenHex(4).toLowerCase()}`).slice(0, 40);
+      try {
+        await dbQuery(
+          `INSERT INTO ad_products(id,name,amount_krw,interval,slot,features,active)
+           VALUES ($1,$2,$3,$4,$5,$6,true)
+           ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, amount_krw=EXCLUDED.amount_krw, interval=EXCLUDED.interval, slot=EXCLUDED.slot, features=EXCLUDED.features, active=true`,
+          [id, name, amount, interval, slot, features.slice(0, 400)],
+        );
+        return json({ ok: true, id, name, amount_krw: amount, interval, slot }, 201);
+      } catch {
+        return fail('sql/008_ai_ads.sql 마이그레이션이 필요합니다.', 503);
+      }
+    }
     if (path === '/checkout') {
-      return fail('결제 키가 설정되지 않아 테스트용 결제 링크는 생성하지 않습니다.', 503);
+      if (!stripeConfigured()) return fail('결제 키가 설정되지 않아 결제 링크는 생성하지 않습니다.', 503);
+      const email = String(x.email || me?.email || '').trim().toLowerCase().slice(0, 180);
+      const propertyId = String(x.property_id || '').slice(0, 80);
+      if (!propertyId) return fail('광고할 숙소를 선택하세요.');
+      if (email && !emailOk(email)) return fail('이메일을 확인하세요.');
+      const prop = (await dbQuery(`SELECT id, name FROM properties WHERE id=$1 AND active=true`, [propertyId]))[0];
+      if (!prop) return fail('숙소를 찾을 수 없습니다.', 404);
+      let product: CheckoutProduct | null = null;
+      const sku = String(x.sku || x.product_id || '').trim();
+      const customAmount = Math.round(Number(x.amount_krw || 0));
+      const customName = String(x.product_name || '').trim().slice(0, 80);
+      if (customAmount >= 10000) {
+        product = {
+          id: sku || `custom-${tokenHex(4).toLowerCase()}`,
+          name: customName || `${String(prop.name)} 맞춤 광고`,
+          amount_krw: Math.min(customAmount, 5000000),
+          interval: String(x.interval || 'month') === 'once' ? 'once' : 'month',
+          slot: 'ai_search',
+        };
+      } else if (sku) {
+        try {
+          const row = (await dbQuery(`SELECT * FROM ad_products WHERE id=$1 AND active=true`, [sku]))[0];
+          if (row) {
+            product = {
+              id: String(row.id),
+              name: String(row.name),
+              amount_krw: Number(row.amount_krw),
+              interval: String(row.interval) === 'once' ? 'once' : 'month',
+              slot: String(row.slot || 'ai_search'),
+            };
+          }
+        } catch {
+          product = null;
+        }
+        if (!product && PRICES[sku as keyof typeof PRICES]) {
+          const p = PRICES[sku as keyof typeof PRICES];
+          product = {
+            id: sku,
+            name: p.name,
+            amount_krw: p.amount,
+            interval: p.interval ? 'month' : 'once',
+            slot: sku === 'content-pack' ? 'content' : 'ai_search',
+          };
+        }
+      }
+      if (!product) return fail('결제할 상품 또는 맞춤 금액을 선택하세요.');
+      const subId = uuid();
+      try {
+        await dbQuery(
+          `INSERT INTO subscriptions(id, property_id, plan, status, email, amount_krw, product_id)
+           VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
+          [subId, propertyId, product.id, email, product.amount_krw, product.id],
+        );
+      } catch {
+        return fail('구독 테이블을 준비하지 못했습니다. sql/008_ai_ads.sql을 실행하세요.', 503);
+      }
+      try {
+        const session = await createAdCheckoutSession({
+          subscriptionId: subId,
+          product,
+          propertyId,
+          customerEmail: email || undefined,
+        });
+        await dbQuery(`UPDATE subscriptions SET stripe_session_id=$1 WHERE id=$2`, [session.sessionId, subId]);
+        return json({ url: session.url, session_id: session.sessionId, subscription_id: subId }, 201);
+      } catch (err) {
+        return fail(err instanceof Error ? err.message : '결제 세션 생성 실패', 503);
+      }
+    }
+    if (path === '/checkout/confirm') {
+      const sessionId = String(x.session_id || '');
+      if (!sessionId) return fail('세션이 없습니다.');
+      if (!stripeConfigured()) return fail('결제 키가 설정되지 않았습니다.', 503);
+      try {
+        const session = await retrieveStripeSession(sessionId);
+        const done = await fulfillStripeSession(session);
+        return json(done);
+      } catch (err) {
+        return fail(err instanceof Error ? err.message : '결제 확인 실패', 400);
+      }
     }
     return fail('경로를 찾을 수 없습니다.', 404);
   } catch (err) {

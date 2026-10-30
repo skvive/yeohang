@@ -29,6 +29,9 @@ export default function HomePage() {
             <a href="#discover" data-nav="discover">
               숙소 탐색
             </a>
+            <a href="#ask" data-nav="ask">
+              AI 검색
+            </a>
             <a href="#map" data-nav="map">
               내 주변
             </a>
@@ -78,6 +81,9 @@ export default function HomePage() {
         </a>
         <a href="#discover">
           ⌕<small>탐색</small>
+        </a>
+        <a href="#ask">
+          ✧<small>AI</small>
         </a>
         <a href="#map">
           ♧<small>내 주변</small>
