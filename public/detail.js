@@ -95,22 +95,15 @@
       notify(error instanceof Error ? error.message : '위치를 가져오지 못했습니다.');
     }
   });
-  function openAgodaWindow(url) {
-    if (!url) return false;
-    const popup = window.open(url, 'agodaBooking', 'noopener,noreferrer,width=1280,height=860,menubar=yes,toolbar=yes,scrollbars=yes,resizable=yes');
-    if (popup) {
-      try { popup.opener = null; } catch {}
-      return true;
-    }
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return true;
-  }
   document.addEventListener('click', (event) => {
     const link = event.target.closest('[data-agoda-book], .js-agoda-book');
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
     const url = link.getAttribute('href');
     if (!url) return;
-    event.preventDefault();
-    if (!openAgodaWindow(url)) location.assign(url);
+    const popup = window.open(url, 'agodaBooking', 'width=1280,height=860,menubar=yes,toolbar=yes,scrollbars=yes,resizable=yes');
+    if (popup) {
+      event.preventDefault();
+      try { popup.opener = null; } catch {}
+    }
   });
 })();
