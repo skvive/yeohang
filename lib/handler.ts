@@ -255,17 +255,20 @@ export async function handleApi(req: Request, slug: string[]) {
         });
       }
       if (path === '/map') {
-        const lat = Number(url.searchParams.get('lat'));
-        const lng = Number(url.searchParams.get('lng'));
+        const latRaw = url.searchParams.get('lat');
+        const lngRaw = url.searchParams.get('lng');
+        const lat = latRaw ? Number(latRaw) : Number.NaN;
+        const lng = lngRaw ? Number(lngRaw) : Number.NaN;
         const city = url.searchParams.get('city') || '';
         const hasUser = Number.isFinite(lat) && Number.isFinite(lng);
+        const koreaGeo = `lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132`;
         const rows = hasUser
           ? await dbQuery(
-              `SELECT * FROM properties WHERE active=true AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
+              `SELECT * FROM properties WHERE active=true AND ${koreaGeo} ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
               [lat, lng],
             )
           : await dbQuery(
-              `SELECT * FROM properties WHERE active=true AND lat IS NOT NULL AND lng IS NOT NULL AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
+              `SELECT * FROM properties WHERE active=true AND ${koreaGeo} AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
               [city || '서울'],
             );
         const pins = rows.map(mapProperty).map((p) => ({

@@ -13,7 +13,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const nearby = (
     p.lat != null && p.lng != null
       ? await dbQuery(
-          `SELECT * FROM properties WHERE active=true AND lat IS NOT NULL AND lng IS NOT NULL AND id<>$1 ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 6`,
+          `SELECT * FROM properties WHERE active=true AND lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132 AND id<>$1 ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 6`,
           [p.id, p.lat, p.lng],
         )
       : await dbQuery(`SELECT * FROM properties WHERE active=true AND city=$1 AND id<>$2 ORDER BY name LIMIT 6`, [p.city, p.id])
