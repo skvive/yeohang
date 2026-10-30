@@ -3,11 +3,13 @@ import { dbQuery, dbTx } from '@/lib/db';
 import {
   CATEGORY_SLUGS,
   DEMO_MODE,
+  LIST_COLUMNS,
   PRICES,
   adminEmails,
   emailOk,
   extractSearch,
   haversine,
+  listProperty,
   mapProperty,
   seoulToday,
   weeklyWindow,
@@ -27,11 +29,35 @@ async function identity(): Promise<SessionUser | null> {
   }
 }
 
-function json(data: unknown, status = 200) {
-  return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+const CDN_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
+const PUBLIC_GET = new Set([
+  '/health',
+  '/agoda/status',
+  '/prices',
+  '/catalog/categories',
+  '/photos/search',
+  '/map',
+  '/properties',
+  '/search',
+  '/coupons',
+  '/weekly',
+  '/promos',
+  '/home',
+]);
+
+function json(data: unknown, status = 200, cache = 'no-store') {
+  return Response.json(data, { status, headers: { 'Cache-Control': cache } });
 }
 function fail(message: string, status = 400) {
   return json({ error: message }, status);
+}
+
+let activeCountCache = { n: 0, t: 0 };
+async function countActiveCached() {
+  if (activeCountCache.n && Date.now() - activeCountCache.t < 120_000) return activeCountCache.n;
+  const n = Number((await dbQuery(`SELECT COUNT(*)::int AS n FROM properties WHERE active=true`))[0]?.n || 0);
+  activeCountCache = { n, t: Date.now() };
+  return n;
 }
 
 function visibleCampaign(row: Record<string, unknown>) {
@@ -133,7 +159,6 @@ async function searchProperties(q = '', city = '', maxPrice: number | null, lat:
   const nearby = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
   if (nearby) clauses.push('lat IS NOT NULL AND lng IS NOT NULL');
   const where = clauses.join(' AND ');
-  const total = Number((await dbQuery(`SELECT COUNT(*)::int AS n FROM properties WHERE ${where}`, params))[0]?.n || 0);
   const selectParams = [...params];
   let orderSql = 'sponsored DESC, coalesce(review_count,0) DESC, coalesce(review_score,0) DESC, name ASC';
   if (nearby) {
@@ -142,13 +167,19 @@ async function searchProperties(q = '', city = '', maxPrice: number | null, lat:
   }
   const limit = nearby ? 80 : 120;
   selectParams.push(limit);
-  const rows = (await dbQuery(`SELECT * FROM properties WHERE ${where} ORDER BY ${orderSql} LIMIT $${selectParams.length}`, selectParams)).map(mapProperty);
-  const res: Array<ReturnType<typeof mapProperty> & { relevance_score: number; distance_km?: number }> = [];
+  const rows = (await dbQuery(`SELECT ${LIST_COLUMNS} FROM properties WHERE ${where} ORDER BY ${orderSql} LIMIT $${selectParams.length}`, selectParams)).map(listProperty);
+  const unfiltered = params.length === 0 && !nearby;
+  const total = rows.length < limit
+    ? rows.length
+    : unfiltered
+      ? await countActiveCached()
+      : rows.length;
+  const res: Array<ReturnType<typeof listProperty> & { relevance_score: number; distance_km?: number }> = [];
   for (const p of rows) {
     if (maxPrice && p.source !== 'agoda' && (p.price == null || Number(p.price) > maxPrice)) continue;
     const amen = p.amenities as string[];
     if (filters.amenities.length && !filters.amenities.every((a) => amen.includes(a) || String(p.category).includes(a))) continue;
-    const combined = [p.name, p.city, p.area, p.address, p.category, p.tagline, p.description, amen.join(',')].join(' ').toLowerCase();
+    const combined = [p.name, p.city, p.area, p.address, p.category, p.tagline, amen.join(',')].join(' ').toLowerCase();
     let score = keywords.reduce((s, x) => s + (combined.includes(x) ? (amen.includes(x) ? 3 : 1) : 0), 0);
     let distance_km: number | undefined;
     if (nearby && p.lat != null && p.lng != null) {
@@ -182,7 +213,7 @@ async function canEdit(user: SessionUser | null, propertyId: string) {
 export async function handleApi(req: Request, slug: string[]) {
   const path = '/' + slug.join('/');
   const url = new URL(req.url);
-  const me = await identity();
+  const me = req.method === 'GET' && PUBLIC_GET.has(path) ? null : await identity();
 
   try {
     if (req.method === 'GET') {
@@ -212,7 +243,38 @@ export async function handleApi(req: Request, slug: string[]) {
           money: '체크아웃이 완료된 아고다 예약은 미국 달러 기준 4~5% 수수료가 정산되며, 월 최소 정산액은 200달러입니다.',
         });
       }
-      if (path === '/prices') return json({ plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' });
+      if (path === '/prices') {
+        return json(
+          { plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' },
+          200,
+          CDN_CACHE,
+        );
+      }
+      if (path === '/home') {
+        const today = seoulToday();
+        const [featured, couponRows] = await Promise.all([
+          dbQuery(
+            `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true ORDER BY sponsored DESC, coalesce(review_count,0) DESC, coalesce(review_score,0) DESC LIMIT 8`,
+          ),
+          dbQuery(
+            `SELECT c.*, p.name AS property_name, p.city FROM coupons c JOIN properties p ON p.id=c.property_id
+             WHERE c.expires>=$1 AND c.remaining>0 AND p.active=true AND (p.public_record=false OR p.partner_verified=true)
+             ORDER BY c.discount_pct DESC LIMIT 8`,
+            [today],
+          ),
+        ]);
+        return json(
+          {
+            results: featured.map(listProperty),
+            sponsored: featured.filter((r) => Boolean(r.sponsored)).map(listProperty),
+            coupons: couponRows,
+            plans: PRICES,
+            count: featured.length,
+          },
+          200,
+          CDN_CACHE,
+        );
+      }
       if (path === '/catalog/categories') {
         const categories = await dbQuery(`SELECT category, COUNT(*)::int AS count FROM properties WHERE active=true GROUP BY category ORDER BY category`);
         const cities = await dbQuery(`SELECT city, COUNT(*)::int AS count FROM properties WHERE active=true GROUP BY city ORDER BY count DESC, city LIMIT 40`);
@@ -264,14 +326,14 @@ export async function handleApi(req: Request, slug: string[]) {
         const koreaGeo = `lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132`;
         const rows = hasUser
           ? await dbQuery(
-              `SELECT * FROM properties WHERE active=true AND ${koreaGeo} ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
+              `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND ${koreaGeo} ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
               [lat, lng],
             )
           : await dbQuery(
-              `SELECT * FROM properties WHERE active=true AND ${koreaGeo} AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
+              `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND ${koreaGeo} AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
               [city || '서울'],
             );
-        const pins = rows.map(mapProperty).map((p) => ({
+        const pins = rows.map(listProperty).map((p) => ({
           id: p.id,
           name: p.name,
           city: p.city,
@@ -307,8 +369,11 @@ export async function handleApi(req: Request, slug: string[]) {
           lng ? Number(lng) : null,
           url.searchParams.get('category') || '',
         );
-        await dbQuery(`INSERT INTO analytics(event) VALUES ('search')`);
-        return json(result);
+        if (url.searchParams.get('q') || url.searchParams.get('city')) {
+          await dbQuery(`INSERT INTO analytics(event) VALUES ('search')`);
+        }
+        const cache = url.searchParams.get('q') || url.searchParams.get('lat') ? 'no-store' : CDN_CACHE;
+        return json(result, 200, cache);
       }
       if (path === '/coupons') {
         const today = seoulToday();
@@ -318,9 +383,9 @@ export async function handleApi(req: Request, slug: string[]) {
            ORDER BY c.discount_pct DESC`,
           [today],
         );
-        return json({ coupons: rows });
+        return json({ coupons: rows }, 200, CDN_CACHE);
       }
-      if (path === '/weekly') return json({ weekly: await ensureWeekly(), time_zone: 'Asia/Seoul', maps_ar_mode: 'open_google_maps_app_then_select_lens_if_supported' });
+      if (path === '/weekly') return json({ weekly: await ensureWeekly(), time_zone: 'Asia/Seoul', maps_ar_mode: 'open_google_maps_app_then_select_lens_if_supported' }, 200, CDN_CACHE);
       if (path === '/promos') {
         await ensureWeekly();
         const rows = await dbQuery(`SELECT * FROM promo_campaigns WHERE status IN ('demo','active') ORDER BY CASE campaign_type WHEN 'welcome' THEN 0 WHEN 'region' THEN 1 WHEN 'weekday' THEN 2 WHEN 'longstay' THEN 3 WHEN 'partner' THEN 4 ELSE 5 END`);

@@ -283,6 +283,36 @@ export function mapProperty(row: Record<string, unknown>): Property {
   };
 }
 
+export const LIST_COLUMNS =
+  'id, name, city, area, category, address, tagline, price, lat, lng, sponsored, amenities, image, photo_url, photo_license, photo_author, photo_credit, public_record, partner_verified, verified, active, source, agoda_hotel_id, affiliate_url, review_count, review_score';
+
+export function listProperty(row: Record<string, unknown>) {
+  const p = mapProperty(row);
+  return {
+    id: p.id,
+    name: p.name,
+    city: p.city,
+    area: p.area,
+    category: p.category,
+    address: p.address,
+    tagline: p.tagline,
+    price: p.price,
+    lat: p.lat,
+    lng: p.lng,
+    sponsored: p.sponsored,
+    amenities: ((p.amenities as string[]) || []).slice(0, 4),
+    image_url: p.image_url,
+    photo_url: p.photo_url,
+    photo_license: p.photo_license,
+    photo_author: p.photo_author,
+    public_record: p.public_record,
+    source: p.source,
+    agoda_hotel_id: p.agoda_hotel_id,
+    affiliate_url: p.affiliate_url,
+    book_url: p.book_url,
+  };
+}
+
 export function extractSearch(q: string) {
   const t = q.toLowerCase();
   const city = ['서울', '부산', '제주', '강릉', '가평', '경주', '전주', '평창', '속초', '고성'].find((c) => t.includes(c)) || '';

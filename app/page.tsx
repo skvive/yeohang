@@ -103,7 +103,7 @@ export default function HomePage() {
           <div className="promo-modal-content" />
         </div>
       </div>
-      <Script src="/geo.js" strategy="beforeInteractive" />
+      <Script src="/geo.js" strategy="afterInteractive" />
       <Script src="/promos.js" strategy="afterInteractive" />
       <Script src="/brand.js" strategy="afterInteractive" />
       <Script src="/brand-v2.js" strategy="afterInteractive" />
