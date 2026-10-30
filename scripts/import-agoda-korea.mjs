@@ -86,6 +86,57 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+const CITY_KO = {
+  seoul: '서울',
+  busan: '부산',
+  pusan: '부산',
+  jeju: '제주',
+  'jeju island': '제주',
+  'jeju-si': '제주',
+  seogwipo: '서귀포',
+  incheon: '인천',
+  daegu: '대구',
+  daejeon: '대전',
+  gwangju: '광주',
+  ulsan: '울산',
+  suwon: '수원',
+  gyeongju: '경주',
+  jeonju: '전주',
+  gapyeong: '가평',
+  pyeongchang: '평창',
+  sokcho: '속초',
+  goseong: '고성',
+  gangneung: '강릉',
+  yeosu: '여수',
+  tongyeong: '통영',
+  chuncheon: '춘천',
+  wonju: '원주',
+  andong: '안동',
+  pohang: '포항',
+  changwon: '창원',
+  gimhae: '김해',
+  paju: '파주',
+  goyang: '고양',
+  yongin: '용인',
+  seongnam: '성남',
+  bucheon: '부천',
+  cheonan: '천안',
+  cheongju: '청주',
+  mokpo: '목포',
+};
+
+function cityKo(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return t;
+  if (/[가-힣]/.test(t)) return t;
+  const key = t.toLowerCase().replace(/\s+/g, ' ');
+  if (CITY_KO[key]) return CITY_KO[key];
+  for (const [en, ko] of Object.entries(CITY_KO)) {
+    if (key.includes(en)) return ko;
+  }
+  return t;
+}
+
 function categoryOf(raw) {
   const t = raw.toLowerCase();
   if (/hanok|한옥|traditional korean/.test(t)) return '한옥';
@@ -333,8 +384,8 @@ try {
     if (!hotelId || !/^\d+$/.test(hotelId)) continue;
     korea += 1;
     const name = pick(row, ['hotelname', 'hotel_name', 'translatedname', 'translated_name']) || `Agoda ${hotelId}`;
-    const city = pick(row, ['cityname', 'city_name', 'citytranslated', 'city']);
-    const area = pick(row, ['areaname', 'area_name', 'area']) || city;
+    const city = cityKo(pick(row, ['cityname', 'city_name', 'citytranslated', 'city']));
+    const area = cityKo(pick(row, ['areaname', 'area_name', 'area'])) || city;
     const address = pick(row, ['address', 'addressline1', 'address_line_1']);
     const desc = pick(row, ['overview', 'description', 'hoteldescription']) || `${city} ${name}`.trim();
     const photo = httpsPhoto(pick(row, ['photo1', 'photo_1', 'imageurl', 'image_url', 'hotelpicture']));
