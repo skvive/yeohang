@@ -87,8 +87,10 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
             ⌖ {e(p.city)} · {e(p.area)} · {e(p.address)}
           </p>
           <div className="headline-badges">
-            <span className="status-badge">{p.public_record ? '공개 숙소 정보 · 공식 제휴 미확인' : '시연 전용 데이터'}</span>
-            <span className="quiet-badge">예약 가능 여부 미확인</span>
+            <span className="status-badge">
+              {p.source === 'agoda' ? '아고다 제휴 숙소' : p.public_record ? '공개 숙소 정보 · 공식 제휴 미확인' : '시연 전용 데이터'}
+            </span>
+            <span className="quiet-badge">{p.source === 'agoda' ? '예약·결제는 아고다에서 진행' : '예약 가능 여부 미확인'}</span>
           </div>
         </div>
       </section>
@@ -108,7 +110,11 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         <p className="readable">{e(p.description)}</p>
         <div className="info-alert">
           <strong>정보 확인 안내</strong>
-          <p>실시간 요금·객실 재고는 연동되지 않았습니다. 최종 결정 전에 숙소 측에서 확인하세요.</p>
+          <p>
+            {p.source === 'agoda'
+              ? '실시간 요금·객실 재고는 아고다에서 확인하고, 체크아웃 완료 건에 대해 제휴 수수료가 정산됩니다.'
+              : '실시간 요금·객실 재고는 연동되지 않았습니다. 최종 결정 전에 숙소 측에서 확인하세요.'}
+          </p>
         </div>
       </section>
       <section className="detail-section">
@@ -130,7 +136,13 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         <a className="btn btn-map" href={maps} target="_blank" rel="noopener noreferrer">
           Google 도보 길안내 ↗
         </a>
-        {p.source_url ? (
+        {p.affiliate_url ? (
+          <p>
+            <a className="btn btn-map" href={String(p.affiliate_url)} target="_blank" rel="nofollow sponsored noopener noreferrer">
+              아고다에서 예약·요금 확인 ↗
+            </a>
+          </p>
+        ) : p.source_url ? (
           <p>
             <a href={String(p.source_url)} target="_blank" rel="nofollow noopener noreferrer">
               외부 숙소 정보 확인 ↗

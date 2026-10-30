@@ -50,6 +50,10 @@ export type Property = Record<string, unknown> & {
   image_url: string;
   lat: number | null;
   lng: number | null;
+  source?: string;
+  affiliate_url?: string;
+  agoda_hotel_id?: number | null;
+  book_url?: string;
 };
 
 export function mapProperty(row: Record<string, unknown>): Property {
@@ -81,6 +85,10 @@ export function mapProperty(row: Record<string, unknown>): Property {
     image_url: `/assets/listing-${image}.webp`,
     lat: row.lat == null ? null : Number(row.lat),
     lng: row.lng == null ? null : Number(row.lng),
+    source: String(row.source || (publicRecord ? 'public' : 'seed')),
+    affiliate_url: String(row.affiliate_url || ''),
+    agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
+    book_url: String(row.affiliate_url || ''),
   };
 }
 

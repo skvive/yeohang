@@ -168,6 +168,21 @@ export async function handleApi(req: Request, slug: string[]) {
           ai_configured: Boolean(process.env.OPENAI_API_KEY),
           demo_mode: DEMO_MODE,
           korea_only: process.env.KOREA_ONLY !== '0',
+          agoda_affiliate: Boolean(process.env.AGODA_CID),
+        });
+      }
+      if (path === '/agoda/status') {
+        let korea_properties = 0;
+        try {
+          korea_properties = Number((await dbQuery(`SELECT COUNT(*)::int AS n FROM properties WHERE source='agoda' AND country_code='KR'`))[0]?.n || 0);
+        } catch {
+          korea_properties = 0;
+        }
+        return json({
+          cid_configured: Boolean(process.env.AGODA_CID),
+          api_configured: Boolean(process.env.AGODA_API_KEY && process.env.AGODA_SITE_ID),
+          korea_properties,
+          money: 'Completed (checked-out) Agoda bookings pay 4–5% commission in USD, $200 minimum monthly.',
         });
       }
       if (path === '/prices') return json({ plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' });

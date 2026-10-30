@@ -11,3 +11,5 @@ _delivery
 .DS_Store
 Thumbs.db
 *.log
+Agoda_Hotels*.csv
+data/agoda/
