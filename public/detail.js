@@ -67,4 +67,32 @@
     try {localStorage.setItem(key,JSON.stringify(next));draw();notify(next.includes(pid)?'관심 숙소에 저장했습니다.':'관심 숙소에서 제거했습니다.')}catch{notify('이 브라우저에서는 저장할 수 없습니다.')}
   });
   draw();
+  const stayMap = document.getElementById('stayMap');
+  const note = document.getElementById('stayGeoNote');
+  const dirLink = document.getElementById('openStayDirections');
+  const iframe = stayMap?.querySelector('iframe');
+  const destLat = Number(stayMap?.dataset.lat);
+  const destLng = Number(stayMap?.dataset.lng);
+  const destName = stayMap?.dataset.name || '';
+  const dest = Number.isFinite(destLat) && Number.isFinite(destLng) ? { lat: destLat, lng: destLng } : null;
+  function applyUserLoc(loc) {
+    if (!window.YeohangGeo || !dest) return;
+    if (iframe) iframe.src = window.YeohangGeo.embedDir(loc, dest);
+    if (dirLink) dirLink.href = window.YeohangGeo.openDir(loc, dest, 'walking');
+    if (note) note.textContent = '내 위치에서 이 숙소까지 구글 지도 길을 표시합니다.';
+  }
+  const saved = window.YeohangGeo?.read?.();
+  if (saved && dest) applyUserLoc(saved);
+  document.getElementById('useMyLocation')?.addEventListener('click', async () => {
+    if (!window.YeohangGeo) { notify('지도 모듈을 불러오지 못했습니다.'); return; }
+    if (!dest) { notify('이 숙소는 좌표가 없어 주소 길찾기를 이용하세요.'); return; }
+    try {
+      const loc = await window.YeohangGeo.request();
+      applyUserLoc(loc);
+      notify('내 위치를 반영해 구글 길찾기를 열었습니다.');
+      window.open(window.YeohangGeo.openDir(loc, dest, 'walking'), '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : '위치를 가져오지 못했습니다.');
+    }
+  });
 })();

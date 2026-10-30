@@ -254,6 +254,38 @@ export async function handleApi(req: Request, slug: string[]) {
           })),
         });
       }
+      if (path === '/map') {
+        const lat = Number(url.searchParams.get('lat'));
+        const lng = Number(url.searchParams.get('lng'));
+        const city = url.searchParams.get('city') || '';
+        const hasUser = Number.isFinite(lat) && Number.isFinite(lng);
+        const result = await searchProperties('', city, null, hasUser ? lat : null, hasUser ? lng : null, '');
+        const pins = result.results
+          .filter((p) => p.lat != null && p.lng != null)
+          .slice(0, 80)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            city: p.city,
+            area: p.area,
+            category: p.category,
+            address: p.address,
+            lat: p.lat,
+            lng: p.lng,
+            distance_km: p.distance_km,
+            photo_url: p.photo_url,
+            image_url: p.image_url,
+            source: p.source,
+            affiliate_url: p.affiliate_url,
+            agoda_hotel_id: p.agoda_hotel_id,
+          }));
+        return json({
+          user: hasUser ? { lat, lng } : null,
+          count: pins.length,
+          pins,
+          google: true,
+        });
+      }
       if (path === '/properties' || path === '/search') {
         const maxp = url.searchParams.get('max_price');
         const lat = url.searchParams.get('lat');

@@ -56,6 +56,7 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
           © 2026 여행갈지도 · 숙박 정보 검증 및 이미지 권리 안내 · 실제 요금·예약 가능 여부는 숙소에 재확인해 주세요.
         </div>
       </footer>
+      <script defer src="/geo.js" />
       <script defer src="/detail.js" />
     </>
   );
@@ -64,7 +65,15 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
 export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
   const licensed = Boolean(p.photo_url && p.photo_license && p.photo_credit && p.photo_author);
   const hero = licensed ? String(p.photo_url) : String(p.image_url || '/assets/hero.webp');
-  const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(String(p.address || p.name)) + '&travelmode=walking';
+  const hasGeo = p.lat != null && p.lng != null && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng));
+  const dest = hasGeo ? `${p.lat},${p.lng}` : String(p.address || p.name);
+  const maps = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest) + '&travelmode=walking';
+  const mapsPlace = hasGeo
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.lat},${p.lng}`)}`
+    : maps;
+  const mapsEmbed = hasGeo
+    ? `https://maps.google.com/maps?q=${p.lat},${p.lng}&ll=${p.lat},${p.lng}&z=16&hl=ko&output=embed`
+    : `https://maps.google.com/maps?q=${encodeURIComponent(String(p.address || p.name))}&hl=ko&z=15&output=embed`;
   const amenities = ((p.amenities as string[]) || []).slice(0, 12);
   return (
     <main id="content" className="detail-shell">
@@ -133,9 +142,29 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         <span className="section-kicker">위치</span>
         <h2>어디에 있나요?</h2>
         <p>{e(p.address)}</p>
-        <a className="btn btn-map" href={maps} target="_blank" rel="noopener noreferrer">
-          구글 지도 도보 길안내 ↗
-        </a>
+        <div
+          className="stay-google-map"
+          id="stayMap"
+          data-lat={hasGeo ? String(p.lat) : ''}
+          data-lng={hasGeo ? String(p.lng) : ''}
+          data-name={String(p.name)}
+        >
+          <iframe title={`${String(p.name)} 구글 지도`} src={mapsEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        </div>
+        <div className="stay-map-actions">
+          <button type="button" className="btn btn-map" id="useMyLocation">
+            내 위치에서 가는 길
+          </button>
+          <a className="btn btn-map" id="openStayGoogle" href={mapsPlace} target="_blank" rel="noopener noreferrer">
+            구글 지도에서 위치 보기 ↗
+          </a>
+          <a className="btn btn-map" id="openStayDirections" href={maps} target="_blank" rel="noopener noreferrer">
+            구글 지도 도보 길안내 ↗
+          </a>
+        </div>
+        <p className="mini-info" id="stayGeoNote">
+          {hasGeo ? '아고다 좌표를 구글 지도에 표시합니다. 내 위치를 허용하면 현재 위치에서 이 숙소까지 길을 안내합니다.' : '좌표가 없어 주소로 구글 지도를 엽니다.'}
+        </p>
         {p.affiliate_url ? (
           <p>
             <a className="btn btn-map" href={String(p.affiliate_url)} target="_blank" rel="nofollow sponsored noopener noreferrer">
