@@ -96,11 +96,14 @@
     }
   });
   document.addEventListener('click', (event) => {
-    const link = event.target.closest('[data-agoda-book], .js-agoda-book');
+    const trip = event.target.closest('[data-trip-book], .js-trip-book');
+    const agoda = event.target.closest('[data-agoda-book], .js-agoda-book');
+    const link = trip || agoda;
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
     const url = link.getAttribute('href');
     if (!url) return;
-    const popup = window.open(url, 'agodaBooking', 'width=1280,height=860,menubar=yes,toolbar=yes,scrollbars=yes,resizable=yes');
+    const name = trip ? 'tripBooking' : 'agodaBooking';
+    const popup = window.open(url, name, 'width=1280,height=860,menubar=yes,toolbar=yes,scrollbars=yes,resizable=yes');
     if (popup) {
       event.preventDefault();
       try { popup.opener = null; } catch {}

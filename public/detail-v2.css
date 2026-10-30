@@ -17,7 +17,16 @@ body{background:#f9fbfb;color:#092d43;font-family:'Noto Sans KR',sans-serif}
 .stay-book-panel{margin-top:22px}
 .stay-book-panel .booking-card{max-width:440px}
 .stay-book-inline{margin:16px 0 0}
-.stay-book-inline .btn-main,.headline-actions .btn-main{display:inline-flex;min-width:200px;border-radius:12px}
+.stay-book-inline .btn-main,.headline-actions .btn-main,.headline-actions .btn-agoda,.headline-actions .btn-trip{display:inline-flex;min-width:160px;border-radius:12px}
+.partner-price-btns{display:flex;gap:8px;flex-wrap:wrap}
+.partner-price-btns .btn{flex:1;min-width:148px;white-space:nowrap}
+.btn-agoda{background:#047f82!important;color:#fff!important;border:0}
+.btn-trip{background:#287dfa!important;color:#fff!important;border:0}
+.btn-agoda:hover{background:#056f75!important}
+.btn-trip:hover{background:#1b6ae6!important}
+.partner-price-btns-compact{gap:6px}
+.mobile-booking-bar .partner-price-btns{flex:1;justify-content:flex-end}
+.mobile-booking-bar .btn{min-height:42px;font-size:12px;padding:8px 10px}
 .stay-stars{letter-spacing:.14em;color:#c4923a;font-size:13px;margin-left:10px}
 .stay-score{display:flex;align-items:center;gap:12px;margin-top:14px}
 .stay-score b{display:grid;place-items:center;min-width:52px;height:52px;border-radius:14px;background:#082d43;color:#fff;font-size:20px;letter-spacing:-.04em}

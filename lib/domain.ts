@@ -1,4 +1,5 @@
 import { agodaBookUrl } from '@/lib/agoda';
+import { tripBookUrl } from '@/lib/trip';
 
 export const DEMO_MODE = process.env.DEMO_MODE !== '0';
 export const SITE_URL = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://yeohang.lexid.site').replace(/\/$/, '');
@@ -55,6 +56,8 @@ export type Property = Record<string, unknown> & {
   source?: string;
   affiliate_url?: string;
   agoda_hotel_id?: number | null;
+  trip_hotel_id?: number | null;
+  trip_url?: string;
   book_url?: string;
   star_rating?: number | null;
   review_score?: number | null;
@@ -294,9 +297,16 @@ export function mapProperty(row: Record<string, unknown>): Property {
     lng: row.lng == null ? null : Number(row.lng),
     source: String(row.source || (publicRecord ? 'public' : 'seed')),
     agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
+    trip_hotel_id: row.trip_hotel_id == null || row.trip_hotel_id === '' ? null : Number(row.trip_hotel_id),
     affiliate_url: agodaBookUrl({
       affiliate_url: String(row.affiliate_url || ''),
       agoda_hotel_id: row.agoda_hotel_id == null ? null : Number(row.agoda_hotel_id),
+    }),
+    trip_url: tripBookUrl({
+      trip_url: String(row.trip_url || ''),
+      trip_hotel_id: row.trip_hotel_id == null || row.trip_hotel_id === '' ? null : Number(row.trip_hotel_id),
+      name,
+      city,
     }),
     book_url: agodaBookUrl({
       affiliate_url: String(row.affiliate_url || ''),
@@ -335,6 +345,7 @@ export function listProperty(row: Record<string, unknown>) {
     agoda_hotel_id: p.agoda_hotel_id,
     affiliate_url: p.affiliate_url,
     book_url: p.book_url,
+    trip_url: p.trip_url,
   };
 }
 

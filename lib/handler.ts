@@ -15,6 +15,7 @@ import {
   weeklyWindow,
 } from '@/lib/domain';
 import { agodaBookUrl } from '@/lib/agoda';
+import { hasTripAffiliate } from '@/lib/trip';
 import {
   DEAL_AMOUNT_KRW,
   DEAL_COOKIE,
@@ -261,6 +262,7 @@ export async function handleApi(req: Request, slug: string[]) {
           demo_mode: DEMO_MODE,
           korea_only: process.env.KOREA_ONLY !== '0',
           agoda_affiliate: Boolean(process.env.AGODA_CID),
+          trip_affiliate: hasTripAffiliate(),
         });
       }
       if (path === '/agoda/status') {
@@ -273,8 +275,9 @@ export async function handleApi(req: Request, slug: string[]) {
         return json({
           cid_configured: Boolean(process.env.AGODA_CID),
           api_configured: Boolean(process.env.AGODA_API_KEY && process.env.AGODA_SITE_ID),
+          trip_alliance_configured: hasTripAffiliate(),
           korea_properties,
-          money: '체크아웃이 완료된 아고다 예약은 미국 달러 기준 4~5% 수수료가 정산되며, 월 최소 정산액은 200달러입니다.',
+          money: '체크아웃이 완료된 아고다 예약은 미국 달러 기준 4~5% 수수료가 정산되며, 월 최소 정산액은 200달러입니다. 트립닷컴은 기본 수수료 최대 7%, 웹 쿠키 30일입니다.',
         });
       }
       if (path === '/prices') {

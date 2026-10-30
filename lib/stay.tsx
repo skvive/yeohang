@@ -1,6 +1,7 @@
 import { agodaBookUrl } from '@/lib/agoda';
 import { CATEGORY_SLUGS, SITE_URL, type Property } from '@/lib/domain';
 import { buildStayProfile } from '@/lib/stay-content';
+import { tripBookUrl } from '@/lib/trip';
 
 type Prop = Property;
 
@@ -12,17 +13,40 @@ function e(v: unknown) {
     .replace(/"/g, '&quot;');
 }
 
-function AgodaBookButton({ href, className, label }: { href: string; className?: string; label?: string }) {
+function PartnerPriceButtons({
+  agodaHref,
+  tripHref,
+  compact,
+}: {
+  agodaHref: string;
+  tripHref: string;
+  compact?: boolean;
+}) {
   return (
-    <a
-      className={className || 'btn btn-main js-agoda-book'}
-      href={href}
-      target="_blank"
-      rel="nofollow sponsored noopener noreferrer"
-      data-agoda-book="1"
-    >
-      {label || '아고다에서 예약하기'}
-    </a>
+    <div className={compact ? 'partner-price-btns partner-price-btns-compact' : 'partner-price-btns'}>
+      {agodaHref ? (
+        <a
+          className="btn btn-agoda js-agoda-book"
+          href={agodaHref}
+          target="_blank"
+          rel="nofollow sponsored noopener noreferrer"
+          data-agoda-book="1"
+        >
+          아고다최저가
+        </a>
+      ) : null}
+      {tripHref ? (
+        <a
+          className="btn btn-trip js-trip-book"
+          href={tripHref}
+          target="_blank"
+          rel="nofollow sponsored noopener noreferrer"
+          data-trip-book="1"
+        >
+          트립닷컴최저가
+        </a>
+      ) : null}
+    </div>
   );
 }
 
@@ -94,6 +118,8 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
     ? `https://maps.google.com/maps?q=${p.lat},${p.lng}&ll=${p.lat},${p.lng}&z=16&hl=ko&output=embed`
     : `https://maps.google.com/maps?q=${encodeURIComponent(String(p.address || p.name))}&hl=ko&z=15&output=embed`;
   const bookUrl = agodaBookUrl(p);
+  const tripUrl = tripBookUrl(p);
+  const hasPartnerBook = Boolean(bookUrl || tripUrl);
   return (
     <main id="content" className="detail-shell">
       <nav className="breadcrumbs" aria-label="현재 위치">
@@ -130,12 +156,12 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
             <span className="status-badge">
               {p.source === 'agoda' ? '아고다 제휴 숙소' : p.public_record ? '공개 숙소 정보 · 공식 제휴 미확인' : '시연 전용 데이터'}
             </span>
-            <span className="quiet-badge">{p.source === 'agoda' ? '예약·결제는 아고다에서 진행' : '예약 가능 여부 미확인'}</span>
+            <span className="quiet-badge">{p.source === 'agoda' ? '요금은 아고다·트립닷컴에서 비교' : '예약 가능 여부 미확인'}</span>
           </div>
         </div>
-        {bookUrl ? (
+        {hasPartnerBook ? (
           <div className="headline-actions">
-            <AgodaBookButton href={bookUrl} />
+            <PartnerPriceButtons agodaHref={bookUrl} tripHref={tripUrl} />
           </div>
         ) : null}
       </section>
@@ -350,11 +376,11 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
               </a>
             </div>
           ) : null}
-          {bookUrl ? (
+          {hasPartnerBook ? (
             <div className="booking-card">
-              <span className="card-eyebrow">아고다 제휴 예약</span>
+              <span className="card-eyebrow">제휴 최저가 비교</span>
               <h2>이 숙소 예약하기</h2>
-              <p className="subtle">요금·객실 재고 확인과 결제는 아고다 새 창에서 진행됩니다. 타임딜 없이 예약하면 5,000원 리베이트는 적용되지 않습니다.</p>
+              <p className="subtle">아고다와 트립닷컴을 각각 새 창에서 열어 실시간 요금을 비교하세요. 여행갈지도는 두 요금을 미리 계산하지 않습니다. 18시간 타임딜 리베이트는 아고다 결제에만 적용됩니다.</p>
               {profile.score ? (
                 <div className="price-box">
                   <small>아고다 후기</small>
@@ -377,8 +403,8 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
                   <strong>{e(profile.neighborhood || p.city)}</strong>
                 </div>
               </div>
-              <AgodaBookButton href={bookUrl} />
-              <p className="safe-note">아고다 파트너 링크로 이동합니다. 체크아웃이 완료된 예약에 대해 제휴 수수료가 정산됩니다.</p>
+              <PartnerPriceButtons agodaHref={bookUrl} tripHref={tripUrl} />
+              <p className="safe-note">각 제휴사 파트너 링크로 이동합니다. 체크아웃이 완료된 예약에 대해 해당 제휴 수수료가 정산됩니다.</p>
             </div>
           ) : p.source_url ? (
             <div className="booking-card">
@@ -403,13 +429,13 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
           </div>
         </aside>
       </div>
-      {bookUrl ? (
+      {hasPartnerBook ? (
         <div className="mobile-booking-bar">
           <div>
-            <small>{profile.score ? `아고다 ${profile.score.toFixed(1)} · ${profile.reviewLabel}` : '아고다에서 예약'}</small>
+            <small>{profile.score ? `아고다 ${profile.score.toFixed(1)} · ${profile.reviewLabel}` : '제휴 최저가 비교'}</small>
             <strong>{e(p.name)}</strong>
           </div>
-          <AgodaBookButton href={bookUrl} label="아고다 예약" />
+          <PartnerPriceButtons agodaHref={bookUrl} tripHref={tripUrl} compact />
         </div>
       ) : null}
     </main>
@@ -451,9 +477,9 @@ export function CategoryBody({ slug, rows }: { slug: string; rows: Prop[] }) {
                 </a>
               </h2>
               <p>주소: {e(p.address)}</p>
-              {agodaBookUrl(p) ? (
+              {agodaBookUrl(p) || tripBookUrl(p) ? (
                 <p className="stay-book-inline">
-                  <AgodaBookButton href={agodaBookUrl(p)} label="아고다에서 예약하기" />
+                  <PartnerPriceButtons agodaHref={agodaBookUrl(p)} tripHref={tripBookUrl(p)} compact />
                 </p>
               ) : null}
             </article>
