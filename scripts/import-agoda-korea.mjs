@@ -15,7 +15,7 @@ function loadEnv() {
 }
 loadEnv();
 
-const DEFAULT_FEED = 'https://affiliatefeed.agoda.com/hoteldatafiles/E342B777-64FD-4A49-9C9F-FEF4BA635863_EN.zip';
+const DEFAULT_FEED = 'https://affiliatefeed.agoda.com/hoteldatafiles/E342B777-64FD-4A49-9C9F-FEF4BA635863_KO.zip';
 const file = process.argv[2] || '';
 const feedUrl = (process.env.AGODA_HOTEL_FEED_URL || DEFAULT_FEED).trim();
 const url = process.env.DATABASE_URL;
@@ -123,18 +123,62 @@ const CITY_KO = {
   cheonan: '천안',
   cheongju: '청주',
   mokpo: '목포',
+  gimpo: '김포',
+  icheon: '이천',
+  namyangju: '남양주',
+  yangpyeong: '양평',
+  hongcheon: '홍천',
+  jeongseon: '정선',
+  taebaek: '태백',
+  samcheok: '삼척',
+  donghae: '동해',
+  yangyang: '양양',
+  inje: '인제',
+  geoje: '거제',
+  namhae: '남해',
+  hadong: '하동',
+  suncheon: '순천',
+  gurye: '구례',
+  boseong: '보성',
+  wando: '완도',
+  jindo: '진도',
+  naju: '나주',
+  iksan: '익산',
+  gunsan: '군산',
+  namwon: '남원',
+  muju: '무주',
+  damyang: '담양',
+  yeongju: '영주',
+  boryeong: '보령',
+  gongju: '공주',
+  asan: '아산',
+  jecheon: '제천',
+  chungju: '충주',
+  jeongeup: '정읍',
+  gumi: '구미',
+  gyeongsan: '경산',
+  yangsan: '양산',
 };
 
 function cityKo(raw) {
   const t = String(raw || '').trim();
   if (!t) return t;
-  if (/[가-힣]/.test(t)) return t;
+  if (/[가-힣]/.test(t) && !/[A-Za-z]/.test(t)) return t;
   const key = t.toLowerCase().replace(/\s+/g, ' ');
   if (CITY_KO[key]) return CITY_KO[key];
   for (const [en, ko] of Object.entries(CITY_KO)) {
     if (key.includes(en)) return ko;
   }
   return t;
+}
+
+function preferKo(...vals) {
+  const filled = vals.map((v) => String(v || '').trim()).filter(Boolean);
+  return filled.find((v) => /[가-힣]/.test(v)) || filled[0] || '';
+}
+
+function latinOnly(s) {
+  return /[A-Za-z]/.test(s) && !/[가-힣]/.test(s);
 }
 
 function categoryOf(raw) {
@@ -383,13 +427,25 @@ try {
     const hotelId = pick(row, ['hotelid', 'hotel_id', 'hid']);
     if (!hotelId || !/^\d+$/.test(hotelId)) continue;
     korea += 1;
-    const name = pick(row, ['hotelname', 'hotel_name', 'translatedname', 'translated_name']) || `Agoda ${hotelId}`;
-    const city = cityKo(pick(row, ['cityname', 'city_name', 'citytranslated', 'city']));
-    const area = cityKo(pick(row, ['areaname', 'area_name', 'area'])) || city;
-    const address = pick(row, ['address', 'addressline1', 'address_line_1']);
-    const desc = pick(row, ['overview', 'description', 'hoteldescription']) || `${city} ${name}`.trim();
+    const name =
+      preferKo(
+        pick(row, ['hotel_translated_name', 'translatedname', 'translated_name']),
+        pick(row, ['hotelname', 'hotel_name']),
+      ) || `아고다 ${hotelId}`;
+    const city = cityKo(
+      preferKo(pick(row, ['citytranslated', 'city_translated']), pick(row, ['cityname', 'city_name', 'city'])),
+    );
+    const area =
+      cityKo(preferKo(pick(row, ['areatranslated', 'area_translated']), pick(row, ['areaname', 'area_name', 'area']))) ||
+      city;
+    const address = preferKo(
+      pick(row, ['addressline1_translated', 'translated_address', 'address_translated']),
+      pick(row, ['addressline1', 'address_line_1', 'address']),
+    );
+    const descRaw = preferKo(pick(row, ['overview', 'description', 'hoteldescription', 'overviewtranslated']));
+    const cat = categoryOf(pick(row, ['accommodationtype', 'accommodation_type', 'propertytype', 'property_type']) || name);
+    const desc = !descRaw || latinOnly(descRaw) ? `${city || '한국'}에 있는 ${cat}입니다. 상세 안내는 아고다에서 확인하세요.` : descRaw;
     const photo = httpsPhoto(pick(row, ['photo1', 'photo_1', 'imageurl', 'image_url', 'hotelpicture']));
-    const acc = pick(row, ['accommodationtype', 'accommodation_type', 'propertytype', 'property_type']);
     const cityId = pick(row, ['cityid', 'city_id']);
     const lat = pick(row, ['latitude', 'lat']);
     const lng = pick(row, ['longitude', 'lng', 'lon']);
@@ -402,18 +458,18 @@ try {
       name,
       city: city || '한국',
       area: area || city || '한국',
-      tagline: [city, acc].filter(Boolean).join(' · ') || '아고다 제휴 숙소',
+      tagline: [city, cat].filter(Boolean).join(' · ') || '아고다 제휴 숙소',
       description: desc.slice(0, 2000),
       lat: num(lat),
       lng: num(lng),
-      amenities: acc,
+      amenities: cat,
       photo_url: photo,
-      category: categoryOf(acc || name),
+      category: cat,
       address,
       source_url: hotelUrl,
-      photo_author: 'Agoda',
+      photo_author: '아고다',
       photo_credit: hotelUrl,
-      photo_license: 'Agoda affiliate content',
+      photo_license: '아고다 제휴 콘텐츠',
       agoda_hotel_id: num(hotelId),
       agoda_city_id: num(cityId),
       star_rating: num(stars),

@@ -32,7 +32,7 @@ export default function AccountPage() {
         </div>
         <h1>내 계정</h1>
         <p className="sub">{email || '불러오는 중…'}</p>
-        <p className="sub">Neon Auth 세션이 숙소 파트너 콘솔과 쿠폰 발급에 사용됩니다.</p>
+        <p className="sub">로그인 세션이 숙소 파트너 콘솔과 쿠폰 발급에 사용됩니다.</p>
         <Link className="auth-submit" href="/#merchant" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
           파트너 콘솔로
         </Link>

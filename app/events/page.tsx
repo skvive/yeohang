@@ -9,7 +9,7 @@ export default async function EventsPage() {
     <StayChrome>
       <section className="promo-hero">
         <div className="wrap">
-          <span className="promo-overline">YEOHAENG GALJIDO · TRAVEL CLUB</span>
+          <span className="promo-overline">여행갈지도 · 여행 클럽</span>
           <h1>여행갈지도 숙박 할인 행사</h1>
           <p>숙소와 지역별로 조건을 확인하는 여행 혜택 안내. 실제 할인은 업소 승인을 기준으로 합니다.</p>
           <a href="/#events">혜택 조건 비교하고 발급하기 ↗</a>

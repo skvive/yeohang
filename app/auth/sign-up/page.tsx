@@ -13,7 +13,7 @@ export default function SignUpPage() {
         <img src="/assets/wordmark.svg" alt="여행갈지도" />
       </div>
       <h1>회원가입</h1>
-      <p className="sub">Google 계정으로 바로 시작하거나 이메일을 등록하세요.</p>
+      <p className="sub">구글 계정으로 바로 시작하거나 이메일을 등록하세요.</p>
       <OAuthButtons callbackURL="/" errorURL="/auth/sign-up" />
       <div className="auth-divider">또는 이메일</div>
       <form action={formAction}>

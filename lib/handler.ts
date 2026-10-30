@@ -209,7 +209,7 @@ export async function handleApi(req: Request, slug: string[]) {
           cid_configured: Boolean(process.env.AGODA_CID),
           api_configured: Boolean(process.env.AGODA_API_KEY && process.env.AGODA_SITE_ID),
           korea_properties,
-          money: 'Completed (checked-out) Agoda bookings pay 4–5% commission in USD, $200 minimum monthly.',
+          money: '체크아웃이 완료된 아고다 예약은 미국 달러 기준 4~5% 수수료가 정산되며, 월 최소 정산액은 200달러입니다.',
         });
       }
       if (path === '/prices') return json({ plans: PRICES, currency: 'KRW', tax_note: '제시 요금은 예시 가격이며, 부가세·환불정책은 실제 운영 전 확정해야 합니다.' });
@@ -299,7 +299,7 @@ export async function handleApi(req: Request, slug: string[]) {
         return json({ campaigns, stats });
       }
       if (path === '/partner/overview') {
-        if (!me) return fail('Google 로그인 필요', 401);
+        if (!me) return fail('구글 로그인 필요', 401);
         const ids = me.admin
           ? (await dbQuery(`SELECT id FROM properties WHERE coalesce(source,'') <> 'agoda'`)).map((r) => String(r.id))
           : (await dbQuery(`SELECT property_id FROM property_partners WHERE google_email=$1`, [me.email])).map((r) => String(r.property_id));
@@ -324,7 +324,7 @@ export async function handleApi(req: Request, slug: string[]) {
         return json({ properties, bookings, chats, subscriptions, search_count: search[0]?.n || 0 });
       }
       if (path === '/privacy/export') {
-        if (!me) return fail('Google 로그인 필요', 401);
+        if (!me) return fail('구글 로그인 필요', 401);
         const bookings = await dbQuery(`SELECT id,property_id,checkin,checkout,guests,status,amount,created_at FROM bookings WHERE lower(email)=$1`, [me.email]);
         const chats = await dbQuery(`SELECT id,property_id,created_at FROM conversations WHERE lower(guest_email)=$1`, [me.email]);
         const claims = await dbQuery(`SELECT coupon_id,used,created_at FROM coupon_claims WHERE lower(email)=$1`, [me.email]);
@@ -334,9 +334,9 @@ export async function handleApi(req: Request, slug: string[]) {
       if (path === '/blogger/posts') {
         const blogId = url.searchParams.get('blog_id') || '';
         const key = process.env.GOOGLE_API_KEY;
-        if (!key) return fail('GOOGLE_API_KEY 설정 필요', 503);
+        if (!key) return fail('구글 API 키가 필요합니다', 503);
         const r = await fetch(`https://www.googleapis.com/blogger/v3/blogs/${encodeURIComponent(blogId)}/posts?key=${encodeURIComponent(key)}&maxResults=8&fetchBodies=false`);
-        if (!r.ok) return fail('Blogger API 조회 실패', 503);
+        if (!r.ok) return fail('블로거 글 조회 실패', 503);
         const doc = await r.json();
         const posts = (doc.items || []).map((x: { title?: string; url?: string; published?: string }) => ({ title: x.title || '', url: x.url || '', published: x.published || '' })).filter((x: { url: string }) => x.url.startsWith('https://'));
         return json({ posts });
@@ -383,7 +383,7 @@ export async function handleApi(req: Request, slug: string[]) {
     if (!x || typeof x !== 'object') return fail('JSON 객체가 필요합니다.');
 
     if (path === '/privacy/delete-request') {
-      if (!me) return fail('검증된 Google 로그인 필요', 401);
+      if (!me) return fail('검증된 구글 로그인 필요', 401);
       const kind = String(x.kind || 'delete');
       if (!['delete', 'review'].includes(kind)) return fail('요청 형식 오류');
       const rid = uuid();
@@ -410,7 +410,7 @@ export async function handleApi(req: Request, slug: string[]) {
           const c = (await db.query(`SELECT * FROM promo_campaigns WHERE id=$1`, [String(x.campaign_id || '').slice(0, 100)]))[0];
           if (!c) throw new Error('행사를 찾을 수 없습니다.');
           if (c.status === 'demo' && !DEMO_MODE) throw new Error('시연용 혜택은 실제 운영에서 발급할 수 없습니다.');
-          if (c.status === 'active' && (!me || me.email !== email)) throw new Error('실제 쿠폰은 본인 인증된 Google 로그인 이메일로만 발급됩니다.');
+          if (c.status === 'active' && (!me || me.email !== email)) throw new Error('실제 쿠폰은 본인 인증된 구글 로그인 이메일로만 발급됩니다.');
           const err = checkEligibility(c, Math.max(Number(c.min_spend), 0), Number(c.min_nights), String(c.city), String(c.property_id));
           if (err) throw new Error(err);
           if (Number(c.total_claims) > 0 && Number(c.claimed_count) >= Number(c.total_claims)) throw new Error('발급 수량이 종료되었습니다.');
@@ -432,7 +432,7 @@ export async function handleApi(req: Request, slug: string[]) {
       if (x.privacy_consent !== true) return fail('개인정보 수집·이용 동의가 필요합니다.');
       const email = String(x.email || '').trim().toLowerCase().slice(0, 180);
       if (!emailOk(email)) return fail('이메일 형식 오류');
-      if (!DEMO_MODE && (!me || me.email !== email)) return fail('운영 쿠폰은 Google 본인 인증 후 발급할 수 있습니다.', 403);
+      if (!DEMO_MODE && (!me || me.email !== email)) return fail('운영 쿠폰은 구글 본인 인증 후 발급할 수 있습니다.', 403);
       try {
         const result = await dbTx(async (db) => {
           const c = (await db.query(`SELECT * FROM coupons WHERE id=$1 AND expires>=$2 AND remaining>0`, [String(x.coupon_id || ''), seoulToday()]))[0];
@@ -539,7 +539,7 @@ export async function handleApi(req: Request, slug: string[]) {
       if (!me) return fail('숙소 관리 권한이 없습니다.', 403);
       const pid = String(x.property_id || '');
       if (!(await canEdit(me, pid))) return fail('숙소 관리 권한이 없습니다.', 403);
-      return fail('Google 인증 계정이 소유한 Blogger 블로그가 아닙니다.', 403);
+      return fail('구글 인증 계정이 소유한 블로거가 아닙니다.', 403);
     }
     if (path === '/promos/admin/save') {
       if (!me?.admin && req.headers.get('X-Admin-Token') !== process.env.ADMIN_TOKEN) return fail('관리자 인증 필요', 403);
@@ -550,7 +550,7 @@ export async function handleApi(req: Request, slug: string[]) {
       return json({ saved: true, status });
     }
     if (path === '/checkout') {
-      return fail('Stripe 키 미설정: 테스트용 결제 링크는 생성하지 않습니다.', 503);
+      return fail('결제 키가 설정되지 않아 테스트용 결제 링크는 생성하지 않습니다.', 503);
     }
     return fail('경로를 찾을 수 없습니다.', 404);
   } catch (err) {

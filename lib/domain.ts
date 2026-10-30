@@ -2,10 +2,10 @@ export const DEMO_MODE = process.env.DEMO_MODE !== '0';
 export const SITE_URL = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://yeohang.lexid.site').replace(/\/$/, '');
 
 export const PRICES = {
-  starter: { name: '스타터 광고', amount: 59000, interval: 'month', features: ['숙소 기본 노출', '블로그 연결', '월간 조회 리포트'] },
-  growth: { name: '그로스 프리미엄', amount: 149000, interval: 'month', features: ['스폰서 검색 카드', 'AI 추천 후보 우선 검토', '쿠폰·영상 큐레이션', '전환 리포트'] },
-  signature: { name: '시그니처 파트너', amount: 349000, interval: 'month', features: ['프리미엄 스폰서 영역', '브랜드 마키 슬롯', '상담 리드 대시보드', '우선 지원'] },
-  'content-pack': { name: '콘텐츠 세팅 패키지', amount: 290000, interval: null, features: ['블로그 구성 지원', '이미지 권리 검수', 'SEO 기본 메타데이터'] },
+  starter: { name: '기본 광고', amount: 59000, interval: 'month', features: ['숙소 기본 노출', '블로그 연결', '월간 조회 리포트'] },
+  growth: { name: '성장 프리미엄', amount: 149000, interval: 'month', features: ['스폰서 검색 카드', '인공지능 추천 후보 우선 검토', '쿠폰·영상 큐레이션', '전환 리포트'] },
+  signature: { name: '대표 파트너', amount: 349000, interval: 'month', features: ['프리미엄 스폰서 영역', '브랜드 마키 슬롯', '상담 리드 대시보드', '우선 지원'] },
+  'content-pack': { name: '콘텐츠 세팅 패키지', amount: 290000, interval: null, features: ['블로그 구성 지원', '이미지 권리 검수', '검색 기본 메타데이터'] },
 };
 
 export const CATEGORY_SLUGS: Record<string, string> = {
@@ -56,24 +56,149 @@ export type Property = Record<string, unknown> & {
   book_url?: string;
 };
 
+const CITY_KO: Record<string, string> = {
+  seoul: '서울',
+  busan: '부산',
+  pusan: '부산',
+  jeju: '제주',
+  'jeju island': '제주',
+  'jeju-si': '제주',
+  seogwipo: '서귀포',
+  incheon: '인천',
+  daegu: '대구',
+  daejeon: '대전',
+  gwangju: '광주',
+  ulsan: '울산',
+  suwon: '수원',
+  gyeongju: '경주',
+  jeonju: '전주',
+  gapyeong: '가평',
+  pyeongchang: '평창',
+  sokcho: '속초',
+  goseong: '고성',
+  gangneung: '강릉',
+  yeosu: '여수',
+  tongyeong: '통영',
+  chuncheon: '춘천',
+  wonju: '원주',
+  andong: '안동',
+  pohang: '포항',
+  changwon: '창원',
+  gimhae: '김해',
+  paju: '파주',
+  goyang: '고양',
+  yongin: '용인',
+  seongnam: '성남',
+  bucheon: '부천',
+  cheonan: '천안',
+  cheongju: '청주',
+  mokpo: '목포',
+  gimpo: '김포',
+  icheon: '이천',
+  namyangju: '남양주',
+  yangpyeong: '양평',
+  hongcheon: '홍천',
+  jeongseon: '정선',
+  taebaek: '태백',
+  samcheok: '삼척',
+  donghae: '동해',
+  yangyang: '양양',
+  inje: '인제',
+  geoje: '거제',
+  namhae: '남해',
+  hadong: '하동',
+  suncheon: '순천',
+  gurye: '구례',
+  boseong: '보성',
+  wando: '완도',
+  jindo: '진도',
+  naju: '나주',
+  iksan: '익산',
+  gunsan: '군산',
+  namwon: '남원',
+  muju: '무주',
+  damyang: '담양',
+  yeongju: '영주',
+  boryeong: '보령',
+  gongju: '공주',
+  asan: '아산',
+  jecheon: '제천',
+  chungju: '충주',
+  jeongeup: '정읍',
+  gumi: '구미',
+  gyeongsan: '경산',
+  yangsan: '양산',
+  'gangnam-gu': '강남구',
+  myeongdong: '명동',
+  hongdae: '홍대',
+};
+
+export function cityKo(raw: string) {
+  const t = String(raw || '').trim();
+  if (!t) return t;
+  if (/[가-힣]/.test(t) && !/[A-Za-z]/.test(t)) return t;
+  const key = t.toLowerCase().replace(/\s+/g, ' ');
+  if (CITY_KO[key]) return CITY_KO[key];
+  for (const [en, ko] of Object.entries(CITY_KO)) {
+    if (key.includes(en)) return ko;
+  }
+  return t;
+}
+
+function latinOnly(s: string) {
+  return /[A-Za-z]/.test(s) && !/[가-힣]/.test(s);
+}
+
+function koAmenityToken(raw: string) {
+  const t = raw.trim();
+  if (!t) return t;
+  if (/[가-힣]/.test(t)) return t;
+  const x = t.toLowerCase();
+  if (/hanok|traditional korean/.test(x)) return '한옥';
+  if (/resort/.test(x)) return '리조트';
+  if (/camp|glamp/.test(x)) return '캠핑·글램핑';
+  if (/guest|hostel/.test(x)) return '게스트하우스';
+  if (/serviced apartment|apartment|condo/.test(x)) return '아파트';
+  if (/pension|villa|motel|homestay|inn/.test(x)) return '펜션·풀빌라';
+  if (/boutique/.test(x)) return '부티크 호텔';
+  if (/hotel/.test(x)) return '호텔';
+  if (/wifi|wi-fi/.test(x)) return '와이파이';
+  if (/park/.test(x)) return '주차';
+  if (/pool|swim/.test(x)) return '수영장';
+  if (/breakfast/.test(x)) return '조식';
+  if (/spa/.test(x)) return '스파';
+  if (/gym|fitness/.test(x)) return '피트니스';
+  if (/pet/.test(x)) return '반려동물';
+  if (/ocean|sea view/.test(x)) return '오션뷰';
+  return t;
+}
+
 export function mapProperty(row: Record<string, unknown>): Property {
   const amenities = String(row.amenities || '');
   const image = Number(row.image || 1);
   const publicRecord = Boolean(row.public_record);
+  const category = koAmenityToken(String(row.category || '')) || String(row.category || '');
+  const city = cityKo(String(row.city || ''));
+  const area = cityKo(String(row.area || '')) || city;
+  const taglineRaw = String(row.tagline || '');
+  const author = String(row.photo_author || '');
+  const license = String(row.photo_license || '');
+  const desc = String(row.description || '');
+  const name = String(row.name || '');
   return {
     ...row,
     id: String(row.id),
-    name: String(row.name || ''),
-    city: String(row.city || ''),
-    area: String(row.area || ''),
-    category: String(row.category || ''),
+    name,
+    city,
+    area,
+    category,
     address: String(row.address || ''),
-    tagline: String(row.tagline || ''),
-    description: String(row.description || ''),
+    tagline: latinOnly(taglineRaw) ? [city, category].filter(Boolean).join(' · ') || '아고다 제휴 숙소' : taglineRaw,
+    description: latinOnly(desc) ? `${city}에 있는 ${category || '숙소'}입니다. 상세 안내는 아고다에서 확인하세요.` : desc,
     source_url: String(row.source_url || ''),
     photo_url: String(row.photo_url || ''),
-    photo_license: String(row.photo_license || ''),
-    photo_author: String(row.photo_author || ''),
+    photo_license: /agoda affiliate/i.test(license) ? '아고다 제휴 콘텐츠' : license,
+    photo_author: /^agoda$/i.test(author) ? '아고다' : author,
     photo_credit: String(row.photo_credit || ''),
     sponsored: Boolean(row.sponsored),
     verified: Boolean(row.verified),
@@ -81,7 +206,7 @@ export function mapProperty(row: Record<string, unknown>): Property {
     public_record: publicRecord,
     partner_verified: Boolean(row.partner_verified),
     price: publicRecord || String(row.source || '') === 'agoda' ? null : row.price == null ? null : Number(row.price),
-    amenities: amenities ? amenities.split(',') : [],
+    amenities: amenities ? amenities.split(',').map(koAmenityToken).filter(Boolean) : [],
     image_url: `/assets/listing-${image}.webp`,
     lat: row.lat == null ? null : Number(row.lat),
     lng: row.lng == null ? null : Number(row.lng),

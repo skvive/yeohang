@@ -22,7 +22,7 @@ export function HeaderUser() {
   }
   return (
     <Link className="small-text-btn" href="/auth/sign-in">
-      Google 로그인
+      구글 로그인
     </Link>
   );
 }

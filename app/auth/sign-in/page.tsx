@@ -13,13 +13,13 @@ export default function SignInPage() {
         <img src="/assets/wordmark.svg" alt="여행갈지도" />
       </div>
       <h1>로그인</h1>
-      <p className="sub">Neon Auth · Google 계정으로 여행갈지도에 연결합니다.</p>
+      <p className="sub">구글 계정으로 여행갈지도에 연결합니다.</p>
       <OAuthButtons callbackURL="/account" errorURL="/auth/sign-in" />
       <div className="auth-divider">또는 이메일</div>
       <form action={formAction}>
         <div className="auth-field">
           <label htmlFor="email">이메일</label>
-          <input id="email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" />
+          <input id="email" name="email" type="email" required autoComplete="email" placeholder="이메일 주소" />
         </div>
         <div className="auth-field">
           <label htmlFor="password">비밀번호</label>

@@ -5,14 +5,14 @@ export const viewport = { themeColor: '#092D43' };
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://yeohang.lexid.site'),
-  title: '여행갈지도 | YEOHAENG GALJIDO',
-  description: 'AI 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
+  title: '여행갈지도',
+  description: '인공지능 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
   icons: { icon: '/assets/icon-192.png' },
   manifest: '/manifest.webmanifest',
   ...(process.env.AGODA_VERIFY_META ? { other: { 'agoda-verification': process.env.AGODA_VERIFY_META } } : {}),
   openGraph: {
     title: '여행갈지도 | 여행을 발견하는 더 좋은 방법',
-    description: 'AI 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
+    description: '인공지능 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
     images: ['/assets/brand-logo-horizontal.webp'],
   },
 };

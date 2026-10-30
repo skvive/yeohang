@@ -20,7 +20,7 @@ export default function HomePage() {
       <header className="site-header">
         <div className="header-inner">
           <a className="brand v2-brand" href="#home" aria-label="여행갈지도 홈">
-            <img className="v2-wordmark" src="/assets/wordmark.svg" alt="여행갈지도 · YEOHAENG GALJIDO" />
+            <img className="v2-wordmark" src="/assets/wordmark.svg" alt="여행갈지도" />
           </a>
           <nav className="main-nav" id="mainNav" aria-label="기본 메뉴">
             <a href="#home" data-nav="home">
@@ -39,7 +39,7 @@ export default function HomePage() {
               여행 저널
             </a>
             <a href="#shorts" data-nav="shorts">
-              트래블 클립
+              여행 영상
             </a>
             <a href="#events" data-nav="events">
               숙박 할인 행사

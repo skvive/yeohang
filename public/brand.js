@@ -34,7 +34,7 @@
    if(stat)stat.innerHTML=`<div><span class="eyebrow">이번 주 혜택 상태</span><strong>${h(w.iso_week)} · ${w.actual_discount_available?'제휴 승인 혜택':'시연용 혜택'}</strong><p>${h(w.notice)}</p><small>${h(w.starts_on)} ~ ${h(w.ends_on)} · 다음 갱신 ${h(w.next_refresh)}</small></div><a href="#events">쿠폰 이용 조건 확인 ↗</a>`;
   }catch(e){if(strip)strip.innerHTML='<div class="wrap weekly-strip-fallback">주간 행사를 확인할 수 없습니다. <a href="#events">기존 행사 보기</a></div>';if(stat)stat.textContent=e.message;}
   finally{loading=false}
-  if(trips){trips.innerHTML=places.map((p,i)=>`<article class="trip-card"><div class="trip-thumb"><img loading="lazy" src="/assets/${h(p.pic)}" alt="AI 제작 여행 풍경 콘셉트. 실제 장소 사진 아님"><span>AI 콘셉트 이미지</span></div><div class="trip-copy"><span class="trip-tag">${h(p.city)} · ${h(p.tag)}</span><h3>${h(p.title)}</h3><p>${h(p.story)}</p><div class="trip-actions"><a href="${h(mapsLink(p.addr))}" target="_blank" rel="noopener noreferrer">Google 길찾기 ↗</a><a href="${h(youtubeSearch(p.title))}" target="_blank" rel="noopener noreferrer">관련 영상 찾기 ↗</a></div></div></article>`).join('')}
+  if(trips){trips.innerHTML=places.map((p,i)=>`<article class="trip-card"><div class="trip-thumb"><img loading="lazy" src="/assets/${h(p.pic)}" alt="인공지능 제작 여행 풍경 콘셉트. 실제 장소 사진 아님"><span>인공지능 콘셉트 이미지</span></div><div class="trip-copy"><span class="trip-tag">${h(p.city)} · ${h(p.tag)}</span><h3>${h(p.title)}</h3><p>${h(p.story)}</p><div class="trip-actions"><a href="${h(mapsLink(p.addr))}" target="_blank" rel="noopener noreferrer">구글 길찾기 ↗</a><a href="${h(youtubeSearch(p.title))}" target="_blank" rel="noopener noreferrer">관련 영상 찾기 ↗</a></div></div></article>`).join('')}
  }
  window.travelWeeklyLoad=load;
  window.travelMapLink=mapsLink;

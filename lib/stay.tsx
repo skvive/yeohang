@@ -21,7 +21,7 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
       <header className="detail-header">
         <div className="detail-shell header-inner">
           <a className="detail-brand detail-brand-v2" href="/#home">
-            <img src="/assets/wordmark.svg" alt="여행갈지도 · YEOHAENG GALJIDO" />
+            <img src="/assets/wordmark.svg" alt="여행갈지도" />
           </a>
           <nav className="top-links" aria-label="상단 메뉴">
             <a href="/#discover">숙소 찾기</a>
@@ -53,7 +53,7 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="detail-shell footer-legal">
-          © 2026 YEOHAENG GALJIDO · 숙박 정보 검증 및 이미지 권리 안내 · 실제 요금·예약 가능 여부는 숙소에 재확인해 주세요.
+          © 2026 여행갈지도 · 숙박 정보 검증 및 이미지 권리 안내 · 실제 요금·예약 가능 여부는 숙소에 재확인해 주세요.
         </div>
       </footer>
       <script defer src="/detail.js" />
@@ -80,7 +80,7 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
       <section className="headline">
         <div className="headline-left">
           <div className="kicker">
-            <span className="kicker-icon">✦</span> STAY DIRECTORY / {e(p.category)}
+            <span className="kicker-icon">✦</span> 숙소 안내 / {e(p.category)}
           </div>
           <h1>{e(p.name)}</h1>
           <p className="location-line">
@@ -97,14 +97,14 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
       <section className="gallery">
         <div className="gallery-cover">
           <img src={hero} alt={`${String(p.name)} 대표 이미지`} />
-          <span className="image-badge">{licensed ? '실제 사진 · 라이선스 확인' : 'AI 콘셉트 이미지 · 실제 숙소 사진 아님'}</span>
+          <span className="image-badge">{licensed ? '실제 사진 · 라이선스 확인' : '인공지능 콘셉트 이미지 · 실제 숙소 사진 아님'}</span>
         </div>
       </section>
       <p className="photo-credit">
-        {licensed ? `실제 숙소 사진 · 저작자: ${e(p.photo_author)} · ${e(p.photo_license)}` : 'AI 생성 콘셉트 · 실제 숙소 사진이 아닙니다.'}
+        {licensed ? `실제 숙소 사진 · 저작자: ${e(p.photo_author)} · ${e(p.photo_license)}` : '인공지능 생성 콘셉트 · 실제 숙소 사진이 아닙니다.'}
       </p>
       <section className="detail-section intro-section">
-        <span className="section-kicker">THE STAY</span>
+        <span className="section-kicker">숙소 소개</span>
         <h2>이 숙소를 알아보세요</h2>
         <p className="intro-lead">{e(p.tagline)}</p>
         <p className="readable">{e(p.description)}</p>
@@ -118,7 +118,7 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         </div>
       </section>
       <section className="detail-section">
-        <span className="section-kicker">FACILITIES</span>
+        <span className="section-kicker">시설</span>
         <h2>시설과 숙박 유형</h2>
         <div className="amenities">
           {(amenities.length ? amenities : ['추가 시설 정보 확인 필요']).map((a) => (
@@ -130,11 +130,11 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         </div>
       </section>
       <section className="detail-section">
-        <span className="section-kicker">LOCATION</span>
+        <span className="section-kicker">위치</span>
         <h2>어디에 있나요?</h2>
         <p>{e(p.address)}</p>
         <a className="btn btn-map" href={maps} target="_blank" rel="noopener noreferrer">
-          Google 도보 길안내 ↗
+          구글 지도 도보 길안내 ↗
         </a>
         {p.affiliate_url ? (
           <p>
@@ -151,7 +151,7 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         ) : null}
       </section>
       <section className="detail-section">
-        <span className="section-kicker">NEARBY</span>
+        <span className="section-kicker">주변 숙소</span>
         <h2>{e(p.city)}의 다른 숙소</h2>
         <div className="nearby-grid">
           {nearby.map((q) => (
@@ -180,7 +180,7 @@ export function CategoryBody({ slug, rows }: { slug: string; rows: Prop[] }) {
         <strong>{cat}</strong>
       </nav>
       <div className="directory-hero">
-        <span className="section-kicker">KOREA STAY DIRECTORY</span>
+        <span className="section-kicker">국내 숙소 목록</span>
         <h1>대한민국 {cat} 찾기</h1>
       </div>
       <nav className="category-chips" aria-label="숙박 유형별 보기">
