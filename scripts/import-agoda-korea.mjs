@@ -61,11 +61,29 @@ function pick(row, names) {
 }
 
 function isKorea(row) {
-  const blob = [row.countryiso, row.countryiso2, row.country_iso, row.countrycode, row.country_code, row.countryname, row.country_name, row.country]
+  const blob = [
+    row.countryiso,
+    row.countryiso2,
+    row.country_iso,
+    row.countryisocode,
+    row.country_iso_code,
+    row.iso2,
+    row.countrycode,
+    row.country_code,
+    row.countryname,
+    row.country_name,
+    row.country,
+  ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
   return /\bkr\b|\bkor\b|south korea|korea, republic|대한민국|한국/.test(blob) && !/north korea|dprk|북한/.test(blob);
+}
+
+function num(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function categoryOf(raw) {
@@ -248,9 +266,12 @@ async function flush() {
       agoda_hotel_id, agoda_city_id, star_rating, review_score, review_count, affiliate_url,
       source, country_code, public_record, partner_verified, verified, active, sponsored
     ) SELECT
-      x.id, x.name, x.city, x.area, x.tagline, x.description, x.price, x.lat, x.lng, x.amenities,
-      x.photo_url, x.category, x.address, x.source_url, x.photo_author, x.photo_credit, x.photo_license,
-      x.agoda_hotel_id, x.agoda_city_id, x.star_rating, x.review_score, x.review_count, x.affiliate_url,
+      x.id::text, x.name::text, x.city::text, x.area::text, x.tagline::text, x.description::text,
+      x.price::int, x.lat::float8, x.lng::float8, x.amenities::text,
+      x.photo_url::text, x.category::text, x.address::text, x.source_url::text, x.photo_author::text,
+      x.photo_credit::text, x.photo_license::text, x.agoda_hotel_id::bigint,
+      x.agoda_city_id::bigint, x.star_rating::float8, x.review_score::float8,
+      x.review_count::int, x.affiliate_url::text,
       'agoda', 'KR', false, false, true, true, false
     FROM (VALUES ${binds.join(',')}) AS x(
       id, name, city, area, tagline, description, price, lat, lng, amenities,
@@ -332,8 +353,8 @@ try {
       area: area || city || '한국',
       tagline: [city, acc].filter(Boolean).join(' · ') || '아고다 제휴 숙소',
       description: desc.slice(0, 2000),
-      lat: lat ? Number(lat) : null,
-      lng: lng ? Number(lng) : null,
+      lat: num(lat),
+      lng: num(lng),
       amenities: acc,
       photo_url: photo,
       category: categoryOf(acc || name),
@@ -342,11 +363,11 @@ try {
       photo_author: 'Agoda',
       photo_credit: hotelUrl,
       photo_license: 'Agoda affiliate content',
-      agoda_hotel_id: Number(hotelId),
-      agoda_city_id: cityId ? Number(cityId) : null,
-      star_rating: stars ? Number(stars) : null,
-      review_score: score ? Number(score) : null,
-      review_count: reviews ? Number(reviews) : null,
+      agoda_hotel_id: num(hotelId),
+      agoda_city_id: num(cityId),
+      star_rating: num(stars),
+      review_score: num(score),
+      review_count: num(reviews),
       affiliate_url: affiliateUrl(hotelId),
     });
     if (batch.length >= 200) await flush();
