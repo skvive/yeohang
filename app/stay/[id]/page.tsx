@@ -5,8 +5,15 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function StayPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ draft?: string }>;
+}) {
   const { id } = await params;
+  const { draft } = await searchParams;
   const row = (await dbQuery(`SELECT * FROM properties WHERE id=$1 AND active=true`, [id]))[0];
   if (!row) notFound();
   const p = mapProperty(row);
@@ -20,7 +27,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   ).map(mapProperty);
   return (
     <StayChrome>
-      <PropertyBody p={p} nearby={nearby} />
+      <PropertyBody p={p} nearby={nearby} draft={draft} />
     </StayChrome>
   );
 }

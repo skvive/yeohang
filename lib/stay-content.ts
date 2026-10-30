@@ -1,18 +1,28 @@
 import type { Property } from '@/lib/domain';
+import { buildItinerary, buildTransit, nearbyPois, type StayItinerary, type StayPoi, type StayTransit } from '@/lib/stay-pois';
 
 export type StayHighlight = { title: string; body: string; icon: string };
 export type StayFact = { label: string; value: string };
 export type StayFaq = { q: string; a: string };
 export type StayTrust = { icon: string; title: string; sub: string };
+export type StayAmenityItem = { label: string; icon: string };
+export type StayContentKind = 'thin' | 'template' | 'unique';
 
 export type StayProfile = {
   lead: string;
   paragraphs: string[];
+  story: string[];
+  originalOverview: string[];
+  contentKind: StayContentKind;
   highlights: StayHighlight[];
   amenities: string[];
+  amenityItems: StayAmenityItem[];
   facts: StayFact[];
   faqs: StayFaq[];
   fits: string[];
+  pois: StayPoi[];
+  itinerary: StayItinerary[];
+  transit: StayTransit[];
   stars: number | null;
   starsLabel: string;
   starsMarks: string;
@@ -100,6 +110,61 @@ function extractAmenities(text: string, category?: string) {
   return unique(found.filter((a) => a !== category));
 }
 
+function amenityItemsOf(labels: string[]): StayAmenityItem[] {
+  return labels.map((label) => {
+    const rule = AMENITY_RULES.find((r) => r.label === label);
+    return { label, icon: rule?.icon || '✦' };
+  });
+}
+
+const TEMPLATE_RE =
+  /최고의 서비스와 편의|투숙객이 편안함|걱정 없이 온라인|쾌적한 숙박 경험|호화로운 편의|우리 모두 아침에/;
+
+function contentKindOf(desc: string, paragraphs: string[], name: string): StayContentKind {
+  const joined = paragraphs.join('');
+  if (!desc || joined.length < 80) return 'thin';
+  const mentionsName = name.length >= 4 && desc.includes(name.slice(0, 6));
+  if (TEMPLATE_RE.test(desc) && !mentionsName) return 'template';
+  if (paragraphs.length >= 8 && TEMPLATE_RE.test(desc)) return 'template';
+  return 'unique';
+}
+
+function buildStory(input: {
+  city: string;
+  neighborhood: string;
+  category: string;
+  stars: number | null;
+  score: number | null;
+  reviewCount: number | null;
+  address: string;
+  amenities: string[];
+  pois: StayPoi[];
+  kind: StayContentKind;
+  uniqueLead?: string;
+}) {
+  const { city, neighborhood, category, stars, score, reviewCount, address, amenities, pois, kind, uniqueLead } = input;
+  const zone = neighborhood && neighborhood !== city ? `${city} ${neighborhood}` : city;
+  const first = pois[0];
+  const second = pois[1];
+  const lines = [
+    kind === 'unique' && uniqueLead
+      ? uniqueLead
+      : `${zone}에 있는 ${stars ? `${stars}성급 ` : ''}${category}입니다.`,
+    score && reviewCount
+      ? `아고다 후기 ${formatCount(reviewCount)} 건, 평점 ${score.toFixed(1)}점(${scoreWord(score)})입니다.`
+      : '상세 시설과 실시간 요금은 아고다 예약 페이지에서 확인할 수 있습니다.',
+    first
+      ? `${first.name}까지 ${first.travel}입니다.${second ? ` ${second.name}과도 이어서 움직이기 좋습니다.` : ''}`
+      : address
+        ? `위치는 ${address}입니다.`
+        : '',
+    amenities.length
+      ? `소개 문구에서 확인한 시설은 ${amenities.slice(0, 5).join(', ')}입니다.`
+      : '아고다 숙소 파일에는 유형만 있어, 객실·시설 상세는 예약 페이지에서 확인합니다.',
+  ].filter(Boolean);
+  return unique(lines).slice(0, 4);
+}
+
 function highlightsFrom(text: string, paragraphs: string[], extras: StayHighlight[]) {
   const out: StayHighlight[] = [];
   for (const rule of AMENITY_RULES) {
@@ -145,17 +210,28 @@ export function buildStayProfile(p: Property): StayProfile {
   const storedAmenities = ((p.amenities as string[]) || []).filter((a) => a && a !== category);
   const extracted = extractAmenities(desc, category);
   const amenities = unique([...extracted, ...storedAmenities]);
-  let paragraphs = splitOverview(desc);
-  const thin = paragraphs.join('').length < 80;
+  const originalOverview = splitOverview(desc);
+  const kind = contentKindOf(desc, originalOverview, String(p.name || ''));
+  const pois = nearbyPois({ city, lat: p.lat as number | null, lng: p.lng as number | null }, 5);
+  const uniqueLead = originalOverview.find((para) => para.length > 24 && !TEMPLATE_RE.test(para) && /호텔|숙소|위치|마포|해운대|제주/.test(para));
+  const story = buildStory({
+    city,
+    neighborhood,
+    category,
+    stars,
+    score,
+    reviewCount,
+    address,
+    amenities,
+    pois,
+    kind,
+    uniqueLead,
+  });
+  let paragraphs = originalOverview;
+  const thin = kind === 'thin';
 
   if (thin) {
-    paragraphs = [
-      `${city}${neighborhood && neighborhood !== city ? ` ${neighborhood}` : ''}에 있는 ${stars ? `${stars}성급 ` : ''}${category}입니다.`,
-      score && reviewCount
-        ? `아고다 후기 ${formatCount(reviewCount)} 건, 평점 ${score.toFixed(1)}점(${scoreWord(score)})입니다.`
-        : '상세 시설과 실시간 요금은 아고다 예약 페이지에서 확인할 수 있습니다.',
-      address ? `위치는 ${address}입니다.` : '',
-    ].filter(Boolean);
+    paragraphs = story;
   }
 
   const fallbackHighlights: StayHighlight[] = [
@@ -178,9 +254,10 @@ export function buildStayProfile(p: Property): StayProfile {
   const word = score ? scoreWord(score) : '';
   const reviewLabel = reviewCount ? `후기 ${formatCount(reviewCount)} 건` : '후기 집계 전';
   const starsLabel = stars ? `${stars}성급` : category;
-  const lead = thin
-    ? [neighborhood && neighborhood !== city ? neighborhood : city, starsLabel, category].filter((v, i, arr) => v && arr.indexOf(v) === i).join(' · ')
-    : String(p.tagline || [city, category].filter(Boolean).join(' · '));
+  const lead =
+    thin || kind === 'template'
+      ? [neighborhood && neighborhood !== city ? neighborhood : city, starsLabel, category].filter((v, i, arr) => v && arr.indexOf(v) === i).join(' · ')
+      : String(p.tagline || [city, category].filter(Boolean).join(' · '));
 
   const fits = unique(
     [
@@ -247,12 +324,19 @@ export function buildStayProfile(p: Property): StayProfile {
 
   return {
     lead,
-    paragraphs,
+    paragraphs: kind === 'template' ? story : paragraphs,
+    story,
+    originalOverview,
+    contentKind: kind,
     highlights,
     amenities,
+    amenityItems: amenityItemsOf(amenities),
     facts,
     faqs,
     fits,
+    pois,
+    itinerary: buildItinerary(neighborhood, city, pois),
+    transit: buildTransit(pois, neighborhood, city),
     stars,
     starsLabel,
     starsMarks: stars ? starMarks(stars) : '',
