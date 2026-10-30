@@ -259,26 +259,32 @@ export async function handleApi(req: Request, slug: string[]) {
         const lng = Number(url.searchParams.get('lng'));
         const city = url.searchParams.get('city') || '';
         const hasUser = Number.isFinite(lat) && Number.isFinite(lng);
-        const result = await searchProperties('', city, null, hasUser ? lat : null, hasUser ? lng : null, '');
-        const pins = result.results
-          .filter((p) => p.lat != null && p.lng != null)
-          .slice(0, 80)
-          .map((p) => ({
-            id: p.id,
-            name: p.name,
-            city: p.city,
-            area: p.area,
-            category: p.category,
-            address: p.address,
-            lat: p.lat,
-            lng: p.lng,
-            distance_km: p.distance_km,
-            photo_url: p.photo_url,
-            image_url: p.image_url,
-            source: p.source,
-            affiliate_url: p.affiliate_url,
-            agoda_hotel_id: p.agoda_hotel_id,
-          }));
+        const rows = hasUser
+          ? await dbQuery(
+              `SELECT * FROM properties WHERE active=true AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
+              [lat, lng],
+            )
+          : await dbQuery(
+              `SELECT * FROM properties WHERE active=true AND lat IS NOT NULL AND lng IS NOT NULL AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
+              [city || '서울'],
+            );
+        const pins = rows.map(mapProperty).map((p) => ({
+          id: p.id,
+          name: p.name,
+          city: p.city,
+          area: p.area,
+          category: p.category,
+          address: p.address,
+          lat: p.lat,
+          lng: p.lng,
+          distance_km:
+            hasUser && p.lat != null && p.lng != null ? Math.round(haversine(lat, lng, p.lat, p.lng) * 10) / 10 : undefined,
+          photo_url: p.photo_url,
+          image_url: p.image_url,
+          source: p.source,
+          affiliate_url: p.affiliate_url,
+          agoda_hotel_id: p.agoda_hotel_id,
+        }));
         return json({
           user: hasUser ? { lat, lng } : null,
           count: pins.length,
