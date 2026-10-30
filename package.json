@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:migrate": "node scripts/run-sql.mjs sql/001_schema.sql && node scripts/run-sql.mjs sql/002_agoda.sql && node scripts/run-sql.mjs sql/003_agoda_search.sql && node scripts/run-sql.mjs sql/004_agoda_city_ko.sql && node scripts/run-sql.mjs sql/005_agoda_display_ko.sql && node scripts/run-sql.mjs sql/006_home_perf.sql",
+    "db:migrate": "node scripts/run-sql.mjs sql/001_schema.sql && node scripts/run-sql.mjs sql/002_agoda.sql && node scripts/run-sql.mjs sql/003_agoda_search.sql && node scripts/run-sql.mjs sql/004_agoda_city_ko.sql && node scripts/run-sql.mjs sql/005_agoda_display_ko.sql && node scripts/run-sql.mjs sql/006_home_perf.sql && node scripts/run-sql.mjs sql/007_time_deals.sql",
     "db:seed": "node scripts/seed-neon.mjs",
     "db:import-agoda": "node scripts/import-agoda-korea.mjs",
     "db:fetch-agoda": "node scripts/import-agoda-korea.mjs"

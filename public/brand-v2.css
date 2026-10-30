@@ -6,7 +6,7 @@ html{scroll-padding-top:95px}body{background:#f8faf9;color:#092d43;line-height:1
 .site-header .header-inner{height:84px;gap:24px;max-width:1350px}
 .brand.v2-brand{min-width:0;flex-shrink:0;width:248px;max-width:28vw;display:flex;align-items:center;justify-content:flex-start;background:#fff;border-radius:12px;overflow:hidden;padding:0 4px;height:68px;letter-spacing:normal}
 .brand.v2-brand .v2-wordmark{width:100%;max-width:none;height:100%;object-fit:contain;object-position:center;display:block;mix-blend-mode:multiply;border-radius:0;background:none}
-.main-nav{gap:13px}.main-nav a{font-weight:750;font-size:12px;transition:color .16s ease}.main-nav a.active,.main-nav a:hover{color:#008c8c;box-shadow:inset 0 -3px #00a5a0}.main-nav .nav-weekly{background:#fff4eb;color:#a84a17;border:1px solid #ffdfc8;padding:9px 12px}
+.main-nav{gap:13px}.main-nav a{font-weight:750;font-size:12px;transition:color .16s ease}.main-nav a.active,.main-nav a:hover{color:#008c8c;box-shadow:inset 0 -3px #00a5a0}.main-nav .nav-weekly{background:#fff4eb;color:#a84a17;border:1px solid #ffdfc8;padding:9px 12px}.main-nav .nav-kakao{background:#fee500;color:#191919;border:1px solid #ead200;padding:9px 12px}
 #demoBar{height:auto;min-height:36px;background:#edf6f5;color:#385d63;text-align:center;line-height:1.5;padding:8px 45px}
 .page-head{position:relative;overflow:hidden;background:linear-gradient(112deg,#eaf8f7 0%,#fff 55%,#f6faf9 100%);border-bottom:1px solid #e6eff0;padding:64px 0 53px}
 .page-head::before{content:'';position:absolute;right:2%;top:-75px;width:355px;height:355px;opacity:.09;background:url('/assets/logo.svg') center/contain no-repeat;pointer-events:none}

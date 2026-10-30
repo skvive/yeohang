@@ -1,0 +1,78 @@
+.deal-root{background:#fffaf2;border:1px solid #f0d7a4;border-radius:22px;padding:18px 18px 16px;box-shadow:0 16px 40px #8a642214;margin-bottom:16px}
+.deal-ticket{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,#fff,#fff4d8 60%,#ffe7b2);border:1.5px dashed #d4a24a;border-radius:16px;padding:12px;position:relative}
+.deal-ticket::before,.deal-ticket::after{content:'';position:absolute;width:14px;height:14px;background:#fffaf2;border-radius:50%;top:50%;margin-top:-7px}
+.deal-ticket::before{left:-8px;box-shadow:inset -1px 0 #f0d7a4}
+.deal-ticket::after{right:-8px;box-shadow:inset 1px 0 #f0d7a4}
+.deal-mascot{width:72px;height:84px;object-fit:cover;object-position:top;border-radius:12px;flex:none;background:#f7ecd4}
+.deal-ticket-copy{min-width:0}
+.deal-kicker{display:block;font-size:10px;font-weight:800;letter-spacing:.04em;color:#a66b14}
+.deal-ticket-copy strong{display:block;font-size:22px;letter-spacing:-.06em;color:#122d45;margin:2px 0}
+.deal-ticket-copy p{margin:0;font-size:12px;line-height:1.55;color:#5c6570}
+.deal-clock{font-variant-numeric:tabular-nums;font-weight:800;font-size:28px;letter-spacing:.04em;text-align:center;color:#b42318;background:#fff;border-radius:12px;padding:10px;margin:12px 0;border:1px solid #f3d0d0}
+.deal-clock.deal-dead{color:#6b7280;border-color:#e5e7eb}
+.deal-cta,.deal-book{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border:0;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer}
+.deal-cta[hidden],.deal-book[hidden]{display:none!important}
+.deal-cta{background:#fee500;color:#191919}
+.deal-book{background:#191919;color:#fee500;margin-top:8px}
+.deal-cta:disabled,.deal-book:disabled{opacity:.45;cursor:not-allowed}
+.deal-status{font-size:12px;line-height:1.6;color:#4b5563;margin:10px 0 0}
+.deal-terms{margin-top:10px;background:#fff;border-radius:12px;padding:8px 12px;border:1px solid #eee4d0;font-size:12px;color:#4b5563}
+.deal-terms summary{cursor:pointer;font-weight:800;color:#1f3a4d}
+.deal-terms ol{margin:8px 0 4px;padding-left:18px;line-height:1.65}
+.deal-kakao-link{display:block;margin-top:10px;text-align:center;font-size:12px;font-weight:800;color:#191919;text-decoration:none}
+.nav-kakao{color:#191919!important;font-weight:800;background:#fee500;border:1px solid #ead200;padding:10px 12px;border-radius:100px}
+
+.kakao-hero{background:linear-gradient(180deg,#fee500 0%,#fff8c8 38%,#f7f3ea 100%);padding:48px 0 28px;border-bottom:1px solid #efe3b4}
+.kakao-hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center}
+.kakao-hero h1{font-size:clamp(36px,5vw,58px);letter-spacing:-.07em;line-height:1.15;margin:12px 0;color:#191919}
+.kakao-hero p{font-size:16px;line-height:1.75;color:#3b3b3b;max-width:520px}
+.kakao-hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.kakao-hero-actions a,.kakao-copy-btn,.kakao-add{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 16px;border-radius:12px;font-weight:800;text-decoration:none;border:0;cursor:pointer;font-size:13px}
+.kakao-add{background:#191919;color:#fee500}
+.kakao-hero-actions .ghost{background:#fff;color:#191919;border:1px solid #19191922}
+.kakao-phone{width:min(360px,100%);margin:0 auto;background:#b9bec7;border-radius:36px;padding:14px 12px 18px;box-shadow:0 30px 60px #0002}
+.kakao-phone-bar{height:18px;display:flex;justify-content:center}
+.kakao-phone-bar span{width:90px;height:6px;background:#8d939c;border-radius:8px}
+.kakao-chat{background:#b2c7d9;border-radius:24px;overflow:hidden;min-height:520px}
+.kakao-chat-head{background:#b2c7d9;display:flex;align-items:center;gap:10px;padding:14px 14px 8px}
+.kakao-chat-head img{width:42px;height:42px;border-radius:14px;object-fit:cover;background:#fff}
+.kakao-chat-head strong{display:block;font-size:15px}
+.kakao-chat-head small{color:#4b5b68}
+.kakao-bubbles{padding:8px 12px 16px;display:flex;flex-direction:column;gap:10px}
+.kakao-row{display:flex;gap:8px;align-items:flex-end}
+.kakao-row img{width:32px;height:32px;border-radius:12px;object-fit:cover;background:#fff}
+.kakao-bubble{background:#fff;border-radius:4px 16px 16px 16px;padding:11px 12px;font-size:13px;line-height:1.55;max-width:86%;color:#191919;box-shadow:0 1px 0 #0001}
+.kakao-coupon-card{background:linear-gradient(135deg,#fff,#fff4d4);border:1px dashed #d4a24a;border-radius:14px;padding:12px;max-width:86%}
+.kakao-coupon-card b{display:block;font-size:20px;letter-spacing:-.05em}
+.kakao-coupon-card small{color:#6b5a32}
+.kakao-timepill{display:inline-block;margin-top:6px;background:#191919;color:#fee500;border-radius:99px;padding:4px 8px;font-size:10px;font-weight:800}
+
+.kakao-section{padding:42px 0}
+.kakao-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.kakao-cast{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kakao-cast article,.kakao-card{background:#fff;border:1px solid #ece7db;border-radius:18px;overflow:hidden;box-shadow:0 10px 28px #122d480c}
+.kakao-cast img{width:100%;height:150px;object-fit:cover;object-position:top}
+.kakao-cast h3,.kakao-card h3{margin:10px 14px 0;font-size:16px}
+.kakao-cast p,.kakao-card p{margin:4px 14px 14px;font-size:12px;color:#5c6570;line-height:1.6}
+.kakao-copybox{white-space:pre-wrap;background:#fffdf6;border:1px solid #efe3b4;border-radius:14px;padding:14px;font-size:13px;line-height:1.7;min-height:120px}
+.kakao-stays{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.kakao-stays a{display:block;background:#fff;border:1px solid #ece7db;border-radius:16px;padding:14px;text-decoration:none;color:#122d45}
+.kakao-stays strong{display:block;margin:4px 0}
+.kakao-note{font-size:12px;color:#667;line-height:1.7;background:#f4f1ea;border-radius:12px;padding:14px}
+.kakao-ops{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kakao-ops li{background:#fff;border-radius:12px;padding:12px;border:1px solid #ece7db;font-size:13px;line-height:1.55}
+
+@media(max-width:980px){
+  .kakao-hero-grid,.kakao-grid,.kakao-ops,.kakao-stays{grid-template-columns:1fr}
+  .kakao-cast{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kakao-hero{padding:28px 0 18px}
+}
+@media(max-width:1180px){
+  .main-nav a[href="#events"],.main-nav a[href="#coupons"]{display:none}
+}
+@media(max-width:760px){
+  .deal-ticket-copy strong{font-size:18px}
+  .deal-clock{font-size:22px}
+  .kakao-cast{grid-template-columns:1fr 1fr}
+  .kakao-chat{min-height:440px}
+}

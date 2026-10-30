@@ -50,6 +50,9 @@ export default function HomePage() {
             <a href="#compare" data-nav="compare">
               비교
             </a>
+            <a className="nav-kakao" href="#kakao" data-nav="kakao">
+              톡 쿠폰
+            </a>
             <a className="nav-weekly" href="#weekly" data-nav="weekly">
               🎟 이번 주 혜택
             </a>
@@ -82,8 +85,8 @@ export default function HomePage() {
         <a href="#weekly">
           ◇<small>주간 혜택</small>
         </a>
-        <a href="#compare">
-          ▤<small>비교</small>
+        <a href="#kakao">
+          ✦<small>톡 쿠폰</small>
         </a>
       </nav>
       <div id="overlay" className="overlay hidden" role="presentation">
@@ -106,6 +109,7 @@ export default function HomePage() {
       <Script src="/geo.js" strategy="afterInteractive" />
       <Script src="/promos.js" strategy="afterInteractive" />
       <Script src="/brand.js" strategy="afterInteractive" />
+      <Script src="/kakao-channel.js" strategy="afterInteractive" />
       <Script src="/brand-v2.js" strategy="afterInteractive" />
       <Script src="/app.js" strategy="afterInteractive" type="module" />
     </>

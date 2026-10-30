@@ -31,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/promos.css" />
         <link rel="stylesheet" href="/brand.css" />
         <link rel="stylesheet" href="/brand-v2.css" />
+        <link rel="stylesheet" href="/deal.css" />
       </head>
       <body>{children}</body>
     </html>

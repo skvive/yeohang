@@ -14,6 +14,19 @@ import {
   seoulToday,
   weeklyWindow,
 } from '@/lib/domain';
+import { agodaBookUrl } from '@/lib/agoda';
+import {
+  DEAL_AMOUNT_KRW,
+  DEAL_COOKIE,
+  DEAL_HOURS,
+  DEAL_MIN_SPEND_KRW,
+  characterForSource,
+  dealCookieHeader,
+  dealExpiresAt,
+  dealPolicy,
+  publicDeal,
+  readCookie,
+} from '@/lib/deal';
 import { maskEmail, sha256, tokenHex, tokenUrl, uuid } from '@/lib/hash';
 
 type SessionUser = { email: string; admin: boolean };
@@ -43,10 +56,31 @@ const PUBLIC_GET = new Set([
   '/weekly',
   '/promos',
   '/home',
+  '/deals',
 ]);
 
 function json(data: unknown, status = 200, cache = 'no-store') {
   return Response.json(data, { status, headers: { 'Cache-Control': cache } });
+}
+function jsonCookie(data: unknown, cookie: string, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Set-Cookie': cookie,
+    },
+  });
+}
+
+async function expireTimeDeals() {
+  try {
+    await dbQuery(
+      `UPDATE time_deals SET status='expired' WHERE status IN ('active','clicked') AND expires_at <= NOW()`,
+    );
+  } catch {
+    /* table may not exist yet */
+  }
 }
 function fail(message: string, status = 400) {
   return json({ error: message }, status);
@@ -481,6 +515,27 @@ export async function handleApi(req: Request, slug: string[]) {
         const messages = await dbQuery(`SELECT * FROM messages WHERE conversation_id=$1 ORDER BY created_at`, [id]);
         return json({ messages });
       }
+      if (path === '/deals') {
+        await expireTimeDeals();
+        const stayId = String(url.searchParams.get('stay_id') || '').slice(0, 80);
+        const token = readCookie(req, DEAL_COOKIE);
+        let current = null;
+        try {
+          if (token) {
+            const row = (await dbQuery(`SELECT * FROM time_deals WHERE token=$1`, [token]))[0];
+            if (row && (!stayId || String(row.stay_id) === stayId)) current = publicDeal(row);
+          }
+        } catch {
+          current = null;
+        }
+        return json({
+          ok: true,
+          policy: dealPolicy(),
+          current,
+          channel_url: process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || '',
+          kakao_js_key: Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY),
+        });
+      }
       return fail('경로를 찾을 수 없습니다.', 404);
     }
 
@@ -654,6 +709,93 @@ export async function handleApi(req: Request, slug: string[]) {
       if (!status) return fail('지원하지 않는 작업입니다.');
       await dbQuery(`UPDATE promo_campaigns SET status=$1, updated_at=NOW() WHERE id=$2`, [status, String(x.id || '')]);
       return json({ saved: true, status });
+    }
+    if (path === '/deals/start') {
+      await expireTimeDeals();
+      const stayId = String(x.stay_id || '').slice(0, 80);
+      const source = String(x.source || 'site').slice(0, 24);
+      const stay = (await dbQuery(`SELECT * FROM properties WHERE id=$1 AND active=true`, [stayId]))[0];
+      if (!stay) return fail('숙소를 찾을 수 없습니다.', 404);
+      const bookUrl = agodaBookUrl(mapProperty(stay));
+      if (!bookUrl) return fail('이 숙소는 아고다 예약 링크가 없어 타임딜을 열 수 없습니다.');
+      const existingToken = readCookie(req, DEAL_COOKIE);
+      try {
+        if (existingToken) {
+          const same = (
+            await dbQuery(
+              `SELECT * FROM time_deals WHERE token=$1 AND stay_id=$2 AND status IN ('active','clicked') AND expires_at > NOW()`,
+              [existingToken, stayId],
+            )
+          )[0];
+          if (same) {
+            return jsonCookie(
+              { ok: true, deal: publicDeal(same), policy: dealPolicy(), reused: true },
+              dealCookieHeader(String(same.token), new Date(String(same.expires_at))),
+            );
+          }
+          await dbQuery(
+            `UPDATE time_deals SET status='expired' WHERE token=$1 AND status IN ('active','clicked')`,
+            [existingToken],
+          );
+        }
+        const token = tokenUrl(24);
+        const expires = dealExpiresAt();
+        const character = characterForSource(source);
+        await dbQuery(
+          `INSERT INTO time_deals(token,stay_id,stay_name,source,character_id,amount_krw,min_spend_krw,status,started_at,expires_at,user_agent)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'active',NOW(),$8,$9)`,
+          [
+            token,
+            stayId,
+            String(stay.name || '').slice(0, 180),
+            source,
+            character,
+            DEAL_AMOUNT_KRW,
+            DEAL_MIN_SPEND_KRW,
+            expires.toISOString(),
+            String(req.headers.get('user-agent') || '').slice(0, 240),
+          ],
+        );
+        const row = (await dbQuery(`SELECT * FROM time_deals WHERE token=$1`, [token]))[0];
+        return jsonCookie(
+          { ok: true, deal: publicDeal(row), policy: dealPolicy(), reused: false },
+          dealCookieHeader(token, expires),
+          201,
+        );
+      } catch (err) {
+        console.error(err);
+        return fail('타임딜 테이블이 없습니다. sql/007_time_deals.sql 마이그레이션이 필요합니다.', 503);
+      }
+    }
+    if (path === '/deals/click') {
+      await expireTimeDeals();
+      const token = readCookie(req, DEAL_COOKIE);
+      if (!token) return fail('활성화된 타임딜이 없습니다. 숙소에서 18시간 쿠폰을 먼저 받아 주세요.', 409);
+      const stayId = String(x.stay_id || '').slice(0, 80);
+      try {
+        const row = (await dbQuery(`SELECT * FROM time_deals WHERE token=$1`, [token]))[0];
+        if (!row) return fail('쿠폰을 찾을 수 없습니다.', 404);
+        if (stayId && String(row.stay_id) !== stayId) return fail('이 숙소의 타임딜이 아닙니다.', 409);
+        if (String(row.status) === 'expired' || new Date(String(row.expires_at)).getTime() <= Date.now()) {
+          await dbQuery(`UPDATE time_deals SET status='expired' WHERE token=$1`, [token]);
+          return fail('18시간이 지나 쿠폰이 만료되었습니다. 아고다 추적이 끊기기 전에 결제하지 않으면 수수료가 정산되지 않습니다.', 410);
+        }
+        const stay = (await dbQuery(`SELECT * FROM properties WHERE id=$1 AND active=true`, [row.stay_id]))[0];
+        const bookUrl = stay ? agodaBookUrl(mapProperty(stay)) : '';
+        if (!bookUrl) return fail('아고다 예약 링크가 없습니다.', 409);
+        await dbQuery(`UPDATE time_deals SET status='clicked', clicked_at=NOW() WHERE token=$1 AND status='active'`, [token]);
+        const next = (await dbQuery(`SELECT * FROM time_deals WHERE token=$1`, [token]))[0];
+        return json({
+          ok: true,
+          book_url: bookUrl,
+          deal: publicDeal(next || row),
+          hours: DEAL_HOURS,
+          notice: '아고다 새 창에서 18시간 안에 결제를 완료하세요. 창을 닫아도 타이머는 계속 갑니다.',
+        });
+      } catch (err) {
+        console.error(err);
+        return fail('타임딜을 확인하지 못했습니다.', 503);
+      }
     }
     if (path === '/checkout') {
       return fail('결제 키가 설정되지 않아 테스트용 결제 링크는 생성하지 않습니다.', 503);

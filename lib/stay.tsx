@@ -31,6 +31,7 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
     <>
       <link rel="stylesheet" href="/detail.css" />
       <link rel="stylesheet" href="/detail-v2.css" />
+      <link rel="stylesheet" href="/deal.css" />
       <a className="skip-link" href="#content">
         본문으로 바로가기
       </a>
@@ -41,8 +42,8 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
           </a>
           <nav className="top-links" aria-label="상단 메뉴">
             <a href="/#discover">숙소 찾기</a>
-            <a href="/#images">숙소 사진</a>
-            <a href="/#journal">여행 저널</a>
+            <a href="/#kakao">톡 쿠폰</a>
+            <a href="/#weekly">이번 주 혜택</a>
             <a href="/#events">숙박 혜택</a>
             <a href="/#map">지역 지도</a>
           </nav>
@@ -62,9 +63,9 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <a href="/#discover">숙소 탐색</a>
-            <a href="/#journal">여행 저널</a>
+            <a href="/#kakao">카카오 타임딜</a>
+            <a href="/#weekly">이번 주 혜택</a>
             <a href="/#events">숙박 행사</a>
-            <a href="/#merchant">숙소 파트너</a>
             <a href="/#privacy">개인정보 안내</a>
           </div>
         </div>
@@ -74,6 +75,7 @@ export function StayChrome({ children }: { children: React.ReactNode }) {
       </footer>
       <script defer src="/geo.js" />
       <script defer src="/detail.js" />
+      <script defer src="/deal.js" />
     </>
   );
 }
@@ -308,10 +310,51 @@ export function PropertyBody({ p, nearby }: { p: Prop; nearby: Prop[] }) {
         </div>
         <aside className="booking-sidebar">
           {bookUrl ? (
+            <div
+              id="timeDealRoot"
+              className="deal-root"
+              data-stay-id={String(p.id)}
+              data-stay-name={e(p.name)}
+              data-source="stay"
+            >
+              <article className="deal-ticket" aria-live="polite">
+                <img className="deal-mascot" src="/assets/mascot-coupon-goblin.webp" alt="쿠폰도깨비" />
+                <div className="deal-ticket-copy">
+                  <span className="deal-kicker">쿠폰도깨비 · 18시간 타임딜</span>
+                  <strong>5,000원 리베이트</strong>
+                  <p>숙소 조회 후 18시간 안에 아고다 결제까지 끝내야 효력이 있습니다.</p>
+                </div>
+              </article>
+              <div className="deal-clock" id="dealClock">18:00:00</div>
+              <button type="button" className="deal-cta" id="dealStartBtn">
+                18시간 타임딜 받기
+              </button>
+              <button type="button" className="deal-book" id="dealBookBtn" hidden>
+                지금 아고다에서 결제하기
+              </button>
+              <p className="deal-status" id="dealStatus">
+                아고다 표시 가격은 그대로입니다. 5,000원은 여행갈지도 제휴 마진에서 돌려드립니다.
+              </p>
+              <details className="deal-terms">
+                <summary>타임딜 이용 조항</summary>
+                <ol>
+                  <li>할인 5,000원은 아고다 프로모션 코드가 아닙니다. 아고다 요금은 아고다가 정하고, 여행갈지도가 수수료 마진 안에서 리베이트를 지급합니다.</li>
+                  <li>이 숙소를 연 시각부터 18시간 이내에 아고다 예약 결제까지 완료해야 쿠폰이 유효합니다.</li>
+                  <li>18시간은 아고다가 약 24시간 단위로 제휴 추적을 끊는 관행에서 수수료를 지키기 위한 보호 장치입니다.</li>
+                  <li>예상 결제액 15만 원 미만이면 마진이 5,000원보다 작아 지급되지 않을 수 있습니다.</li>
+                  <li>시간이 지나면 이 버튼은 꺼지고, 만료된 쿠폰으로는 혜택을 받을 수 없습니다.</li>
+                </ol>
+              </details>
+              <a className="deal-kakao-link" href="/#kakao">
+                카카오 채널에서 쿠폰도깨비 메시지 보기
+              </a>
+            </div>
+          ) : null}
+          {bookUrl ? (
             <div className="booking-card">
               <span className="card-eyebrow">아고다 제휴 예약</span>
               <h2>이 숙소 예약하기</h2>
-              <p className="subtle">요금·객실 재고 확인과 결제는 아고다 새 창에서 진행됩니다. 여행갈지도 화면은 그대로 남아 있습니다.</p>
+              <p className="subtle">요금·객실 재고 확인과 결제는 아고다 새 창에서 진행됩니다. 타임딜 없이 예약하면 5,000원 리베이트는 적용되지 않습니다.</p>
               {profile.score ? (
                 <div className="price-box">
                   <small>아고다 후기</small>
