@@ -81,7 +81,7 @@
      node.hidden=false;
      const frame=document.getElementById('googleStayMap');
      if(frame){frame.hidden=true;frame.classList.add('map-fallback-hidden');}
-     if(surface!==node){destroy();surface=node;node.textContent='';}
+     if(surface!==node){original.destroy?.();destroy();surface=node;node.textContent='';}
      if(!map)map=new (K().Map)(node,{center:pos(anchor),level:5});
      map.relayout();
      clearOverlays();
@@ -94,7 +94,7 @@
      radius.setMap(map);
      // Keep the 5km search perimeter visible on mobile instead of zooming too far into markers.
      for(const edge of [[.046,0],[-.046,0],[0,.058],[0,-.058]]){
-       bounds.extend(new (K().LatLng)(anchor.lat+edge[0],anchor.lng+edge[1]));
+       bounds.extend(new (K().LatLng)(Number(anchor.lat)+edge[0],Number(anchor.lng)+edge[1]));
      }
      const me=document.createElement('div');me.className='ym-kakao-origin';
      me.textContent=point(args.userLoc)?'내 위치':'기준 위치';
