@@ -28,3 +28,10 @@ tasks.register('syncNavigationAssets', Copy) {
     into("${projectDir}/src/main/assets")
 }
 tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationAssets') }
+
+tasks.register('syncNavigationIcon', Copy) {
+    from("${rootProject.projectDir}/../public/assets/icon-192.png")
+    into("${projectDir}/src/main/res/drawable")
+    rename { 'yeohang_icon.png' }
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationIcon') }
