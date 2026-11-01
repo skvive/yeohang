@@ -125,7 +125,23 @@ async function loadGoogleMap(lat,lng,city=''){
 }
 async function nearMe(){if(!window.YeohangGeo){toast('지도 모듈을 불러오지 못했습니다.');return}toast('위치 접근 권한을 확인하고 있습니다.');try{const loc=await window.YeohangGeo.request();state.userLoc=loc;if(nav()!=='map'){location.hash='#map';return}await loadGoogleMap(loc.lat,loc.lng,'');toast('내 위치 반경 5km 숙소를 표시했습니다.')}catch(e){toast(e.message)}}
 async function mapCity(city){const coords={'서울':[37.493060,127.118060],'부산':[35.1796,129.0756],'제주':[33.4996,126.5312],'강릉':[37.7519,128.8761]};const c=coords[city]||[37.5665,126.978];state.mapSelected='';await loadGoogleMap(c[0],c[1],city)}
-async function maybeAutoGeo(){if(state.userLoc)return;try{const perm=await navigator.permissions.query({name:'geolocation'});if(perm.state==='granted')await nearMe()}catch{}}
+async function maybeAutoGeo(){
+  try {
+    if(!navigator.permissions?.query)return;
+    const perm=await navigator.permissions.query({name:'geolocation'});
+    if(nav()!=='map')return;
+    if(perm.state==='denied'){
+      if(state.userLoc){
+        state.userLoc=null;
+        window.YeohangGeo?.clear?.();
+        // 사용자가 지역을 직접 고른 경우에는 임의로 검색 중심을 덮어쓰지 않는다.
+        if(!state.mapCenter?.city)await loadGoogleMap(GARAK_MARKET_STATION.lat,GARAK_MARKET_STATION.lng,'');
+      }
+      return;
+    }
+    if(perm.state==='granted'&&!state.userLoc)await nearMe();
+  }catch{}
+}
 function selectMapPin(id,dir=false,fromMap=false){
   const pin=state.mapPins.find(p=>p.id===id);
   if(!pin)return;
