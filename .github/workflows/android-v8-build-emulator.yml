@@ -19,8 +19,11 @@ jobs:
       - name: Unpack exact v8 Android source bundle
         run: |
           set -euo pipefail
-          echo '8cf0a72d345fd99ff0725551751470f018dbf37a9754226a390403d4fc7ea847  android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip' | sha256sum --check
+          echo '51147e2367e14d98333d39b115a7f1a8385211eb2c90a86946fc543a55bac65c  android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip' | sha256sum --check
           unzip -q android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip -d .
+          test -f android-app/settings.gradle
+          test -f android-app/build.gradle
+          test -f android-app/app/build.gradle
           test -f android-app/app/src/main/java/site/lexid/yeohangnav/MainActivity.java
           test -f android-app/app/src/main/java/site/lexid/yeohangnav/NearbyMapActivity.java
           test -f android-app/app/src/main/assets/nearby-map.html
