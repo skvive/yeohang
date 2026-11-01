@@ -69,7 +69,7 @@ jobs:
           emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p test-results/android-emulator
             adb devices -l | tee test-results/android-emulator/devices.txt
             test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1
