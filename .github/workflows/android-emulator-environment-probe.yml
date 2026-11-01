@@ -1,0 +1,58 @@
+name: Android Emulator Environment Probe (SDK36 + Emulator35)
+on:
+  push:
+    branches: [qa/android-emulator-lab-*]
+    paths: ['.github/workflows/android-emulator-environment-probe.yml']
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  android-emulator-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install API36 SDK and verify tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          sdkmanager --list_installed | grep -E 'platforms;android-36|build-tools;36.0.0'
+          adb version
+      - name: Enable Linux KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+      - name: Boot Android 35 emulator and capture evidence
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 2048M
+          emulator-options: '-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none'
+          disable-animations: true
+          script: |
+            mkdir -p emulator-probe-results
+            adb wait-for-device
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1'
+            adb shell getprop ro.build.version.sdk | tee emulator-probe-results/api-level.txt
+            adb devices -l | tee emulator-probe-results/adb-devices.txt
+            adb emu geo fix 127.118060 37.493060 | tee emulator-probe-results/garak-mock-geo.txt
+            adb exec-out screencap -p > emulator-probe-results/emulator-boot.png
+            test -s emulator-probe-results/emulator-boot.png
+            echo 'EMULATOR BOOT / ADB / SCREENSHOT / MOCK GPS SUCCESS'
+      - name: Upload emulator environment evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-Emulator-Environment-Probe
+          path: emulator-probe-results/
+          if-no-files-found: warn
