@@ -1,0 +1,10 @@
+/* Licensed Kakao tiles are supplied by Kakao SDK; these styles only decorate our own data pins. */
+#multiStayMap .ym-kakao-marker{min-width:44px;max-width:170px;cursor:pointer;border:1px solid #c6e6d7;border-radius:18px 18px 18px 6px;
+ display:flex;align-items:center;gap:4px;background:#fffcf3;color:#193c4e;padding:6px 8px;box-shadow:0 4px 15px #183d3c40;
+ font:800 11px 'Noto Sans KR',sans-serif;white-space:nowrap}
+#multiStayMap .ym-kakao-marker span{font-size:20px}#multiStayMap .ym-kakao-marker small{display:block;font-size:10px;
+ max-width:105px;overflow:hidden;text-overflow:ellipsis;color:inherit}
+#multiStayMap .ym-kakao-marker.ym-kakao-selected{background:#f8de9b;border:2px solid #d17e37;transform:scale(1.05)}
+#multiStayMap .ym-kakao-origin{border:2px solid white;border-radius:999px;background:#0a817f;color:white;
+ box-shadow:0 4px 15px #183d3c40;padding:7px 10px;font:800 11px 'Noto Sans KR',sans-serif}
+#multiStayMap .ym-kakao-marker:focus-visible{outline:3px solid #fcb84c;outline-offset:3px}
