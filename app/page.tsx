@@ -121,6 +121,7 @@ export default function HomePage() {
       <Script src="/kakao-channel.js" strategy="afterInteractive" />
       <Script src="/brand-v2.js" strategy="afterInteractive" />
       <Script src="/map-multipin.js" strategy="afterInteractive" />
+      <Script src="/map-kakao-provider.js" strategy="afterInteractive" />
       <Script src="/navigation-v9.js" strategy="afterInteractive" />
       <Script src="/app.js" strategy="afterInteractive" type="module" />
     </>
