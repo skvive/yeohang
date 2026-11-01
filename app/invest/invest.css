@@ -1,0 +1,172 @@
+
+/* TravelGaljido investor presentation v2 — isolated from shared site CSS */
+#travel-ir-v2{--ir-deep:#073943;--ir-dark:#052d36;--ir-teal:#067a79;--ir-mint:#d8f1e9;--ir-gold:#ffcf68;--ir-cream:#fcfaf4;--ir-ink:#112c34;--ir-muted:#4f676c;--ir-border:#dce6e1;--ir-shadow:0 18px 38px rgba(16,51,55,.11);background:var(--ir-cream);color:var(--ir-ink)!important;font-family:"Noto Sans KR",system-ui,sans-serif;overflow-x:clip;line-height:1.6}
+#travel-ir-v2 *,#travel-ir-v2 *:before,#travel-ir-v2 *:after{box-sizing:border-box}
+#travel-ir-v2 a{text-decoration:none}
+#travel-ir-v2 button,#travel-ir-v2 input{font:inherit}
+#travel-ir-v2 img{display:block;max-width:100%}
+#travel-ir-v2 .ir-wrap{width:min(1190px,calc(100% - 44px));margin-inline:auto}
+#travel-ir-v2 .ir-header{background:#fffdf9;position:relative;z-index:10;border-bottom:1px solid #e7eee8}
+#travel-ir-v2 .ir-top{height:74px;display:flex;justify-content:space-between;align-items:center;gap:18px}
+#travel-ir-v2 .ir-logo{display:flex;align-items:center;gap:8px;color:#13434b!important;font-size:23px;font-weight:900;letter-spacing:-1.4px;white-space:nowrap}
+#travel-ir-v2 .ir-logo img{height:35px;width:35px;object-fit:contain}
+#travel-ir-v2 .ir-logo small{margin-left:9px;padding-left:15px;border-left:1px solid #cadbd6;font-size:11px;font-weight:800;color:#627d7b;letter-spacing:2.3px}
+#travel-ir-v2 .ir-nav{display:flex;align-items:center;gap:23px}
+#travel-ir-v2 .ir-nav a:not(.ir-pill-btn){font-weight:800;font-size:13px;color:#21565d!important}
+#travel-ir-v2 .ir-pill-btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border-radius:999px;padding:11px 21px;background:#075e68!important;color:#fff!important;font-size:13px;font-weight:900;box-shadow:0 8px 19px rgba(7,77,83,.15)}
+#travel-ir-v2 .ir-pill-btn:hover{background:#064b55!important}
+#travel-ir-v2 .ir-hero{position:relative;isolation:isolate;min-height:630px;background-color:#0b5865;background-image:linear-gradient(90deg,rgba(1,42,53,.97) 0%,rgba(1,49,58,.92) 43%,rgba(3,54,63,.53) 74%,rgba(3,54,63,.38) 100%),url('/assets/hero.webp');background-size:cover;background-position:center center;overflow:hidden}
+#travel-ir-v2 .ir-hero:after{content:"";position:absolute;inset:auto 0 0;height:115px;background:linear-gradient(transparent,rgba(1,39,46,.6));z-index:-1}
+#travel-ir-v2 .ir-hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);gap:28px;min-height:630px;align-items:center;padding-block:52px 70px}
+#travel-ir-v2 .ir-overline{display:inline-flex;gap:11px;align-items:center;letter-spacing:3.1px;font-size:12px;font-weight:900;color:#bfeee1!important;text-transform:uppercase}
+#travel-ir-v2 .ir-overline:before{content:"";width:8px;height:8px;border-radius:50%;background:#ffca67;box-shadow:0 0 0 4px rgba(255,209,106,.15)}
+#travel-ir-v2 .ir-hero h1{font-size:clamp(44px,4.9vw,72px)!important;line-height:1.2!important;letter-spacing:-3.4px!important;margin:20px 0 23px!important;color:#fff!important;font-weight:900!important;text-shadow:0 3px 20px rgba(0,0,0,.33)!important;word-break:keep-all}
+#travel-ir-v2 .ir-hero h1 span{color:var(--ir-gold)!important;text-shadow:0 2px 15px #113e46!important}
+#travel-ir-v2 .ir-hero-lead{font-size:17px!important;line-height:1.9!important;color:#f0fbf7!important;max-width:555px;word-break:keep-all;text-shadow:0 2px 8px rgba(0,25,29,.55)}
+#travel-ir-v2 .ir-hero-badges{display:flex;flex-wrap:wrap;gap:9px;margin-top:25px}
+#travel-ir-v2 .ir-hero-badges span{display:inline-flex;align-items:center;min-height:34px;border-radius:30px;padding:7px 13px;background:#f8fff2!important;color:#07515a!important;border:1px solid #fff!important;box-shadow:0 3px 12px rgba(0,0,0,.12);font-size:12px!important;font-weight:800!important}
+#travel-ir-v2 .ir-hero-actions{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin-top:29px}
+#travel-ir-v2 .ir-button-main,#travel-ir-v2 .ir-button-light{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:15px 22px;min-height:54px;border-radius:60px;font-weight:900!important;font-size:15px!important;transition:transform .18s,box-shadow .18s;box-shadow:0 10px 26px rgba(0,0,0,.18)}
+#travel-ir-v2 .ir-button-main{background:#056b70!important;color:#fff!important;border:2px solid #8fe8d9}
+#travel-ir-v2 .ir-button-light{background:#fffbef!important;color:#173c43!important;border:2px solid #fff}
+#travel-ir-v2 .ir-button-main:hover,#travel-ir-v2 .ir-button-light:hover{transform:translateY(-3px);box-shadow:0 13px 24px rgba(0,0,0,.23)}
+#travel-ir-v2 .ir-hero-art{position:relative;min-height:530px;align-self:stretch}
+#travel-ir-v2 .ir-hero-art .ir-shot{position:absolute;overflow:hidden;border:5px solid rgba(255,255,255,.98);box-shadow:0 16px 37px rgba(0,19,25,.4);border-radius:23px;background:#eff8f4}
+#travel-ir-v2 .ir-shot img{height:100%;width:100%;object-fit:cover}
+#travel-ir-v2 .ir-shot--hotel{width:48%;height:38%;top:8%;right:4%;transform:rotate(-5deg)}
+#travel-ir-v2 .ir-shot--food{width:44%;height:31%;top:29%;left:2%;transform:rotate(-7deg)}
+#travel-ir-v2 .ir-shot--coast{width:52%;height:34%;top:45%;right:0;transform:rotate(5deg)}
+#travel-ir-v2 .ir-hero-brand{position:absolute;bottom:-7%;left:18%;z-index:3;width:68%;height:73%;object-fit:contain!important;filter:drop-shadow(0 16px 24px rgba(0,0,0,.25));mix-blend-mode:normal}
+#travel-ir-v2 .ir-photo-chip{position:absolute;z-index:5;display:inline-flex;align-items:center;gap:6px;min-height:34px;background:#fffcf2;color:#054f57!important;font-size:12px!important;font-weight:900!important;border:2px solid #fff;padding:7px 13px;border-radius:30px;box-shadow:0 6px 18px rgba(0,0,0,.19)}
+#travel-ir-v2 .ir-photo-chip--one{right:6%;top:7%}
+#travel-ir-v2 .ir-photo-chip--two{left:0;top:27%}
+#travel-ir-v2 .ir-photo-chip--three{right:-1%;top:71%}
+#travel-ir-v2 .ir-strip{background:#fff;border-bottom:1px solid var(--ir-border)}
+#travel-ir-v2 .ir-strip .ir-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;padding-block:20px}
+#travel-ir-v2 .ir-strip-item{display:flex;align-items:center;gap:11px;color:#205b60!important;font-size:13px!important;font-weight:900}
+#travel-ir-v2 .ir-strip-item span{display:grid;place-items:center;width:37px;height:37px;flex:none;border-radius:11px;background:#d9f2eb;color:#00716d!important;font-size:20px}
+#travel-ir-v2 .ir-section{padding:91px 0}
+#travel-ir-v2 .ir-section-head{max-width:750px;margin-bottom:36px}
+#travel-ir-v2 .ir-kicker{font-size:12px!important;font-weight:900!important;letter-spacing:2.1px;color:#007b78!important;margin:0 0 11px!important}
+#travel-ir-v2 .ir-section h2{font-size:clamp(31px,3.5vw,47px)!important;line-height:1.3!important;letter-spacing:-2px!important;color:#142c34!important;font-weight:900!important;margin:0 0 14px!important;word-break:keep-all}
+#travel-ir-v2 .ir-description{font-size:15px!important;line-height:1.86!important;color:#526c70!important;word-break:keep-all}
+#travel-ir-v2 .ir-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+#travel-ir-v2 .ir-photo-card{border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 7px 19px rgba(12,54,56,.09);border:1px solid var(--ir-border);color:var(--ir-ink)!important;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
+#travel-ir-v2 .ir-photo-card:hover{transform:translateY(-4px);box-shadow:var(--ir-shadow)}
+#travel-ir-v2 .ir-photo-card-media{height:170px;position:relative;overflow:hidden;background:linear-gradient(140deg,#b1ddd9,#29646c)}
+#travel-ir-v2 .ir-photo-card-media img{width:100%;height:100%;object-fit:cover;transition:transform .35s}
+#travel-ir-v2 .ir-photo-card:hover .ir-photo-card-media img{transform:scale(1.05)}
+#travel-ir-v2 .ir-photo-card-media span{position:absolute;left:13px;bottom:10px;display:inline-flex;background:#fffaf2;color:#063b43!important;padding:7px 10px;border-radius:25px;box-shadow:0 2px 12px rgba(0,0,0,.16);font-size:12px;font-weight:900}
+#travel-ir-v2 .ir-photo-card-body{padding:19px 19px 22px;display:flex;flex:1;flex-direction:column}
+#travel-ir-v2 .ir-photo-card-body strong{font-size:18px!important;color:#173840!important;font-weight:900}
+#travel-ir-v2 .ir-photo-card-body p{font-size:13px!important;line-height:1.7!important;color:#526b70!important;margin:8px 0 13px}
+#travel-ir-v2 .ir-photo-card-body small{margin-top:auto;color:#087d78!important;font-weight:900!important;font-size:12px!important}
+#travel-ir-v2 .ir-models{background:#f4f8f3}
+#travel-ir-v2 .ir-double{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
+#travel-ir-v2 .ir-ip-visual{position:relative;border-radius:28px;background:linear-gradient(135deg,#d4eee8,#fff6df);padding:22px;overflow:hidden;min-height:400px}
+#travel-ir-v2 .ir-ip-visual img{width:100%;height:355px;object-fit:contain;filter:drop-shadow(0 16px 18px rgba(6,59,67,.2))}
+#travel-ir-v2 .ir-ip-list{display:grid;gap:14px;margin-top:21px;padding:0;list-style:none}
+#travel-ir-v2 .ir-ip-list li{padding:13px 16px;border:1px solid var(--ir-border);background:#fff;border-radius:13px;font-size:14px!important;color:#245057!important;font-weight:700}
+#travel-ir-v2 .ir-calc{background:linear-gradient(135deg,#0a333f,#075c67);color:#fff!important}
+#travel-ir-v2 .ir-calc .ir-kicker{color:#a4f4df!important}
+#travel-ir-v2 .ir-calc h2{color:white!important}
+#travel-ir-v2 .ir-calc .ir-description{color:#d3efeb!important}
+#travel-ir-v2 .ir-calculator-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:24px}
+#travel-ir-v2 .ir-controls{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.25);border-radius:24px;padding:27px}
+#travel-ir-v2 .ir-scenarios{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px}
+#travel-ir-v2 .ir-scenarios button{padding:10px 15px;border-radius:40px;background:#184e58;color:#e9fffa!important;border:1px solid #53838a;cursor:pointer;font-weight:800!important;font-size:13px!important}
+#travel-ir-v2 .ir-scenarios button[aria-pressed="true"]{background:#ffce65;color:#122f34!important;border-color:#ffce65}
+#travel-ir-v2 .ir-field{margin:24px 0 31px}
+#travel-ir-v2 .ir-field label{display:flex;justify-content:space-between;gap:15px;font-size:14px!important;font-weight:800!important;color:#f7fffd!important}
+#travel-ir-v2 .ir-field output{color:#ffdb7b!important;font-weight:900}
+#travel-ir-v2 .ir-field input{width:100%;accent-color:#ffdb7b;cursor:pointer;margin-top:17px;min-height:24px}
+#travel-ir-v2 .ir-muted-note{font-size:12px!important;line-height:1.8!important;color:#baddd8!important}
+#travel-ir-v2 .ir-results{background:#fffefa;color:#113843;border-radius:24px;padding:28px;box-shadow:var(--ir-shadow)}
+#travel-ir-v2 .ir-results-label{font-size:12px!important;font-weight:800!important;color:#507273!important}
+#travel-ir-v2 .ir-results-amount{font-size:clamp(29px,3.3vw,44px)!important;line-height:1.23!important;margin:8px 0!important;color:#057c76!important;font-weight:900!important;letter-spacing:-1.5px!important;word-break:break-all}
+#travel-ir-v2 .ir-results-year{display:inline-block;background:#fff0cc;color:#6b4d11!important;border-radius:35px;padding:6px 12px;font-size:13px!important;font-weight:900!important}
+#travel-ir-v2 .ir-result-rows{display:grid;gap:15px;margin-top:24px}
+#travel-ir-v2 .ir-result-row{font-size:13px!important}
+#travel-ir-v2 .ir-result-row-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:5px}
+#travel-ir-v2 .ir-result-row-header strong{font-weight:800!important;color:#254e53!important}
+#travel-ir-v2 .ir-result-row-header span{color:#153940!important;font-weight:900}
+#travel-ir-v2 .ir-result-track{height:7px;border-radius:20px;background:#e2eeea;overflow:hidden}
+#travel-ir-v2 .ir-result-track span{display:block;height:100%;background:linear-gradient(90deg,#63beae,#087e7a);border-radius:20px;max-width:100%;min-width:2px}
+#travel-ir-v2 .ir-results .ir-disclaimer{margin-top:20px;border-top:1px solid #dbeae5;padding-top:18px;color:#62777c!important;font-size:11px!important;line-height:1.8!important}
+#travel-ir-v2 .ir-gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+#travel-ir-v2 .ir-gallery-item{position:relative;height:206px;overflow:hidden;border-radius:20px;background:#d4e9e4}
+#travel-ir-v2 .ir-gallery-item img{width:100%;height:100%;object-fit:cover}
+#travel-ir-v2 .ir-gallery-item:after{content:"";position:absolute;inset:30% 0 0;background:linear-gradient(transparent,rgba(0,32,39,.85))}
+#travel-ir-v2 .ir-gallery-item span{position:absolute;bottom:13px;left:16px;color:#fff!important;font-size:16px!important;font-weight:900!important;z-index:1;text-shadow:0 2px 8px #001b21}
+#travel-ir-v2 .ir-roadmap{background:#f1f6f1}
+#travel-ir-v2 .ir-phase-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+#travel-ir-v2 .ir-phase{position:relative;padding:29px 25px;border:1px solid #d6e5df;border-radius:22px;background:white;overflow:hidden}
+#travel-ir-v2 .ir-phase:before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:#148c82}
+#travel-ir-v2 .ir-phase:nth-child(2):before{background:#f4ba55}
+#travel-ir-v2 .ir-phase:nth-child(3):before{background:#0e6470}
+#travel-ir-v2 .ir-phase-id{font-size:11px!important;font-weight:900!important;color:#00827a!important;letter-spacing:1.1px}
+#travel-ir-v2 .ir-phase h3{font-size:20px!important;color:#153b43!important;font-weight:900!important;margin:12px 0}
+#travel-ir-v2 .ir-phase p{font-size:14px!important;line-height:1.85!important;color:#5c7176!important}
+#travel-ir-v2 .ir-caution{margin-top:27px;background:#fff6e4;border:1px solid #eddbb7;border-left:5px solid #dcad51;border-radius:14px;padding:20px 22px;font-size:13px!important;color:#6a5738!important;line-height:1.8!important}
+#travel-ir-v2 .ir-contact{background:#c7ece3;padding:80px 0;text-align:center}
+#travel-ir-v2 .ir-contact .ir-wrap{max-width:780px}
+#travel-ir-v2 .ir-contact h2{font-size:clamp(34px,4vw,53px)!important;color:#0e3e46!important;font-weight:900!important;line-height:1.32!important;letter-spacing:-2px!important}
+#travel-ir-v2 .ir-contact p{font-size:16px!important;color:#356066!important;line-height:1.8!important}
+#travel-ir-v2 .ir-contact .ir-hero-actions{justify-content:center}
+#travel-ir-v2 .ir-footer{background:#092f37;color:#c2d7d3;padding:27px 0}
+#travel-ir-v2 .ir-footer .ir-wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12px}
+#travel-ir-v2 .ir-footer a{color:#e7f6ef!important}
+#travel-ir-v2 a:focus-visible,#travel-ir-v2 button:focus-visible,#travel-ir-v2 input:focus-visible{outline:3px solid #f8b832;outline-offset:3px}
+@media(max-width:1030px){
+ #travel-ir-v2 .ir-nav a:not(.ir-pill-btn){display:none}
+ #travel-ir-v2 .ir-hero-grid{grid-template-columns:1.04fr 1fr;gap:12px}
+ #travel-ir-v2 .ir-hero-art{min-height:430px}
+ #travel-ir-v2 .ir-hero h1{font-size:clamp(42px,5vw,60px)!important}
+ #travel-ir-v2 .ir-photo-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:740px){
+ #travel-ir-v2 .ir-wrap{width:calc(100% - 30px)}
+ #travel-ir-v2 .ir-top{height:66px}
+ #travel-ir-v2 .ir-logo{font-size:18px}
+ #travel-ir-v2 .ir-logo img{width:29px;height:29px}
+ #travel-ir-v2 .ir-logo small{display:none}
+ #travel-ir-v2 .ir-pill-btn{padding:10px 14px;min-height:42px;font-size:12px!important}
+ #travel-ir-v2 .ir-hero{background-position:61% center}
+ #travel-ir-v2 .ir-hero-grid{grid-template-columns:1fr;min-height:0;padding-block:55px 30px;gap:14px}
+ #travel-ir-v2 .ir-hero h1{font-size:clamp(42px,8vw,56px)!important;letter-spacing:-2.6px!important;line-height:1.21!important}
+ #travel-ir-v2 .ir-hero-lead{font-size:15px!important;line-height:1.8!important}
+ #travel-ir-v2 .ir-overline{font-size:10px;letter-spacing:2px}
+ #travel-ir-v2 .ir-hero-art{min-height:305px}
+ #travel-ir-v2 .ir-hero-brand{left:16%;width:68%;height:83%;bottom:-3%}
+ #travel-ir-v2 .ir-shot--hotel{height:45%;width:48%;top:4%;right:2%}
+ #travel-ir-v2 .ir-shot--food{top:23%;left:1%;height:36%}
+ #travel-ir-v2 .ir-shot--coast{height:35%;right:0;top:52%}
+ #travel-ir-v2 .ir-photo-chip{font-size:10px!important;padding:4px 9px;min-height:26px}
+ #travel-ir-v2 .ir-strip .ir-wrap{grid-template-columns:repeat(2,1fr);gap:12px;padding-block:15px}
+ #travel-ir-v2 .ir-strip-item{font-size:12px!important}
+ #travel-ir-v2 .ir-section{padding:63px 0}
+ #travel-ir-v2 .ir-section h2{font-size:clamp(29px,6.2vw,38px)!important;letter-spacing:-1.3px!important}
+ #travel-ir-v2 .ir-photo-card-media{height:150px}
+ #travel-ir-v2 .ir-photo-card-body{padding:16px}
+ #travel-ir-v2 .ir-photo-card-body strong{font-size:16px!important}
+ #travel-ir-v2 .ir-double,#travel-ir-v2 .ir-calculator-grid{grid-template-columns:1fr}
+ #travel-ir-v2 .ir-ip-visual{min-height:285px}
+ #travel-ir-v2 .ir-ip-visual img{height:265px}
+ #travel-ir-v2 .ir-gallery{grid-template-columns:repeat(2,1fr)}
+ #travel-ir-v2 .ir-gallery-item{height:180px}
+ #travel-ir-v2 .ir-phase-grid{grid-template-columns:1fr}
+ #travel-ir-v2 .ir-contact{padding:64px 0}
+}
+@media(max-width:410px){
+ #travel-ir-v2 .ir-hero h1{font-size:42px!important}
+ #travel-ir-v2 .ir-hero-actions{gap:8px}
+ #travel-ir-v2 .ir-button-main,#travel-ir-v2 .ir-button-light{font-size:12px!important;padding:12px 14px;min-height:48px}
+ #travel-ir-v2 .ir-hero-badges span{font-size:11px!important;padding:6px 10px}
+ #travel-ir-v2 .ir-photo-grid{gap:10px}
+ #travel-ir-v2 .ir-photo-card-media{height:116px}
+ #travel-ir-v2 .ir-photo-card-body{padding:12px}
+ #travel-ir-v2 .ir-photo-card-body strong{font-size:14px!important}
+ #travel-ir-v2 .ir-photo-card-body p{font-size:12px!important}
+ #travel-ir-v2 .ir-results{padding:19px}
+}
+@media(prefers-reduced-motion:reduce){#travel-ir-v2 *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
