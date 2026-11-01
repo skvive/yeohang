@@ -21,7 +21,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import java.util.Locale;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONObject;
 
 /**
  * V9 branded map shell. This is a secure WebView/PWA wrapper, NOT an in-app navigation SDK.
@@ -73,6 +76,7 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView v, String url) {
                 pageFinished = true;
+                injectNavigationOverlay();
                 status.setVisibility(View.GONE);
             }
             @Override public void onReceivedError(WebView v, WebResourceRequest req,
@@ -115,6 +119,36 @@ public final class MainActivity extends Activity {
         root.addView(status, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
         webView.loadUrl(HOME);
+    }
+
+    // Inject only bundled, first-party UI files into the allowlisted first-party domain.
+    // No JS-to-native interface and no remote script download.
+    private String readAsset(String fileName) throws Exception {
+        try (InputStream input = getAssets().open(fileName);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] block = new byte[8192];
+            int count;
+            while ((count = input.read(block)) != -1) output.write(block, 0, count);
+            return output.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+    private void injectNavigationOverlay() {
+        if (webView == null || webView.getUrl() == null) return;
+        Uri loaded = Uri.parse(webView.getUrl());
+        if (!"https".equalsIgnoreCase(loaded.getScheme()) ||
+            !APP_HOST.equalsIgnoreCase(loaded.getHost())) return;
+        try {
+            String css = readAsset("navigation-v9.css");
+            String js = readAsset("navigation-v9.js");
+            webView.evaluateJavascript("(function(){if(window.__YV9_APK__)return;" +
+                "window.__YV9_APK__=true;" +
+                "var s=document.createElement('style');s.textContent=" + JSONObject.quote(css) +
+                ";document.head.appendChild(s);})();", ignored -> {
+                    if (webView != null) webView.evaluateJavascript(js, null);
+                });
+        } catch (Exception ignored) {
+            // A failed overlay must not prevent the existing website from loading.
+        }
     }
 
     private boolean hasLocation() {
