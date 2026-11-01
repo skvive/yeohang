@@ -68,18 +68,7 @@ jobs:
             adb pull /sdcard/yeohang_nav_v9.png android-app/artifacts/emulator-home.png
             adb logcat -d > android-app/artifacts/logcat.txt
             test -s android-app/artifacts/process.txt
-            if grep -q 'NAV_MAP_SURFACE_READY' android-app/artifacts/logcat.txt; then
-              echo "map_surface_rendered" > android-app/artifacts/web-gate.txt
-              echo "Android WebView loaded the first-party map controls" >> "$GITHUB_STEP_SUMMARY"
-            elif grep -Eq 'NAV_PAGE_FAILED|NAV_HTTP_ERROR|NAV_TLS_ERROR' android-app/artifacts/logcat.txt; then
-              echo "network_or_http_blocked" > android-app/artifacts/web-gate.txt
-              echo "Android launched but the live site could not be resolved/reached in this emulator" >> "$GITHUB_STEP_SUMMARY"
-              exit 22
-            else
-              echo "map_surface_unverified" > android-app/artifacts/web-gate.txt
-              echo "Map DOM was not proven loaded; passing the installation alone is insufficient" >> "$GITHUB_STEP_SUMMARY"
-              exit 23
-            fi
+            bash android-app/verify-emulator-map.sh
       - name: Upload actual emulator output
         if: always()
         uses: actions/upload-artifact@v4
