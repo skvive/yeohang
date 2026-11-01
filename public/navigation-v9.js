@@ -61,7 +61,46 @@
    if(e.key==='Enter' && e.target?.id==='navMapSearch'){e.preventDefault();act('search');}
  });
  window.addEventListener('hashchange',()=>queueMicrotask(sync));
+ function ensureBundledFallback(){
+   // When APK loads the older production site, the V9 UI remains functional.
+   // This adapter is unused once V9 web source exposes the full search API.
+   if(window.YeohangNavigation || !window.__YV9_APK__)return;
+   window.YeohangNavigation={
+     search(query){
+       const needle=String(query||'').trim().toLocaleLowerCase('ko');
+       const rows=[...document.querySelectorAll('#mapSide .map-list-row')];
+       let found=0;
+       rows.forEach(row=>{
+         const visible=!needle||row.textContent.toLocaleLowerCase('ko').includes(needle);
+         row.hidden=!visible;
+         if(visible)found++;
+       });
+       const message=document.getElementById('mapGeoStatus');
+       if(message&&needle)message.textContent='현재 검색 목록 '+found+'곳 · 지도 핀은 숙소 유형 필터를 따릅니다.';
+       return found;
+     },
+     openDirections(){
+       const selected=document.querySelector('#mapSide .map-list-row.active')||
+         [...document.querySelectorAll('#mapSide .map-list-row')].find(row=>!row.hidden);
+       const name=selected?.querySelector('h4')?.textContent?.trim();
+       if(!name)return false;
+       const open=document.getElementById('openGoogleMaps');
+       let coordinates='';
+       try{
+         const u=new URL(open?.href||'',location.href);
+         coordinates=u.searchParams.get('query')||u.searchParams.get('q')||'';
+       }catch{}
+       const match=coordinates.match(/(-?\\d{2}\\.\\d+)\\s*,\\s*(-?\\d{3}\\.\\d+)/);
+       const route=match?
+         'https://map.kakao.com/link/to/'+encodeURIComponent(name)+','+match[1]+','+match[2]:
+         'https://map.kakao.com/link/search/'+encodeURIComponent(name);
+       location.assign(route);
+       return true;
+     }
+   };
+ }
  const boot=()=>{
+   ensureBundledFallback();
    const root=document.getElementById('app');
    if(root){const o=new MutationObserver(()=>{if(isMap())sync();});o.observe(root,{childList:true});}
    sync();
