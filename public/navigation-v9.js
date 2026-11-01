@@ -61,9 +61,11 @@
    if(e.key==='Enter' && e.target?.id==='navMapSearch'){e.preventDefault();act('search');}
  });
  window.addEventListener('hashchange',()=>queueMicrotask(sync));
- document.addEventListener('DOMContentLoaded',()=>{
+ const boot=()=>{
    const root=document.getElementById('app');
    if(root){const o=new MutationObserver(()=>{if(isMap())sync();});o.observe(root,{childList:true});}
    sync();
- });
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+ else boot();
 })();
