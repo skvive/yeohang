@@ -190,8 +190,8 @@ window.YeohangNavigation=Object.freeze({
     // Kakao Maps 공식 Web URL 규격. 로케이션 권한이 없더라도 목적지만 전달한다.
     const dest=encodeURIComponent(String(pin.name||'목적지'))+','+Number(pin.lat)+','+Number(pin.lng);
     const url='https://map.kakao.com/link/to/'+dest;
-    const open=window.open(url,'_blank','noopener,noreferrer');
-    return Boolean(open);
+    window.location.assign(url);
+    return true;
   }
 });
 function placesPage(){const qs=new URLSearchParams(location.hash.split('?')[1]||'');const city=qs.get('city')||'';const q=qs.get('q')||'';const cities=['','서울','부산','제주','경주','전주','가평','속초','강릉'];app(`<div class="page-head"><div class="wrap"><span class="eyebrow">한국관광공사 · 유튜브 · 블로거</span><h1>국내 명소를 지역으로 찾기</h1><p>관광공사 TourAPI와 유튜브 Data API, 구글 블로거 공식 연동만 사용합니다. 상세 페이지에서 소개·지도·쇼츠·브이로그·근처 숙소를 함께 봅니다.</p></div></div><section class="section-tight"><div class="wrap"><form id="placesForm" class="filters"><input name="q" class="field-input filter-input" value="${esc(q)}" placeholder="예: 경복궁, 해수욕장" maxlength="80"><select name="city" class="select-input">${cities.map(c=>`<option value="${esc(c)}" ${c===city?'selected':''}>${c||'전체 지역'}</option>`).join('')}</select><button class="filled-btn">지역 검색</button></form><div class="region-strip">${cities.map(c=>`<a class="region-pill ${c===city?'active':''}" href="#places?city=${encodeURIComponent(c)}">${c||'전체'}</a>`).join('')}</div><div id="placesArea" class="loading">명소를 불러오는 중입니다…</div></div></section>`);loadPlaces(city,q)}
