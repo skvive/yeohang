@@ -26,7 +26,7 @@
       Number(p.lng) >= 124.5 && Number(p.lng) <= 132;
   }
   function safeTiles() {
-    const configured = String(window.YEOHANG_TILE_URL || '');
+    const configured = String(document.querySelector('meta[name="yeohang-map-tile-url"]')?.content || window.YEOHANG_TILE_URL || '');
     if (configured && /^https:\/\/[^<>"'\s]+\/\{z\}\/\{x\}\/\{y\}\.(png|jpg|webp)(\?[^<>"'\s]*)?$/i.test(configured))
       return configured;
     return DEFAULT_TILES;
