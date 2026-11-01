@@ -31,3 +31,22 @@ test('V9 Android wrapper does not request background location or embed productio
   assert.match(java, /getHost\(\)/);
   assert.doesNotMatch(java, /addJavascriptInterface/);
 });
+
+test('Android offline UI is native and WebView error cannot be misread as loaded', () => {
+ const java = root('android-app/app/src/main/java/site/lexid/yeohangnav/MainActivity.java');
+ assert.match(java, /if\(pageFailed\) return/);
+ assert.match(java, /request\.isForMainFrame\(\)/);
+ assert.match(java, /NAV_PAGE_FAILED/);
+ assert.match(java, /NAV_MAP_SURFACE_READY/);
+ assert.match(java, /NAV_TLS_ERROR/);
+ assert.match(java, /handler\.cancel\(\)/);
+ assert.match(java, /mascot-jido\.webp/);
+ assert.match(java, /지도 다시 연결/);
+ assert.doesNotMatch(java, /addJavascriptInterface/);
+});
+test('CI live map verification is a separate gate from Android package build', () => {
+ const yaml = root('.github/workflows/navigation-v9-android.yml');
+ assert.match(yaml, /NAV_MAP_SURFACE_READY/);
+ assert.match(yaml, /network_or_http_blocked/);
+ assert.doesNotMatch(yaml, /continue-on-error: true/);
+});
