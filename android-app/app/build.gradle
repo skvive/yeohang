@@ -17,3 +17,14 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+// Embed the first-party V9 UI overlay into the APK. The production site may still
+// serve V8 until the website branch is approved and deployed.
+tasks.register('syncNavigationAssets', Copy) {
+    from("\${rootProject.projectDir}/../public") {
+        include 'navigation-v9.js'
+        include 'navigation-v9.css'
+    }
+    into("\${projectDir}/src/main/assets")
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationAssets') }
