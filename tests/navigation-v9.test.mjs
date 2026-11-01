@@ -50,3 +50,23 @@ test('CI live map verification is a separate gate from Android package build', (
  assert.match(yaml, /network_or_http_blocked/);
  assert.doesNotMatch(yaml, /continue-on-error: true/);
 });
+
+test('Kakao map provider is strictly opt-in, valid JS, and preserves default Leaflet renderer', () => {
+ const source = root('public/map-kakao-provider.js');
+ assert.doesNotThrow(() => new Script(source));
+ const original={render(){return true;},validPoint(){return true;}};
+ const window={YeohangMultiMap:original};
+ const document={querySelector(){return null;}};
+ new Script(source).runInNewContext({window,document});
+ assert.equal(window.YeohangMultiMap,original);
+ assert.match(source, /https:\/\/dapi\.kakao\.com\/v2\/maps\/sdk\.js/);
+ assert.match(source, /script\.onload/);
+ assert.match(source, /setTimeout\(\(\)=>finish\(false\)/);
+ assert.match(source, /Number\(p\.distance_km\)<=5/);
+ assert.match(source, /document\.createElement\('button'\)/);
+ assert.match(source, /label\.textContent=/);
+ assert.doesNotMatch(source, /innerHTML\s*=/);
+ const layout=root('app/layout.tsx');
+ assert.match(layout, /NEXT_PUBLIC_KAKAO_MAP_JS_KEY/);
+ assert.match(layout, /map-kakao-provider\.css/);
+});
