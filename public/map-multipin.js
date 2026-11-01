@@ -16,6 +16,7 @@
   let container = null;
   let group = null;
   let origin = null;
+  let radiusCircle = null;
   let markers = new Map();
   let current = '';
   let ticket = 0;
@@ -66,6 +67,7 @@
     map = null;
     group = null;
     origin = null;
+    radiusCircle = null;
     container = null;
     markers = new Map();
     current = '';
@@ -114,6 +116,16 @@
       marker.setZIndexOffset(key === current ? 300 : 0);
     }
   }
+  // 카테고리 변경 시 이전 유형의 마커를 즉시 없애고, 이전 비동기 렌더도 무효화한다.
+  function clearPins() {
+    ticket += 1;
+    if (group) group.clearLayers();
+    if (map) map.closePopup?.();
+    markers = new Map();
+    current = '';
+    const status = document.getElementById('mapEngineStatus');
+    if (status) status.textContent = '새 숙소 유형의 반경 5km 핀을 불러오는 중입니다…';
+  }
   function select(id, pan = true, popup = false) {
     const key = String(id || '');
     const marker = markers.get(key);
@@ -123,7 +135,7 @@
     if (popup) marker.openPopup();
     return true;
   }
-  async function render({ pins = [], center = null, userLoc = null, selectedId = '', onSelect }) {
+  async function render({ pins = [], center = null, userLoc = null, originLabel = '', selectedId = '', onSelect }) {
     const run = ++ticket;
     const surface = document.getElementById('multiStayMap');
     if (!surface) return false;
@@ -148,8 +160,9 @@
       }
       group.clearLayers();
       if (origin) { map.removeLayer(origin); origin = null; }
+      if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
       markers = new Map();
-      const points = pins.filter(validPoint).slice(0, 80);
+      const points = pins.filter(p => validPoint(p) && Number.isFinite(Number(p.distance_km)) && Number(p.distance_km) <= 5).slice(0, 80);
       for (const p of points) {
         const id = String(p.id);
         const marker = L.marker([Number(p.lat), Number(p.lng)], {
@@ -164,16 +177,20 @@
         marker.addTo(group);
         markers.set(id, marker);
       }
-      if (validPoint(userLoc)) {
-        origin = L.circleMarker([Number(userLoc.lat), Number(userLoc.lng)], {
-          radius: 8, color: '#fff', weight: 3, fillColor: '#147de0', fillOpacity: 1
-        }).bindTooltip('현재 위치').addTo(map);
+      const originPoint = validPoint(userLoc) ? userLoc : center;
+      if (validPoint(originPoint)) {
+        const pos = [Number(originPoint.lat), Number(originPoint.lng)];
+        radiusCircle = L.circle(pos, { radius: 5000, color: '#047f82', weight: 2,
+          opacity: 0.7, fillColor: '#10a49b', fillOpacity: 0.045, interactive: false }).addTo(map);
+        origin = L.circleMarker(pos, { radius: 9, color: '#fff', weight: 3,
+          fillColor: validPoint(userLoc) ? '#147de0' : '#d97326', fillOpacity: 1
+        }).bindTooltip(originLabel || (validPoint(userLoc) ? '현재 위치' : '가락시장역 · 기본 위치 (실제 위치 아님)')).addTo(map);
       }
       current = '';
       chooseIcon(selectedId);
       if (points.length) {
         const bounds = L.latLngBounds(points.map(p => [Number(p.lat), Number(p.lng)]));
-        if (validPoint(userLoc)) bounds.extend([Number(userLoc.lat), Number(userLoc.lng)]);
+        if (validPoint(originPoint)) bounds.extend([Number(originPoint.lat), Number(originPoint.lng)]);
         map.fitBounds(bounds.pad(0.12), { maxZoom: 13, padding: [22, 22], animate: false });
       } else {
         const p = validPoint(userLoc) ? userLoc : validPoint(center) ? center : { lat: 37.5665, lng: 126.978 };
@@ -181,7 +198,7 @@
       }
       requestAnimationFrame(() => { if (map && surface.isConnected) map.invalidateSize(); });
       const status = document.getElementById('mapEngineStatus');
-      if (status) status.textContent = '숙소 ' + points.length + '곳 지도 핀 표시 · 핀을 누르면 상세정보가 열립니다.';
+      if (status) status.textContent = '반경 5km · 숙소 ' + points.length + '곳 지도 핀 · 선택한 유형만 표시됩니다.';
       return true;
     } catch (error) {
       console.warn('여행갈지도 멀티핀 지도 오류', error);
@@ -193,5 +210,5 @@
   window.addEventListener('hashchange', () => {
     if (!location.hash.startsWith('#map')) destroy();
   });
-  window.YeohangMultiMap = { render, select, destroy, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
+  window.YeohangMultiMap = { render, select, clearPins, destroy, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
 })();
