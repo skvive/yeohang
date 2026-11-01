@@ -191,6 +191,8 @@
       if (points.length) {
         const bounds = L.latLngBounds(points.map(p => [Number(p.lat), Number(p.lng)]));
         if (validPoint(originPoint)) bounds.extend([Number(originPoint.lat), Number(originPoint.lng)]);
+        // 중심 반경 5km 전체가 모바일 지도 영역에 들어오도록 가시 범위를 조정한다.
+        if (radiusCircle?.getBounds) bounds.extend(radiusCircle.getBounds());
         map.fitBounds(bounds.pad(0.12), { maxZoom: 13, padding: [22, 22], animate: false });
       } else {
         const p = validPoint(userLoc) ? userLoc : validPoint(center) ? center : { lat: 37.5665, lng: 126.978 };
