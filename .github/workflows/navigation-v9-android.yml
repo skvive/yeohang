@@ -59,13 +59,14 @@ jobs:
           script: |
             mkdir -p android-app/artifacts
             adb install -r android-app/app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
             adb shell am start -W -n site.lexid.yeohangnav/.MainActivity
             sleep 22
             adb shell dumpsys activity activities | grep -E 'yeohangnav|mResumed' > android-app/artifacts/activity.txt || true
             adb shell pidof site.lexid.yeohangnav > android-app/artifacts/process.txt || true
             adb shell screencap -p /sdcard/yeohang_nav_v9.png
             adb pull /sdcard/yeohang_nav_v9.png android-app/artifacts/emulator-home.png
-            adb logcat -d -t 3000 > android-app/artifacts/logcat.txt
+            adb logcat -d > android-app/artifacts/logcat.txt
             test -s android-app/artifacts/process.txt
             if grep -q 'NAV_MAP_SURFACE_READY' android-app/artifacts/logcat.txt; then
               echo "map_surface_rendered" > android-app/artifacts/web-gate.txt
