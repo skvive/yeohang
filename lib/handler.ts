@@ -407,32 +407,46 @@ export async function handleApi(req: Request, slug: string[]) {
         });
       }
       if (path === '/map') {
-        const latRaw = url.searchParams.get('lat');
-        const lngRaw = url.searchParams.get('lng');
-        const lat = latRaw ? Number(latRaw) : Number.NaN;
-        const lng = lngRaw ? Number(lngRaw) : Number.NaN;
-        const city = url.searchParams.get('city') || '';
         const category = url.searchParams.get('category') || 'all';
         if (!isMapStayCategory(category)) return fail('지원하지 않는 숙소 유형입니다.', 400);
-        const hasUser = Number.isFinite(lat) && Number.isFinite(lng) && lat >= 33 && lat <= 39.6 && lng >= 124.5 && lng <= 132;
-        const koreaGeo = `lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132`;
-        // SQL에서 유형별로 먼저 필터링한 다음 가까운 순으로 80건을 고른다.
-        // UI에서 최초 80건을 걸러내면 특정 유형의 숙소가 아예 표시되지 않는 문제가 있다.
-        const rows = hasUser
-          ? await dbQuery(
-              `SELECT ${LIST_COLUMNS}, (${MAP_STAY_TYPE_SQL}) AS map_stay_type
-               FROM properties WHERE active=true AND ${koreaGeo}
-                 AND ($1::text = 'all' OR (${MAP_STAY_TYPE_SQL}) = $1::text)
-               ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 80`,
-              [category, lat, lng],
-            )
-          : await dbQuery(
-              `SELECT ${LIST_COLUMNS}, (${MAP_STAY_TYPE_SQL}) AS map_stay_type
-               FROM properties WHERE active=true AND ${koreaGeo} AND city=$2
-                 AND ($1::text = 'all' OR (${MAP_STAY_TYPE_SQL}) = $1::text)
-               ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
-              [category, city || '서울'],
-            );
+        // 사용자가 위치 권한을 거부하거나 좌표를 제공하지 않으면 가락시장역을 기본 중심으로 사용한다.
+        // 가락시장역은 실제 사용자 위치가 아니며 GPS 위치로 기록해서는 안 된다.
+        const DEFAULT_CENTER = { lat: 37.493060, lng: 127.118060, label: '가락시장역' };
+        const latRaw = url.searchParams.get('lat');
+        const lngRaw = url.searchParams.get('lng');
+        const explicit = latRaw !== null && lngRaw !== null;
+        const lat = explicit ? Number(latRaw) : DEFAULT_CENTER.lat;
+        const lng = explicit ? Number(lngRaw) : DEFAULT_CENTER.lng;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+            lat < 33 || lat > 39.6 || lng < 124.5 || lng > 132) {
+          return fail('대한민국의 올바른 지도 중심 좌표를 입력해 주세요.', 400);
+        }
+        const origin = url.searchParams.get('origin') === 'gps' && explicit ? 'gps' :
+          url.searchParams.get('origin') === 'region' && explicit ? 'region' : 'default';
+        const radiusKm = 5; // 내 주변: 반경 5km 이내만. 도로 주행 거리가 아닌 직선 거리.
+        // bounding box로 1차 범위를 줄인 뒤 Haversine 원형 반경으로 정밀 검증.
+        const latDelta = radiusKm / 111.32;
+        const lngDelta = radiusKm / (111.32 * Math.max(0.1, Math.cos(lat * Math.PI / 180)));
+        const distanceSQL = `(6371 * 2 * ASIN(LEAST(1, SQRT(
+          POWER(SIN(RADIANS(lat - $2::float8) / 2), 2) +
+          COS(RADIANS($2::float8)) * COS(RADIANS(lat)) *
+          POWER(SIN(RADIANS(lng - $3::float8) / 2), 2)
+        ))))`;
+        const rows = await dbQuery(
+          `SELECT * FROM (
+             SELECT ${LIST_COLUMNS}, (${MAP_STAY_TYPE_SQL}) AS map_stay_type,
+                    ${distanceSQL} AS distance_km_exact
+             FROM properties
+             WHERE active=true
+               AND lat BETWEEN $4::float8 AND $5::float8
+               AND lng BETWEEN $6::float8 AND $7::float8
+               AND ($1::text='all' OR (${MAP_STAY_TYPE_SQL})=$1::text)
+           ) nearby
+           WHERE distance_km_exact <= $8::float8
+           ORDER BY distance_km_exact ASC, id ASC
+           LIMIT 80`,
+          [category, lat, lng, lat - latDelta, lat + latDelta, lng - lngDelta, lng + lngDelta, radiusKm],
+        );
         const pins = rows.map((row) => {
           const p = listProperty(row);
           const stayType = String(row.map_stay_type || 'other');
@@ -440,16 +454,18 @@ export async function handleApi(req: Request, slug: string[]) {
             id: p.id, name: p.name, city: p.city, area: p.area,
             category: MAP_STAY_CATEGORIES[stayType as keyof typeof MAP_STAY_CATEGORIES] || p.category,
             stay_type: stayType, address: p.address, lat: p.lat, lng: p.lng,
-            distance_km: hasUser && p.lat != null && p.lng != null
-              ? Math.round(haversine(lat, lng, p.lat, p.lng) * 10) / 10 : undefined,
+            distance_km: Math.round(Number(row.distance_km_exact) * 10) / 10,
             photo_url: p.photo_url, image_url: p.image_url, source: p.source,
             affiliate_url: p.affiliate_url, agoda_hotel_id: p.agoda_hotel_id,
           };
         });
-        return json({ user: hasUser ? { lat, lng } : null,
+        return json({
+          user: origin === 'gps' ? { lat, lng } : null,
+          center: { lat, lng, label: origin === 'default' ? DEFAULT_CENTER.label : '선택한 검색 중심' },
+          origin, radius_km: radiusKm, distance_metric: 'straight_line',
           category, category_label: MAP_STAY_CATEGORIES[category],
-          count: pins.length, max_results: 80, pins, google: true },
-          200, 'no-store');
+          count: pins.length, max_results: 80, pins, google: true
+        }, 200, 'no-store');
       }
       if (path === '/properties' || path === '/search') {
         const maxp = url.searchParams.get('max_price');
