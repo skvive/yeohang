@@ -192,7 +192,8 @@ test('Map starts at Garak without reusing an unverified cached location', () => 
 
 test('External directions work even without foreground GPS permission', () => {
   const source = read('app.js');
-  assert.match(source, /openDir\(state\.userLoc\|\|null,pin,'driving'\)/);
+  assert.match(source, /YeohangNavigation\?\.openDirections\?\.\(\)/);
+  assert.match(source, /https:\/\/map\.kakao\.com\/link\/to\//);
   const start = source.indexOf('function selectMapPin(');
   const end = source.indexOf('function placesPage(', start);
   assert.ok(start > 0 && end > start);
