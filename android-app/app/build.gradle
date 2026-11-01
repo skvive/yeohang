@@ -24,6 +24,8 @@ tasks.register('syncNavigationAssets', Copy) {
     from("${rootProject.projectDir}/../public") {
         include 'navigation-v9.js'
         include 'navigation-v9.css'
+        include 'assets/mascot-jido.webp'
+        include 'assets/mascot-gilbyeoli.webp'
     }
     into("${projectDir}/src/main/assets")
 }
