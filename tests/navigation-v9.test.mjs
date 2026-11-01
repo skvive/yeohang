@@ -46,8 +46,10 @@ test('Android offline UI is native and WebView error cannot be misread as loaded
 });
 test('CI live map verification is a separate gate from Android package build', () => {
  const yaml = root('.github/workflows/navigation-v9-android.yml');
- assert.match(yaml, /NAV_MAP_SURFACE_READY/);
- assert.match(yaml, /network_or_http_blocked/);
+ assert.match(yaml, /bash android-app\/verify-emulator-map\.sh/);
+ const gate = root('android-app/verify-emulator-map.sh');
+ assert.match(gate, /NAV_MAP_SURFACE_READY/);
+ assert.match(gate, /network_or_http_blocked/);
  assert.doesNotMatch(yaml, /continue-on-error: true/);
 });
 
