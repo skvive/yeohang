@@ -4,7 +4,7 @@ const won=n=>'₩'+Number(n||0).toLocaleString('ko-KR');
 const storageGet=(key,fallback)=>{try{return localStorage.getItem(key)||fallback}catch{return fallback}};
 const storageSet=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 const safeList=(k)=>{try{const v=JSON.parse(storageGet(k,'[]'));return Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,100):[]}catch{return []}};
-const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null};
+const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null,mapSearchQuery:''};
 let toastTimer;
 function toast(s){const el=$('#toast');el.textContent=s;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3800)}
 let voiceRec=null;
@@ -83,7 +83,7 @@ function mapPage(){
   state.userLoc=null;
   window.YeohangGeo?.clear?.();
   app(`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 길찾기는 Google 지도에서 이어집니다.</p></div></div><section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="주변 숙소 여러 위치를 표시하는 지도"></div><iframe id="googleStayMap" title="Google 지도 예비 화면" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(37.493060,127.118060,'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="https://www.google.com/maps?q=37.493060,127.118060" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 지도 타일은 외부 공급자를 통해 표시합니다. 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 길찾기는 Google 지도에서 이어집니다.</p></div></section>`);const start=GARAK_MARKET_STATION;loadGoogleMap(start.lat,start.lng,'');maybeAutoGeo()}
-function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">구글 길찾기</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
+function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">카카오맵 길찾기</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
 function showGoogleMap(pin,dir=false){
   const geo=window.YeohangGeo;
   const frame=$('#googleStayMap');
@@ -156,6 +156,44 @@ function selectMapPin(id,dir=false,fromMap=false){
   if(fromMap){const row=$$('.map-list-row').find(el=>el.dataset.mappin===id);row?.scrollIntoView({behavior:'smooth',block:'nearest'});}
   // 현재 위치 권한이 없어도 외부 지도에서 목적지 길찾기를 시작할 수 있다.
 }
+
+/* V9: 카카오맵 공식 URL 링크 연동, 실시간 경로 안내는 외부 앱에서 수행.
+ * 5km 서버 필터/사용자 위치 동의/유형별 비동기 요청을 건드리지 않는다. */
+function navVisiblePins(){
+  const q=String(state.mapSearchQuery||'').trim().toLocaleLowerCase('ko');
+  if(!q)return state.mapPins;
+  return state.mapPins.filter(p=>[p.name,p.city,p.area,p.category,p.address].some(v=>String(v||'').toLocaleLowerCase('ko').includes(q)));
+}
+function navRedrawPins(){
+  if(nav()!=='map')return 0;
+  const shown=navVisiblePins();
+  const side=$('#mapSide');
+  if(side)side.innerHTML=mapRows(shown);
+  if(!shown.some(p=>p.id===state.mapSelected))state.mapSelected=shown[0]?.id||'';
+  const center=state.mapCenter||GARAK_MARKET_STATION;
+  const gps=state.mapCenter?.city ? null : state.userLoc;
+  window.YeohangMultiMap?.render?.({
+    pins:shown,center,userLoc:gps,
+    originLabel:gps?'현재 위치':state.mapCenter?.city?'지역 검색 중심':'가락시장역 · 기본 위치 (실제 위치 아님)',
+    selectedId:state.mapSelected,
+    onSelect:(id,fromMap)=>selectMapPin(id,false,Boolean(fromMap))
+  });
+  const count=$('#mapGeoStatus');
+  if(count)count.textContent='선택한 숙소 유형 · 반경 5km · 검색 일치 '+shown.length+'곳';
+  return shown.length;
+}
+window.YeohangNavigation=Object.freeze({
+  search(query){state.mapSearchQuery=String(query||'').slice(0,100);return navRedrawPins();},
+  openDirections(){
+    const pin=state.mapPins.find(p=>p.id===state.mapSelected);
+    if(!pin||!window.YeohangMultiMap?.validPoint?.(pin))return false;
+    // Kakao Maps 공식 Web URL 규격. 로케이션 권한이 없더라도 목적지만 전달한다.
+    const dest=encodeURIComponent(String(pin.name||'목적지'))+','+Number(pin.lat)+','+Number(pin.lng);
+    const url='https://map.kakao.com/link/to/'+dest;
+    const open=window.open(url,'_blank','noopener,noreferrer');
+    return Boolean(open);
+  }
+});
 function placesPage(){const qs=new URLSearchParams(location.hash.split('?')[1]||'');const city=qs.get('city')||'';const q=qs.get('q')||'';const cities=['','서울','부산','제주','경주','전주','가평','속초','강릉'];app(`<div class="page-head"><div class="wrap"><span class="eyebrow">한국관광공사 · 유튜브 · 블로거</span><h1>국내 명소를 지역으로 찾기</h1><p>관광공사 TourAPI와 유튜브 Data API, 구글 블로거 공식 연동만 사용합니다. 상세 페이지에서 소개·지도·쇼츠·브이로그·근처 숙소를 함께 봅니다.</p></div></div><section class="section-tight"><div class="wrap"><form id="placesForm" class="filters"><input name="q" class="field-input filter-input" value="${esc(q)}" placeholder="예: 경복궁, 해수욕장" maxlength="80"><select name="city" class="select-input">${cities.map(c=>`<option value="${esc(c)}" ${c===city?'selected':''}>${c||'전체 지역'}</option>`).join('')}</select><button class="filled-btn">지역 검색</button></form><div class="region-strip">${cities.map(c=>`<a class="region-pill ${c===city?'active':''}" href="#places?city=${encodeURIComponent(c)}">${c||'전체'}</a>`).join('')}</div><div id="placesArea" class="loading">명소를 불러오는 중입니다…</div></div></section>`);loadPlaces(city,q)}
 async function loadPlaces(city='',q=''){const el=$('#placesArea');if(!el)return;try{const r=await api('/api/places?'+new URLSearchParams({city,q}));el.innerHTML=`<div class="result-count">${r.count}곳 · ${r.tourapi?'TourAPI 연결됨':'TourAPI 키 미설정 · 샘플'} · ${r.youtube?'유튜브 API 연결됨':'유튜브 키 미설정'}</div><div class="directory-list place-grid">${(r.places||[]).map(p=>`<article class="directory-item"><span class="directory-top">${esc(p.city)} · ${esc(p.category)}</span><h2><a href="/place/${encodeURIComponent(p.id)}">${esc(p.name)} ↗</a></h2><p>${esc((p.overview||'').slice(0,90))}…</p></article>`).join('')||'<div class="empty">이 지역 명소가 없습니다.</div>'}`;}catch(e){el.innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
 function journal(){app(`<div class="page-head"><div class="wrap"><span class="eyebrow">여행 저널</span><h1>구글 블로그로 만나는 여행</h1><p>공개된 구글 블로거 여행 글을 공식 연동으로 확인하고 숙소·명소 정보와 연결합니다. 국내 명소 소개는 <a href="#places">지역별 명소</a>에서 이어집니다.</p></div></div><section class="section-tight"><div class="wrap"><div class="blog-layout"><article class="blog-leading"><img src="/assets/hero.webp" alt="인공지능으로 제작한 여행 숙소 콘셉트"><div class="story-copy"><span class="eyebrow">에디터 노트</span><h2 style="margin:10px 0">숙소의 이야기를 검색에 연결하는 방법</h2><p>숙소 운영자는 블로거에 글을 발행하고 여행갈지도가 공식 연동으로 공개 게시글 제목·링크를 불러와 연결합니다. 검색과 예약 문의, 채팅은 여행갈지도에서 처리합니다.</p><span class="badge">구글 블로거 중심 콘텐츠 구조</span></div></article><div><div class="blog-post"><span class="eyebrow">블로그 연결</span><h3>숙소별 블로그 콘텐츠 연동</h3><p>각 업체가 블로그 ID를 연결하면 공개 게시글을 공식 블로거 연동으로 조회하고, 원문은 블로거로 연결합니다.</p><form id="bloggerForm"><input id="blogIdInput" class="field-input" type="text" inputmode="numeric" placeholder="블로거 숫자 아이디" required><button class="filled-btn" style="margin-top:10px">공개 글 불러오기</button></form><div id="bloggerResult" class="mini-info" style="margin-top:13px">API 키와 실제 블로그 ID 설정 후 연동됩니다.</div></div><div class="blog-post"><span class="eyebrow">숙소 스토리</span><h3>검색에 강한 숙소 스토리</h3><p>지역 명소·찾아가는 방법·객실 정보·실제 사진 출처 등 고유한 정보를 쌓습니다. Google 검색의 상위 노출은 보장하지 않습니다.</p></div><div class="blog-post"><span class="eyebrow">콘텐츠 권리</span><h3>저작권을 확인한 콘텐츠만</h3><p>인공지능 콘셉트 이미지와 실제 숙소 사진을 구분하고, 제휴·소유자 승인 사진을 별도 보관합니다.</p></div></div></div><div class="layout-spacer"></div>${sectionTitle('추천 여행 루트','이번 주 여행 아이디어','가상 여행 콘셉트를 활용해 만든 에디토리얼 예시입니다. 실제 방문·검증 후기와 구분됩니다.')}<div class="story-grid">${storyCards()}</div></div></section>`)}
@@ -199,7 +237,7 @@ document.addEventListener('click',async e=>{let target=e.target.closest('[data-a
  target=e.target.closest('[data-city]');if(target){const c=target.dataset.city;state.city=c;if(location.hash.startsWith('#discover'))location.hash='#discover?city='+encodeURIComponent(c)+'&q='+encodeURIComponent(state.q);else{$$('.region-pill').forEach(t=>t.classList.toggle('active',t===target));const props=state.allProperties.filter(p=>!c||p.city===c);const grid=$('#featuredGrid');if(grid)grid.innerHTML=listingGrid(props.slice(0,4))}return}
  target=e.target.closest('[data-near]');if(target){nearMe();return}
  target=e.target.closest('[data-cleargeo]');if(target){window.YeohangGeo?.clear?.();state.userLoc=null;state.mapCenter=null;toast('위치를 지웠습니다. 가락시장역을 기본 위치로 표시합니다.');mapPage();return}
- target=e.target.closest('[data-mapdir]');if(target){e.preventDefault();e.stopPropagation();selectMapPin(target.dataset.mapdir,true);const pin=state.mapPins.find(p=>p.id===target.dataset.mapdir);if(pin&&window.YeohangGeo)window.open(window.YeohangGeo.openDir(state.userLoc||null,pin,'driving'),'_blank','noopener,noreferrer');return}
+ target=e.target.closest('[data-mapdir]');if(target){e.preventDefault();e.stopPropagation();selectMapPin(target.dataset.mapdir,true);const pin=state.mapPins.find(p=>p.id===target.dataset.mapdir);if(pin)window.YeohangNavigation?.openDirections?.();return}
  target=e.target.closest('[data-mappin]');if(target){selectMapPin(target.dataset.mappin,false);return}
  target=e.target.closest('[data-mapcategory]');if(target){const kind=target.dataset.mapcategory;if(!MAP_STAY_CATEGORY_OPTIONS.some(([id])=>id===kind))return;if(state.mapCategory===kind)return;state.mapCategory=kind;state.mapSelected='';document.querySelectorAll('[data-mapcategory]').forEach(btn=>{const on=btn.dataset.mapcategory===kind;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on))});const center=state.mapCenter||GARAK_MARKET_STATION;loadGoogleMap(center.lat,center.lng,center.city);return}
  target=e.target.closest('[data-mapcity]');if(target){mapCity(target.dataset.mapcity);return}
