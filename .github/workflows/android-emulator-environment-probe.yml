@@ -17,6 +17,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install API36 SDK and verify tools
         run: |
           yes | sdkmanager --licenses >/dev/null || true
