@@ -23,7 +23,10 @@
      script.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey='+encodeURIComponent(key)+'&autoload=false';
      script.async=true;
      script.referrerPolicy='strict-origin-when-cross-origin';
-     script.onload=()=>window.kakao?.maps?.load?.(()=>finish(Boolean(window.kakao?.maps?.Map)))||finish(false);
+     script.onload=()=>{
+       if(!window.kakao?.maps?.load){finish(false);return;}
+       window.kakao.maps.load(()=>finish(Boolean(window.kakao?.maps?.Map)));
+     };
      script.onerror=()=>finish(false);
      document.head.appendChild(script);
      setTimeout(()=>finish(false),8500);
