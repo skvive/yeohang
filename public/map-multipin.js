@@ -193,5 +193,5 @@
   window.addEventListener('hashchange', () => {
     if (!location.hash.startsWith('#map')) destroy();
   });
-  window.YeohangMultiMap = { render, select, destroy, validPoint };
+  window.YeohangMultiMap = { render, select, destroy, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
 })();
