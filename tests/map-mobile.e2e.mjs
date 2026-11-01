@@ -24,7 +24,7 @@ async function makePage(gps = false) {
   const requests = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route(/\/api\/map\?/, async route => {
-    const u = new URL(route.request().url);
+    const u = new URL(route.request().url());
     const category = u.searchParams.get('category') || 'all';
     const origin = u.searchParams.get('origin') || 'default';
     const pins = category === 'all' ? hotels : hotels.filter(x => x.stay_type === category);
