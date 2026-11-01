@@ -1,0 +1,122 @@
+name: Android v8 APK Build Install and 8 Screens
+on:
+  push:
+    branches: [qa/android-emulator-lab-20261101]
+    paths:
+      - 'android-lab-src/**'
+      - '.github/workflows/android-v8-build-emulator.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  android-v8:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Unpack exact v8 Android source bundle
+        run: |
+          set -euo pipefail
+          echo '8cf0a72d345fd99ff0725551751470f018dbf37a9754226a390403d4fc7ea847  android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip' | sha256sum --check
+          unzip -q android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip -d .
+          test -f android-app/app/src/main/java/site/lexid/yeohangnav/MainActivity.java
+          test -f android-app/app/src/main/java/site/lexid/yeohangnav/NearbyMapActivity.java
+          test -f android-app/app/src/main/assets/nearby-map.html
+          test -f tests/map_v8_logic.test.cjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Install Android SDK API36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+      - name: Source logic tests and JS syntax
+        run: |
+          node --check android-app/app/src/main/assets/nearby-map.js
+          node --check android-app/app/src/main/assets/app.js
+          node --test tests/map_v8_logic.test.cjs
+      - name: Compile actual Android installable debug APK
+        run: |
+          cd android-app
+          gradle --no-daemon :app:assembleMapsLinkDebug --stacktrace
+          test -s app/build/outputs/apk/mapsLink/debug/app-mapsLink-debug.apk
+          sha256sum app/build/outputs/apk/mapsLink/debug/app-mapsLink-debug.apk
+      - name: Enable accelerated Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+      - name: Install APK and capture multiple genuine Android screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          script: |
+            set -euo pipefail
+            mkdir -p android-lab-results
+            APK=android-app/app/build/outputs/apk/mapsLink/debug/app-mapsLink-debug.apk
+            PKG=site.lexid.yeohangnav
+            adb install -r "$APK" | tee android-lab-results/install.txt
+            adb shell pm path "$PKG" | tee android-lab-results/package_path.txt
+            adb shell am start -W -n "$PKG/.MainActivity" | tee android-lab-results/home_launch.txt
+            sleep 9
+            adb exec-out screencap -p > android-lab-results/01-home.png
+            for entry in 'all:02-all-stays' 'hotel:03-hotels-only' 'motel:04-motels-only' 'private:05-private-houses-only' 'pension:06-pension-only' 'guesthouse:07-guesthouses-only' 'camping:08-camping-only'; do
+              CAT="${entry%%:*}"
+              NAME="${entry#*:}"
+              adb shell am force-stop "$PKG"
+              adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category "$CAT" | tee "android-lab-results/${NAME}-launch.txt"
+              sleep 8
+              adb exec-out screencap -p > "android-lab-results/${NAME}.png"
+              test -s "android-lab-results/${NAME}.png"
+            done
+            adb shell pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION
+            adb emu geo fix 127.118060 37.493060 || true
+            adb shell am force-stop "$PKG"
+            adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category motel --ez gpsApproved true --ed lat 37.493060 --ed lng 127.118060 | tee android-lab-results/09-gps-launch.txt
+            sleep 9
+            adb exec-out screencap -p > android-lab-results/09-gps-motels.png
+            adb shell pidof "$PKG" | tee android-lab-results/process.txt
+            adb logcat -d -t 2000 > android-lab-results/logcat.txt
+            if grep -A 8 'FATAL EXCEPTION' android-lab-results/logcat.txt | grep -q "$PKG"; then
+              echo 'FATAL EXCEPTION found'; exit 1
+            fi
+            test "$(find android-lab-results -maxdepth 1 -name '*.png' | wc -l)" -ge 9
+            file android-lab-results/*.png
+      - name: Upload real APK and 9 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: YeohaengGaljido-v8-APK-and-9-real-emulator-screens
+          path: |
+            android-app/app/build/outputs/apk/mapsLink/debug/*.apk
+            android-lab-results/*
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve nine screenshots on QA branch for mobile review
+        if: success()
+        run: |
+          set -euo pipefail
+          mkdir -p qa/android-v8-screenshots
+          cp android-lab-results/*.png qa/android-v8-screenshots/
+          git config user.name 'android-lab-bot'
+          git config user.email 'android-lab-bot@users.noreply.github.com'
+          git add qa/android-v8-screenshots/
+          git commit -m 'test(android): save nine screenshots from installed API35 emulator' || exit 0
+          git push origin HEAD:qa/android-emulator-lab-20261101
