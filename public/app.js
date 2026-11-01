@@ -96,6 +96,10 @@ async function loadGoogleMap(lat,lng,city=''){
   else {params.set('lat',String(lat));params.set('lng',String(lng))}
   const st=$('#mapGeoStatus');
   if(st)st.textContent='숙소 유형별 결과를 불러오는 중입니다…';
+  // 새 유형을 선택하면 이전 유형의 핀을 즉시 제거한다. 느린 응답도 새 필터를 덮어쓸 수 없다.
+  window.YeohangMultiMap?.clearPins?.();
+  const pendingSide=$('#mapSide');
+  if(pendingSide)pendingSide.innerHTML='<div class="loading" role="status">선택한 유형의 숙소를 찾는 중입니다…</div>';
   try {
     const r=await api('/api/map?'+params);
     if(seq!==mapLoadSequence||nav()!=='map')return;
