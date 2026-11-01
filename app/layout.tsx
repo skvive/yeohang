@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <meta name="yeohang-map-tile-url" content={process.env.NEXT_PUBLIC_MAP_TILE_URL || ""} />
+        <meta name="yeohang-kakao-js-key" content={process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY || ""} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/map-stay-categories.css" />
         <link rel="stylesheet" href="/map-multipin.css" />
         <link rel="stylesheet" href="/navigation-v9.css" />
+        <link rel="stylesheet" href="/map-kakao-provider.css" />
         <link rel="stylesheet" href="/deal.css" />
         <link rel="stylesheet" href="/ai-search.css" />
         <link rel="stylesheet" href="/places.css" />
