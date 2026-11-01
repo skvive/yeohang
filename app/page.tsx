@@ -120,6 +120,7 @@ export default function HomePage() {
       <Script src="/brand.js" strategy="afterInteractive" />
       <Script src="/kakao-channel.js" strategy="afterInteractive" />
       <Script src="/brand-v2.js" strategy="afterInteractive" />
+      <Script src="/map-multipin.js" strategy="afterInteractive" />
       <Script src="/app.js" strategy="afterInteractive" type="module" />
     </>
   );

@@ -1,0 +1,23 @@
+name: Nearby Multi-Pin Map Tests
+on:
+  pull_request:
+    paths:
+      - 'public/app.js'
+      - 'public/map-multipin.js'
+      - 'tests/nearby-map.test.mjs'
+      - '.github/workflows/nearby-map-tests.yml'
+  push:
+    branches:
+      - 'feat/nearby-multi-pin-map-20261101'
+jobs:
+  test-map:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test multi-pin map integration and XSS-safe popups
+        run: node --test tests/nearby-map.test.mjs
