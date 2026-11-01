@@ -16,6 +16,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.net.http.SslError;
+import android.webkit.SslErrorHandler;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -114,12 +116,18 @@ public final class MainActivity extends Activity {
                 webView.setVisibility(View.VISIBLE);
                 statusPanel.setVisibility(View.GONE);
                 Log.i(TAG, "NAV_PAGE_READY URL=first_party");
+                verifyMapSurfaceLater();
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
                     failNativeState("NAV_PAGE_FAILED", "인터넷 연결을 확인해 주세요.",
                         "네트워크 또는 도메인 연결에 실패했습니다. 연결 후 다시 시도해 주세요.");
                 }
+            }
+            @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.cancel();
+                failNativeState("NAV_TLS_ERROR", "안전한 연결을 설정하지 못했어요.",
+                    "보안 연결 문제로 지도를 열지 않았습니다. 네트워크 상태를 확인해 주세요.");
             }
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
                 if (request.isForMainFrame() && errorResponse != null &&
@@ -272,6 +280,21 @@ public final class MainActivity extends Activity {
         } catch (Exception error) {
             Log.w(TAG, "NAV_BRAND_OVERLAY_FAILED");
         }
+    }
+
+    // This signal verifies the app page rendered the map controls; it is NOT proof of live road routing.
+    private void verifyMapSurfaceLater() {
+        if (webView == null) return;
+        webView.postDelayed(() -> {
+            if (pageFailed || webView == null) return;
+            String expression = "(function(){return !!document.getElementById('mapCanvas')" +
+                "&&!!document.getElementById('mapSide')" +
+                "&&!!document.querySelector('[data-mapcategory]');})()";
+            webView.evaluateJavascript(expression, value -> {
+                if ("true".equals(value)) Log.i(TAG, "NAV_MAP_SURFACE_READY");
+                else Log.w(TAG, "NAV_MAP_SURFACE_UNVERIFIED");
+            });
+        }, 7000);
     }
 
     private boolean hasLocation() {
