@@ -4,11 +4,15 @@ on:
     paths:
       - 'public/app.js'
       - 'public/map-multipin.js'
+      - 'vercel.json'
+      - 'lib/handler.ts'
       - 'tests/nearby-map.test.mjs'
       - '.github/workflows/nearby-map-tests.yml'
   push:
     branches:
-      - 'feat/nearby-multi-pin-map-20261101'
+      - 'main'
+      - 'feat/**'
+      - 'fix/**'
 jobs:
   test-map:
     runs-on: ubuntu-latest

@@ -176,3 +176,37 @@ test('5km server and no-GPS Garak station default are enforced', () => {
   assert.match(client, /GARAK_MARKET_STATION/);
   assert.match(client, /new URLSearchParams\(\{category,lat:String\(lat\),lng:String\(lng\),origin\}\)/);
 });
+
+test('Map starts at Garak without reusing an unverified cached location', () => {
+  const source = read('app.js');
+  const start = source.indexOf('function mapPage(){');
+  const end = source.indexOf('function mapRows(', start);
+  assert.ok(start >= 0 && end > start);
+  const initial = source.slice(start, end);
+  assert.match(initial, /state\.userLoc=null/);
+  assert.match(initial, /YeohangGeo\?\.clear\?\.\(\)/);
+  assert.match(initial, /const start=GARAK_MARKET_STATION/);
+  assert.doesNotMatch(initial, /YeohangGeo\?\.read/);
+  assert.match(initial, /q=37\.493060,127\.118060/);
+});
+
+test('External directions work even without foreground GPS permission', () => {
+  const source = read('app.js');
+  assert.match(source, /openDir\(state\.userLoc\|\|null,pin,'driving'\)/);
+  const start = source.indexOf('function selectMapPin(');
+  const end = source.indexOf('function placesPage(', start);
+  assert.ok(start > 0 && end > start);
+  assert.doesNotMatch(source.slice(start,end), /nearMe\(\)/);
+});
+
+test('Region choice remains explicit and independent of the fallback center', () => {
+  const source = read('app.js');
+  assert.match(source, /'서울':\[37\.5665,126\.978\]/);
+  assert.match(source, /const start=GARAK_MARKET_STATION/);
+});
+
+test('Vercel builds must not run DB migration, seed, or data imports', () => {
+  const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url),'utf8'));
+  assert.equal(config.buildCommand, 'npm run build');
+  assert.doesNotMatch(config.buildCommand, /db:migrate|db:seed|import/);
+});

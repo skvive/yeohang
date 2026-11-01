@@ -1,0 +1,62 @@
+name: Map Mobile Browser E2E
+on:
+  pull_request:
+    paths:
+      - 'public/app.js'
+      - 'public/map-multipin.js'
+      - 'tests/map-mobile.e2e.mjs'
+      - 'vercel.json'
+      - '.github/workflows/map-mobile-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'public/app.js'
+      - 'public/map-multipin.js'
+      - 'tests/map-mobile.e2e.mjs'
+      - 'vercel.json'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  mobile-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install temporary browser test dependencies
+        run: npm install --no-save --package-lock=false playwright@1.55.0 leaflet@1.9.4
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build without DB migration or seed
+        run: npm run build
+      - name: Start local production app
+        run: |
+          nohup npm run start -- --port 3000 > /tmp/yeohang-e2e-server.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/yeohang-e2e-server.log
+          exit 1
+      - name: Mobile map category and GPS E2E
+        run: node tests/map-mobile.e2e.mjs
+        env:
+          MAP_E2E_URL: http://127.0.0.1:3000
+          MAP_SCREENSHOT_DIR: test-results/map-mobile
+      - name: Upload mobile QA screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: map-mobile-e2e-screenshots
+          path: test-results/map-mobile/
+          if-no-files-found: ignore
+      - name: Show server logs on failure
+        if: failure()
+        run: tail -120 /tmp/yeohang-e2e-server.log || true
