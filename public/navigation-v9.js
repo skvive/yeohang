@@ -90,7 +90,7 @@
          const u=new URL(open?.href||'',location.href);
          coordinates=u.searchParams.get('query')||u.searchParams.get('q')||'';
        }catch{}
-       const match=coordinates.match(/(-?\\d{2}\\.\\d+)\\s*,\\s*(-?\\d{3}\\.\\d+)/);
+       const match=coordinates.match(/(-?\d{2}\.\d+)\s*,\s*(-?\d{3}\.\d+)/);
        const route=match?
          'https://map.kakao.com/link/to/'+encodeURIComponent(name)+','+match[1]+','+match[2]:
          'https://map.kakao.com/link/search/'+encodeURIComponent(name);
