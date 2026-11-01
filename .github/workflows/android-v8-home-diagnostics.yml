@@ -1,0 +1,47 @@
+name: Android v8 Diagnose Blank Home Screen
+on:
+  push:
+    branches: [qa/android-emulator-lab-20261101]
+    paths:
+      - '.github/workflows/android-v8-home-diagnostics.yml'
+      - 'android-lab-scripts/diagnose-home.sh'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  home-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+      - name: Run real Android emulator and record home at 15 35 55 sec
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash android-lab-scripts/diagnose-home.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-v8-Home-Blank-Screen-Diagnostic
+          path: home-diagnostic/
+          if-no-files-found: warn
