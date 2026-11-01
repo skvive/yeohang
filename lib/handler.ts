@@ -1,3 +1,4 @@
+import { MAP_STAY_CATEGORIES, MAP_STAY_TYPE_SQL, isMapStayCategory } from '@/lib/map-stay-category';
 import { auth } from '@/lib/auth/server';
 import { dbQuery, dbTx } from '@/lib/db';
 import {
@@ -411,40 +412,44 @@ export async function handleApi(req: Request, slug: string[]) {
         const lat = latRaw ? Number(latRaw) : Number.NaN;
         const lng = lngRaw ? Number(lngRaw) : Number.NaN;
         const city = url.searchParams.get('city') || '';
-        const hasUser = Number.isFinite(lat) && Number.isFinite(lng);
+        const category = url.searchParams.get('category') || 'all';
+        if (!isMapStayCategory(category)) return fail('지원하지 않는 숙소 유형입니다.', 400);
+        const hasUser = Number.isFinite(lat) && Number.isFinite(lng) && lat >= 33 && lat <= 39.6 && lng >= 124.5 && lng <= 132;
         const koreaGeo = `lat BETWEEN 33 AND 39.6 AND lng BETWEEN 124.5 AND 132`;
+        // SQL에서 유형별로 먼저 필터링한 다음 가까운 순으로 80건을 고른다.
+        // UI에서 최초 80건을 걸러내면 특정 유형의 숙소가 아예 표시되지 않는 문제가 있다.
         const rows = hasUser
           ? await dbQuery(
-              `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND ${koreaGeo} ORDER BY (lat - $1)^2 + (lng - $2)^2 ASC LIMIT 80`,
-              [lat, lng],
+              `SELECT ${LIST_COLUMNS}, (${MAP_STAY_TYPE_SQL}) AS map_stay_type
+               FROM properties WHERE active=true AND ${koreaGeo}
+                 AND ($1::text = 'all' OR (${MAP_STAY_TYPE_SQL}) = $1::text)
+               ORDER BY (lat - $2)^2 + (lng - $3)^2 ASC LIMIT 80`,
+              [category, lat, lng],
             )
           : await dbQuery(
-              `SELECT ${LIST_COLUMNS} FROM properties WHERE active=true AND ${koreaGeo} AND city=$1 ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
-              [city || '서울'],
+              `SELECT ${LIST_COLUMNS}, (${MAP_STAY_TYPE_SQL}) AS map_stay_type
+               FROM properties WHERE active=true AND ${koreaGeo} AND city=$2
+                 AND ($1::text = 'all' OR (${MAP_STAY_TYPE_SQL}) = $1::text)
+               ORDER BY coalesce(review_count,0) DESC, name ASC LIMIT 80`,
+              [category, city || '서울'],
             );
-        const pins = rows.map(listProperty).map((p) => ({
-          id: p.id,
-          name: p.name,
-          city: p.city,
-          area: p.area,
-          category: p.category,
-          address: p.address,
-          lat: p.lat,
-          lng: p.lng,
-          distance_km:
-            hasUser && p.lat != null && p.lng != null ? Math.round(haversine(lat, lng, p.lat, p.lng) * 10) / 10 : undefined,
-          photo_url: p.photo_url,
-          image_url: p.image_url,
-          source: p.source,
-          affiliate_url: p.affiliate_url,
-          agoda_hotel_id: p.agoda_hotel_id,
-        }));
-        return json({
-          user: hasUser ? { lat, lng } : null,
-          count: pins.length,
-          pins,
-          google: true,
+        const pins = rows.map((row) => {
+          const p = listProperty(row);
+          const stayType = String(row.map_stay_type || 'other');
+          return {
+            id: p.id, name: p.name, city: p.city, area: p.area,
+            category: MAP_STAY_CATEGORIES[stayType as keyof typeof MAP_STAY_CATEGORIES] || p.category,
+            stay_type: stayType, address: p.address, lat: p.lat, lng: p.lng,
+            distance_km: hasUser && p.lat != null && p.lng != null
+              ? Math.round(haversine(lat, lng, p.lat, p.lng) * 10) / 10 : undefined,
+            photo_url: p.photo_url, image_url: p.image_url, source: p.source,
+            affiliate_url: p.affiliate_url, agoda_hotel_id: p.agoda_hotel_id,
+          };
         });
+        return json({ user: hasUser ? { lat, lng } : null,
+          category, category_label: MAP_STAY_CATEGORIES[category],
+          count: pins.length, max_results: 80, pins, google: true },
+          200, 'no-store');
       }
       if (path === '/properties' || path === '/search') {
         const maxp = url.searchParams.get('max_price');
