@@ -187,7 +187,9 @@ function categoryOf(raw) {
   if (/resort|리조트/.test(t)) return '리조트';
   if (/camp|glamp|캠핑|글램핑/.test(t)) return '캠핑·글램핑';
   if (/guest|hostel|호스텔|게스트/.test(t)) return '게스트하우스';
-  if (/pension|villa|motel|homestay|펜션|풀빌라/.test(t)) return '펜션·풀빌라';
+  if (/motel|모텔/.test(t)) return '모텔';
+  if (/homestay|private[\s-]*house|entire[\s-]*home|holiday[\s-]*home|vacation[\s-]*home|프라이빗[\s-]*하우스|독채|단독주택/.test(t)) return '프라이빗 하우스';
+  if (/pension|villa|펜션|풀빌라/.test(t)) return '펜션·풀빌라';
   return '호텔';
 }
 

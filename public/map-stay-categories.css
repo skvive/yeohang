@@ -1,0 +1,14 @@
+/* 여행갈지도 / 내 주변 숙소 필터: 모바일 우선, 기존 지도·버튼 스타일 분리 */
+.map-category-filter{margin:17px 0 14px;padding:14px 15px 16px;border:1px solid #d9e8e3;border-radius:20px;background:linear-gradient(112deg,#fffaf1,#edf8f3);box-shadow:0 8px 28px rgba(9,45,67,.045);min-width:0}
+.map-category-title{display:flex;align-items:center;gap:11px;margin:0 0 12px}
+.map-category-title img{width:49px;height:49px;object-fit:contain;flex:none}
+.map-category-title strong{display:block;color:#10394a;font-size:15px;font-weight:900;line-height:1.4}
+.map-category-title span{display:block;color:#64827f;font-size:12px;margin-top:3px;line-height:1.5}
+.map-category-chips{display:flex;flex-wrap:wrap;gap:8px}
+.map-category-chip{appearance:none;border:1px solid #d2e3df;background:#fff;color:#34515a;border-radius:999px;min-height:44px;padding:9px 15px;line-height:1.4;font-size:13px;font-weight:750;white-space:nowrap;box-shadow:0 2px 7px rgba(10,61,60,.03);transition:background .12s,border-color .12s,box-shadow .12s}
+.map-category-chip span{margin-right:3px}
+.map-category-chip:hover{border-color:#0e8682}
+.map-category-chip.active,.map-category-chip[aria-pressed="true"]{background:#087e80;color:#fff;border-color:#087e80;box-shadow:0 5px 16px rgba(8,126,128,.18)}
+.map-category-chip:focus-visible{outline:3px solid #efaa4c!important;outline-offset:2px}
+@media(max-width:760px){.map-category-filter{padding:12px;margin:14px 0}.map-category-chips{overflow-x:auto;flex-wrap:nowrap;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:4px 1px 8px;scrollbar-width:thin}.map-category-chip{flex:0 0 auto;scroll-snap-align:start;font-size:12px;padding:9px 13px;min-height:44px}.map-category-title strong{font-size:14px}.map-category-title span{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.map-category-chip{transition:none}}

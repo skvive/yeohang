@@ -4,7 +4,7 @@ const won=n=>'₩'+Number(n||0).toLocaleString('ko-KR');
 const storageGet=(key,fallback)=>{try{return localStorage.getItem(key)||fallback}catch{return fallback}};
 const storageSet=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 const safeList=(k)=>{try{const v=JSON.parse(storageGet(k,'[]'));return Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,100):[]}catch{return []}};
-const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:''};
+const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null};
 let toastTimer;
 function toast(s){const el=$('#toast');el.textContent=s;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3800)}
 let voiceRec=null;
@@ -63,10 +63,52 @@ function askPage(){const qs=new URLSearchParams(location.hash.split('?')[1]||'')
 function adCard(p,q){if(!p)return '';return `<article class="ai-ad-card" data-adclick="${esc(p.id)}" data-adquery="${esc(q)}" tabindex="0" role="link" aria-label="광고 ${esc(p.name)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><span class="ai-ad-kicker">광고 · 월구독 파트너</span><h3>${esc(p.name)}</h3><p>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')}</p><p class="mini-info">AI 검색 결과의 광고 칸 1곳입니다. 클릭·노출은 업주 리포트에 집계됩니다.</p></div></article>`}
 function sightCards(sights){if(!sights||!sights.length)return '';return `${sectionTitle('근처 관광지','이 여행에서 같이 가면 좋은 곳','여행갈지도 지역 자료와 해석된 목적지를 기준으로 고른 명소입니다.')}<div class="ai-sights">${sights.map(s=>`<article class="ai-sight"><small>${esc(s.area||'')}</small><b>${esc(s.name)}</b><p>${esc(s.why||'')}</p></article>`).join('')}</div>`}
 async function runAsk(q){const el=$('#askAnswer');if(!el)return;el.innerHTML='<div class="loading">길별이가 검색 중입니다…</div>';try{const r=await api('/api/ai/search',{q});state.q=q;const engine=r.engine==='openrouter'?'오픈라우터 저비용 모델':r.engine==='rules-fallback'?'규칙 해석 · 모델 연결 실패':'규칙 해석 · 오픈라우터 키 미설정';el.innerHTML=`<article class="ai-answer"><h2>길별이 답변</h2><p id="aiAnswerText">${esc(r.answer)}</p><div class="ai-answer-actions"><button type="button" class="voice-speak" data-voice-speak>읽어주기</button><button type="button" class="near-button" data-navgo="discover">조건 검색으로 보기</button></div><p class="ai-meta">${esc(engine)}${r.model?' · '+esc(r.model):''}${r.interpretation?.city?' · 지역 '+esc(r.interpretation.city):''}</p></article>${r.ad?adCard(r.ad,q):'<p class="notice">이번 검색에 표시할 월구독 광고가 없습니다. 모텔·펜션 파트너는 가격표에서 광고 칸을 구독할 수 있습니다.</p>'}${r.stays?.length?`${sectionTitle('추천 숙소','우리 사이트에서 고른 5곳','광고와 분리된 일반 추천입니다.')}${listingGrid(r.stays)}`:'<div class="empty"><h3>조건에 맞는 숙소가 없습니다.</h3><p>지역이나 예산을 조금 넓혀 다시 물어 보세요.</p></div>'}${sightCards(r.sights||[])}<p class="disclosure">${esc(r.disclosure||'')}</p>`;bindCommon()}catch(e){el.innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
-function mapPage(){state.userLoc=state.userLoc||window.YeohangGeo?.read?.()||null;app(`<div class="page-head"><div class="wrap"><span class="eyebrow">구글 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>아고다 숙소 좌표를 구글 지도에 표시합니다. 위치 접근을 허용하면 현재 위치 기준으로 가까운 숙소와 길찾기를 제공합니다.</p></div></div><section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div><p class="map-geo-status" id="mapGeoStatus">구글 지도에 숙소 위치를 불러오는 중입니다.</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><iframe id="googleStayMap" title="구글 지도 숙소 위치" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(37.5665,126.978,'서울'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="https://www.google.com/maps?q=37.5665,126.978" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="disclosure">지도 핀은 아고다 제공 위도·경도를 사용합니다. 현재 위치는 이 브라우저 세션에만 저장되며 회원 계정에는 올리지 않습니다. 길찾기는 구글 지도에서 이어집니다.</p></div></section>`);const start=state.userLoc||{lat:37.5665,lng:126.978};loadGoogleMap(start.lat,start.lng,state.userLoc?'':'서울');maybeAutoGeo()}
-function mapRows(props){return (props||[]).length?props.slice(0,40).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">구글 길찾기</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join(''):'<div class="empty"><h3>이 위치 주변 숙소가 없습니다.</h3><p>다른 지역을 선택하거나 위치 권한을 허용해 보세요.</p></div>'}
+const MAP_STAY_CATEGORY_OPTIONS = [
+  ['all','전체','✦'], ['hotel','호텔','🏨'], ['motel','모텔','🛏️'],
+  ['pension','펜션·풀빌라','🏡'], ['private','프라이빗 하우스','🏠'],
+  ['resort','리조트','🌴'], ['guesthouse','게스트하우스','🎒'],
+  ['hanok','한옥','🏯'], ['camping','캠핑·글램핑','⛺'], ['other','기타 숙박','⌂']
+];
+let mapLoadSequence = 0;
+function mapCategoryControls(){
+  return `<div class="map-category-filter" aria-label="숙소 유형 선택">
+    <div class="map-category-title"><img src="/assets/mascot-meomuri.webp" alt="" loading="lazy"><div><strong>머무리와 숙소 유형 고르기</strong><span>원하는 숙소만 지도와 목록에서 찾아보세요</span></div></div>
+    <div class="map-category-chips" role="group" aria-label="숙소 유형 필터">${MAP_STAY_CATEGORY_OPTIONS.map(([id,label,icon])=>
+      `<button type="button" class="map-category-chip ${state.mapCategory===id?'active':''}" data-mapcategory="${id}" aria-pressed="${state.mapCategory===id}"><span aria-hidden="true">${icon}</span> ${label}</button>`
+    ).join('')}</div></div>`;
+}
+function mapPage(){state.userLoc=state.userLoc||window.YeohangGeo?.read?.()||null;app(`<div class="page-head"><div class="wrap"><span class="eyebrow">구글 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>아고다 숙소 좌표를 구글 지도에 표시합니다. 위치 접근을 허용하면 현재 위치 기준으로 가까운 숙소와 길찾기를 제공합니다.</p></div></div><section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">구글 지도에 숙소 위치를 불러오는 중입니다.</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><iframe id="googleStayMap" title="구글 지도 숙소 위치" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(37.5665,126.978,'서울'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="https://www.google.com/maps?q=37.5665,126.978" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="disclosure">지도 핀은 아고다 제공 위도·경도를 사용합니다. 현재 위치는 이 브라우저 세션에만 저장되며 회원 계정에는 올리지 않습니다. 길찾기는 구글 지도에서 이어집니다.</p></div></section>`);const start=state.userLoc||{lat:37.5665,lng:126.978};loadGoogleMap(start.lat,start.lng,state.userLoc?'':'서울');maybeAutoGeo()}
+function mapRows(props){return (props||[]).length?props.slice(0,40).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">구글 길찾기</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
 function showGoogleMap(pin,dir=false){const geo=window.YeohangGeo;const frame=$('#googleStayMap');if(!geo||!frame||!pin||pin.lat==null)return;frame.src=dir&&state.userLoc?geo.embedDir(state.userLoc,pin):geo.embedPlace(pin.lat,pin.lng,pin.name);const open=$('#openGoogleMaps');if(open)open.href=dir&&state.userLoc?geo.openDir(state.userLoc,pin,'walking'):geo.openPlace(pin.lat,pin.lng,pin.name)}
-async function loadGoogleMap(lat,lng,city=''){const params=new URLSearchParams();if(city)params.set('city',city);else{params.set('lat',String(lat));params.set('lng',String(lng))}try{const r=await api('/api/map?'+params);state.mapPins=r.pins||[];state.properties=state.mapPins;const side=$('#mapSide');if(side)side.innerHTML=mapRows(state.mapPins);const pin=state.mapPins.find(p=>p.id===state.mapSelected)||state.mapPins[0]||{lat,lng,name:city||'내 위치'};if(pin.id)state.mapSelected=pin.id;showGoogleMap(pin,false);const st=$('#mapGeoStatus');if(st)st.textContent=state.userLoc?`내 위치를 사용 중 · 구글 지도에 주변 숙소 ${state.mapPins.length}곳`:`${city||'이 지역'} 숙소 ${state.mapPins.length}곳을 구글 지도에 표시합니다.`}catch(e){toast(e.message)}}
+async function loadGoogleMap(lat,lng,city=''){
+  state.mapCenter={lat,lng,city};
+  const seq=++mapLoadSequence;
+  const category=state.mapCategory||'all';
+  const params=new URLSearchParams({category});
+  if(city)params.set('city',city);
+  else {params.set('lat',String(lat));params.set('lng',String(lng))}
+  const st=$('#mapGeoStatus');
+  if(st)st.textContent='숙소 유형별 결과를 불러오는 중입니다…';
+  try {
+    const r=await api('/api/map?'+params);
+    if(seq!==mapLoadSequence||nav()!=='map')return;
+    state.mapPins=r.pins||[];
+    state.properties=state.mapPins;
+    const side=$('#mapSide');
+    if(side)side.innerHTML=mapRows(state.mapPins);
+    const pin=state.mapPins.find(p=>p.id===state.mapSelected)||state.mapPins[0];
+    state.mapSelected=pin?.id||'';
+    showGoogleMap(pin||{lat,lng,name:city||'내 위치'},false);
+    const label=(MAP_STAY_CATEGORY_OPTIONS.find(([id])=>id===category)||[])[1]||'전체';
+    const context=city|| (state.userLoc?'내 위치 주변':'선택 지역');
+    if(st)st.textContent=`${context} · ${label} ${r.count||0}곳 (최대 ${r.max_results||80}곳 표시). 지도는 선택된 숙소 위치를 보여줍니다.`;
+  } catch(e) {
+    if(seq!==mapLoadSequence)return;
+    const side=$('#mapSide');if(side)side.innerHTML='<div class="empty"><h3>숙소를 불러오지 못했습니다.</h3><p>잠시 후 다시 시도해 주세요.</p></div>';
+    if(st)st.textContent='숙소 검색 중 오류가 발생했습니다.';
+    toast(e.message);
+  }
+}
 async function nearMe(){if(!window.YeohangGeo){toast('지도 모듈을 불러오지 못했습니다.');return}toast('위치 접근 권한을 확인하고 있습니다.');try{const loc=await window.YeohangGeo.request();state.userLoc=loc;if(nav()!=='map'){location.hash='#map';return}await loadGoogleMap(loc.lat,loc.lng,'');toast('내 위치 기준 가까운 숙소를 구글 지도에 표시했습니다.')}catch(e){toast(e.message)}}
 async function mapCity(city){const coords={'서울':[37.5665,126.978],'부산':[35.1796,129.0756],'제주':[33.4996,126.5312],'강릉':[37.7519,128.8761]};const c=coords[city]||[37.5665,126.978];state.mapSelected='';await loadGoogleMap(c[0],c[1],city)}
 async function maybeAutoGeo(){if(state.userLoc)return;try{const perm=await navigator.permissions.query({name:'geolocation'});if(perm.state==='granted')await nearMe()}catch{}}
@@ -116,6 +158,7 @@ document.addEventListener('click',async e=>{let target=e.target.closest('[data-a
  target=e.target.closest('[data-cleargeo]');if(target){window.YeohangGeo?.clear?.();state.userLoc=null;toast('저장한 위치를 지웠습니다.');mapPage();return}
  target=e.target.closest('[data-mapdir]');if(target){e.preventDefault();e.stopPropagation();selectMapPin(target.dataset.mapdir,true);const pin=state.mapPins.find(p=>p.id===target.dataset.mapdir);if(pin&&state.userLoc&&window.YeohangGeo)window.open(window.YeohangGeo.openDir(state.userLoc,pin,'walking'),'_blank','noopener,noreferrer');return}
  target=e.target.closest('[data-mappin]');if(target){selectMapPin(target.dataset.mappin,false);return}
+ target=e.target.closest('[data-mapcategory]');if(target){const kind=target.dataset.mapcategory;if(!MAP_STAY_CATEGORY_OPTIONS.some(([id])=>id===kind))return;if(state.mapCategory===kind)return;state.mapCategory=kind;state.mapSelected='';$('[data-mapcategory]').forEach(btn=>{const on=btn.dataset.mapcategory===kind;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on))});const center=state.mapCenter||{lat:37.5665,lng:126.978,city:'서울'};loadGoogleMap(center.lat,center.lng,center.city);return}
  target=e.target.closest('[data-mapcity]');if(target){mapCity(target.dataset.mapcity);return}
  target=e.target.closest('[data-detailtab]');if(target){$('#detailAction').innerHTML=target.dataset.detailtab==='chat'?chatForm(state.activeProperty):bookingForm(state.activeProperty);return}
  target=e.target.closest('[data-coupon]');if(target){doCoupon(target.dataset.coupon);return}
