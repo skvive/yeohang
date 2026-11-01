@@ -16,7 +16,7 @@
    if(!wrap.querySelector('.y-nav-shell')){
      const shell=document.createElement('div');
      shell.className='y-nav-shell';
-     shell.innerHTML=`<div class="y-nav-top"><div class="y-nav-brand"><img src="/assets/mascot-jido.webp" alt="지도도령"><div><small>YEOHAENG GALJIDO · NAVIGATION</small><b>길별이와 함께, 여행갈지도</b></div></div><div class="y-nav-info">내 주변 5km 탐색 · 위치 미허용 시<br>가락시장역 기준</div></div>
+     shell.innerHTML=`<div class="y-nav-top"><div class="y-nav-brand"><img src="/assets/mascot-jido.webp" alt="지도도령"><div><small>KIM BYEOL’S TRAVEL ATLAS</small><b>김별의 여행지도 · 길별이 안내</b></div></div><div class="y-nav-info">내 주변 5km 탐색 · 위치 미허용 시<br>가락시장역 기준</div></div>
      <label class="y-nav-search"><span aria-hidden="true">⌕</span><input id="navMapSearch" type="search" autocomplete="off" placeholder="숙소 이름·지역·주소 검색" aria-label="주변 숙소 검색"><button type="button" data-ynav="search">검색</button></label>
      <div class="y-nav-quick" aria-label="여행 바로가기"><button type="button" data-ynav="near">⌖ 내 위치</button><button type="button" data-ynav="all">✦ 전체 숙소</button><button type="button" data-ynav="map">▦ 지도 보기</button><button type="button" data-ynav="list">☷ 검색 결과</button><button type="button" data-ynav="route">↗ 길찾기</button></div>`;
      wrap.prepend(shell);
