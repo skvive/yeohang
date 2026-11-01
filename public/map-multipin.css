@@ -1,0 +1,21 @@
+/* 여행갈지도 멀티핀 지도: Leaflet 1.9.4 + 머무리 안내 + 기존 지도 폴백 */
+#mapCanvas{position:relative;isolation:isolate;overflow:hidden;background:#e8f0ec}
+#multiStayMap.map-multi-surface{position:absolute;inset:0;z-index:1;width:100%;height:100%;background:#e9f3f0}
+#multiStayMap[hidden],#googleStayMap[hidden]{display:none!important}
+#mapCanvas .map-open-google{z-index:650;right:10px;top:10px;bottom:auto;min-height:42px;display:flex;align-items:center;border:1px solid #dcebe9;font-weight:800}
+#multiStayMap .leaflet-control-attribution{font-size:10px!important;background:rgba(255,255,255,.88);padding:0 5px}
+#multiStayMap .leaflet-control-zoom{border:1px solid #b5d3ce;border-radius:13px;overflow:hidden;box-shadow:0 4px 14px #12463619}
+#multiStayMap .leaflet-control-zoom a{color:#137976}
+#multiStayMap .ym-marker{background:none;border:0;display:grid;place-items:center;outline:0}
+#multiStayMap .ym-marker span{width:38px;height:38px;display:flex;justify-content:center;align-items:center;background:#fff;border:2px solid #0c8b87;border-radius:16px 16px 16px 5px;box-shadow:0 4px 11px #123d4a38;font-size:19px;transform:rotate(-8deg);transition:transform .14s}
+#multiStayMap .ym-marker-selected span{background:#ffe2a7;border:3px solid #ec852e;transform:rotate(0) scale(1.13);box-shadow:0 4px 13px #bb671a4f}
+#multiStayMap .ym-popup{min-width:185px;max-width:240px;font-family:'Noto Sans KR',sans-serif;color:#153447}
+#multiStayMap .ym-popup strong{display:block;font-size:14px;line-height:1.55;word-break:keep-all}
+#multiStayMap .ym-popup p{font-size:12px;color:#67817e;margin:8px 0 10px}
+#multiStayMap .ym-popup-actions{display:flex;gap:7px;flex-wrap:wrap}
+#multiStayMap .ym-popup-actions button,#multiStayMap .ym-popup-actions a{min-height:34px;border:1px solid #d2e4df;border-radius:8px;padding:7px 9px;background:#f8fbf9;color:#066e70;font-weight:800;font-size:11px;text-decoration:none;cursor:pointer}
+#multiStayMap .ym-popup-actions button{background:#087f82;color:#fff}
+.map-engine-status{font-size:12px;color:#51716f;line-height:1.65;margin:12px 0 8px}
+#multiStayMap .leaflet-container a:focus-visible{outline:3px solid #f5a450;outline-offset:2px}
+@media(max-width:760px){#multiStayMap .ym-marker span{width:36px;height:36px}#mapCanvas .map-open-google{font-size:11px;padding:7px 10px;min-height:40px;max-width:160px}}
+@media(prefers-reduced-motion:reduce){#multiStayMap .ym-marker span{transition:none}}
