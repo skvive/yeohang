@@ -5,6 +5,8 @@ on:
     branches: [ci/android-lab-20261101]
     paths:
       - '.github/workflows/android-lab.yml'
+      - 'android-lab/**'
+      - 'android-app/**'
   workflow_dispatch:
 
 permissions:
@@ -56,7 +58,14 @@ jobs:
           ls -l /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
 
-      - name: Boot actual Android 35 emulator and capture evidence
+      - name: Build isolated QA environment APK (not the v8 application)
+        run: gradle -p android-lab/smoke --no-daemon :app:assembleDebug
+
+      - name: Build actual v8 debug APK when the android-app source exists
+        if: ${{ hashFiles('android-app/settings.gradle') != '' }}
+        run: gradle -p android-app --no-daemon :app:assembleMapsLinkDebug
+
+      - name: Boot Android 35, install APK with ADB, run and screenshot
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -68,30 +77,7 @@ jobs:
           heap-size: 256M
           emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -eu
-            mkdir -p test-results/android-emulator
-            adb devices -l | tee test-results/android-emulator/devices.txt
-            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1
-            adb shell getprop ro.build.version.release | tee test-results/android-emulator/os-version.txt
-            adb shell getprop ro.build.version.sdk | tee test-results/android-emulator/api-level.txt
-            adb shell wm size | tee test-results/android-emulator/display.txt
-            adb shell input keyevent KEYCODE_HOME
-            sleep 3
-            adb exec-out screencap -p > test-results/android-emulator/boot-screen.png
-            test -s test-results/android-emulator/boot-screen.png
-            if [ -f android-app/app/build/outputs/apk/mapsLink/debug/app-mapsLink-debug.apk ]; then
-              adb install -r android-app/app/build/outputs/apk/mapsLink/debug/app-mapsLink-debug.apk
-              adb shell am start -n site.lexid.yeohangnav/.MainActivity
-              sleep 8
-              adb exec-out screencap -p > test-results/android-emulator/yeohang-app.png
-              adb logcat -d -s AndroidRuntime:E > test-results/android-emulator/app-crash.log
-              if grep -q 'FATAL EXCEPTION' test-results/android-emulator/app-crash.log; then exit 1; fi
-              echo 'APK installation and launch verified'
-            else
-              echo 'EMULATOR_OK; APP_NOT_PRESENT_IN_GITHUB_REPOSITORY' | tee test-results/android-emulator/status.txt
-              echo 'To test v8 app, add android-app folder to this GitHub repository or provide a private artifact to this workflow.'
-            fi
+          script: bash android-lab/run-smoke.sh
 
       - name: Upload nonsecret emulator test results
         if: always()
