@@ -1,0 +1,52 @@
+
+/* 여행갈지도 NAV V9 · 독립 브랜드. 지도 공급자의 저작권/attribution 보호. */
+:root{--nav-ink:#173a4c;--nav-teal:#087d79;--nav-gold:#efb55a;--nav-cream:#fffaee;--nav-line:#d8e8e3}
+body.yeohang-map-mode{background:#f2f7f4}
+body.yeohang-map-mode .page-head{display:none}
+body.yeohang-map-mode .section-tight{padding-top:14px}
+body.yeohang-map-mode .site-header{box-shadow:0 2px 14px #123e3911}
+.y-nav-shell{font-family:'Noto Sans KR',sans-serif;color:var(--nav-ink)}
+.y-nav-top{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 18px;border:1px solid var(--nav-line);border-radius:22px;background:linear-gradient(105deg,#fffaf0,#ecf7f3);margin-bottom:14px;min-height:85px}
+.y-nav-brand{display:flex;align-items:center;min-width:0;gap:10px}.y-nav-brand img{width:58px;height:58px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 5px #30423519)}
+.y-nav-brand b{display:block;font-size:19px;line-height:1.32;letter-spacing:-.05em}.y-nav-brand small{font-size:10px;letter-spacing:.12em;color:#427a73;font-weight:800}
+.y-nav-info{font-size:12px;color:#547672;line-height:1.7;max-width:290px}
+.y-nav-search{display:flex;align-items:center;gap:10px;border:1.5px solid #bcd9d2;border-radius:17px;background:white;box-shadow:0 8px 26px #16423610;padding:6px 8px 6px 16px;margin-bottom:10px;min-height:58px}
+.y-nav-search>span{font-size:19px;color:var(--nav-teal)}.y-nav-search input{border:0;outline:none;background:none;min-width:0;flex:1;color:#173a4c;font:600 15px 'Noto Sans KR',sans-serif}
+.y-nav-search input::placeholder{color:#708b8a}.y-nav-search input:focus-visible{outline:2px solid var(--nav-teal);outline-offset:3px;border-radius:5px}
+.y-nav-search button{border:0;background:var(--nav-teal);color:white;border-radius:11px;min-height:40px;padding:0 17px;font-weight:800;cursor:pointer}
+.y-nav-quick{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;margin-bottom:12px;padding-bottom:3px}
+.y-nav-quick button{flex:none;min-height:42px;padding:8px 14px;border-radius:999px;border:1px solid var(--nav-line);background:white;color:#28525b;font-size:12px;font-weight:800;cursor:pointer}
+.y-nav-quick button:focus-visible,.y-nav-float button:focus-visible,.y-nav-bottom a:focus-visible{outline:3px solid #f1ba59;outline-offset:2px}
+body.yeohang-map-mode .filters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:7px}
+body.yeohang-map-mode .filters>[data-mapcity],body.yeohang-map-mode .filters>[data-near]{white-space:nowrap}
+body.yeohang-map-mode .map-category-filter{margin:9px 0 10px}
+body.yeohang-map-mode .map-wrap{gap:12px;align-items:start}
+body.yeohang-map-mode .map-canvas{position:relative;border-radius:22px!important;min-height:470px;height:min(67vh,690px);border:1px solid #d5e2da;box-shadow:0 10px 35px #1642360d}
+body.yeohang-map-mode .map-canvas #multiStayMap{border-radius:22px}
+.y-nav-float{position:absolute;z-index:660;bottom:56px;right:13px;display:flex;flex-direction:column;gap:9px;max-width:154px;align-items:end}
+.y-nav-float button,.y-nav-float a{display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;border:1px solid #e4e5d9;border-radius:14px;min-height:45px;background:#fff;color:#163d49;box-shadow:0 6px 20px #2c3b3726;font-weight:850;font-size:12px;text-decoration:none;padding:8px 12px}
+.y-nav-float .y-nav-character{background:var(--nav-cream);border:2px solid #f1d99f}
+.y-nav-character img{height:42px;width:42px;object-fit:contain}
+body.yeohang-map-mode .map-side{border:1px solid #d8e8e3;border-radius:20px;background:#fff;max-height:68vh;overflow:auto;box-shadow:0 8px 30px #123c3310}
+.y-nav-location-caption{display:block;font-size:11px;color:#516f70;margin:2px 1px 12px;line-height:1.7}
+.y-nav-bottom{display:none}
+@media(max-width:760px){
+ body.yeohang-map-mode .site-header{position:sticky;top:0;z-index:900}
+ body.yeohang-map-mode .section-tight{padding-top:6px}
+ body.yeohang-map-mode .section-tight>.wrap{padding-left:10px;padding-right:10px}
+ .y-nav-top{border-radius:16px;padding:8px 12px;min-height:65px;margin-bottom:9px}
+ .y-nav-brand img{width:45px;height:45px}.y-nav-brand b{font-size:16px}.y-nav-brand small{font-size:9px}
+ .y-nav-info{font-size:10px;max-width:118px}
+ .y-nav-search{min-height:52px;margin-bottom:7px}.y-nav-search input{font-size:14px}
+ body.yeohang-map-mode .map-canvas{height:52vh;min-height:310px;border-radius:16px!important}
+ body.yeohang-map-mode .map-canvas #multiStayMap{border-radius:16px}
+ body.yeohang-map-mode .map-side{max-height:46vh;overflow:auto}
+ .y-nav-float{bottom:34px;right:9px}
+ .y-nav-float button{min-height:42px}
+ .y-nav-bottom{display:flex;position:sticky;bottom:0;z-index:700;background:#fff;border:1px solid #e3eee9;border-radius:17px;justify-content:space-around;padding:5px 3px;box-shadow:0 -8px 25px #18393818;margin-top:10px}
+ .y-nav-bottom a{color:#27545b;text-decoration:none;font-size:11px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 10px;min-width:53px}
+ .y-nav-bottom a span{font-size:19px}
+ body.yeohang-map-mode .mobile-nav{display:none}
+ body.yeohang-map-mode .footer{padding-bottom:76px}
+}
+@media(prefers-reduced-motion:reduce){.y-nav-shell *, .y-nav-shell *:before,.y-nav-shell *:after{scroll-behavior:auto!important;animation:none!important}}
