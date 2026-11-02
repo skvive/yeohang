@@ -72,3 +72,28 @@ test('Kakao map provider is strictly opt-in, valid JS, and preserves default Lea
  assert.match(layout, /NEXT_PUBLIC_KAKAO_MAP_JS_KEY/);
  assert.match(layout, /map-kakao-provider\.css/);
 });
+
+
+test('Kakao OAuth server protects state, token exchange and traveler-only scopes', () => {
+  const oauth = root('lib/kakao/oauth.ts');
+  const start = root('app/api/kakao/oauth/start/route.ts');
+  const callback = root('app/api/kakao/oauth/callback/route.ts');
+  const session = root('app/api/kakao/oauth/session/route.ts');
+  const account = root('app/account/page.tsx');
+  const button = root('app/auth/OAuthButtons.tsx');
+  assert.match(oauth, /KAKAO_REST_API_KEY/);
+  assert.match(oauth, /KAKAO_CLIENT_SECRET/);
+  assert.match(oauth, /KAKAO_SESSION_SECRET/);
+  assert.match(oauth, /timingSafeEqual/);
+  assert.match(oauth, /__Host-yg-kakao-state/);
+  assert.match(oauth, /__Host-yg-kakao-session/);
+  assert.match(oauth, /kauth\.kakao\.com\/oauth\/token/);
+  assert.match(oauth, /kapi\.kakao\.com\/v2\/user\/me/);
+  assert.match(start, /kakaoConfigured\(\)/);
+  assert.match(callback, /safeStateEquals\(cookieState, state\)/);
+  assert.match(callback, /httpOnly|kakaoCookieOptions/);
+  assert.match(session, /partner_access: false/);
+  assert.match(account, /provider === 'kakao'/);
+  assert.match(button, /kakaoReady/);
+  assert.doesNotMatch(oauth + callback + session, /console\.log\(.*accessToken/);
+});
