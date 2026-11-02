@@ -22,7 +22,7 @@
      wrap.prepend(shell);
      const caption=document.createElement('p');
      caption.className='y-nav-location-caption';
-     caption.textContent='지도 서비스: OpenStreetMap 기반 · 카카오맵 길찾기는 외부 앱에서 열립니다. 앱 내 실시간 턴바이턴은 별도 SDK 계약이 필요합니다.';
+     caption.textContent='지도 배경: 승인된 카카오맵 SDK 사용 시 카카오맵 · 그 외 기본 지도. 길찾기는 외부 앱에서 열립니다. 앱 내 주행 안내는 별도 SDK 연동이 필요합니다.';
      const mapStatus=wrap.querySelector('#mapEngineStatus');
      if(mapStatus)mapStatus.before(caption);
      const nav=document.createElement('nav');
