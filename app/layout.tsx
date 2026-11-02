@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import type { Metadata } from 'next';
 import './globals.css';
 
@@ -5,13 +6,13 @@ export const viewport = { themeColor: '#092D43' };
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://yeohang.lexid.site'),
-  title: '여행갈지도',
+  title: '여행갈지도 | 김별의 새로운 대동여지도',
   description: '인공지능 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
   icons: { icon: '/assets/icon-192.png' },
   manifest: '/manifest.webmanifest',
   ...(process.env.AGODA_VERIFY_META ? { other: { 'agoda-verification': process.env.AGODA_VERIFY_META } } : {}),
   openGraph: {
-    title: '여행갈지도 | 여행을 발견하는 더 좋은 방법',
+    title: '그때는 대동여지도, 지금은 여행갈지도 | 김별의 여행지도',
     description: '인공지능 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
     images: ['/assets/brand-logo-horizontal.webp'],
   },
@@ -37,8 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/deal.css" />
         <link rel="stylesheet" href="/ai-search.css" />
         <link rel="stylesheet" href="/places.css" />
+        <link rel="stylesheet" href="/kimbyeol-v6.css" />
+        <link rel="stylesheet" href="/kimbyeol-story.css" />
       </head>
-      <body>{children}</body>
+      <body>{children}<Script src="/kimbyeol-v6.js" strategy="afterInteractive" /></body>
     </html>
   );
 }

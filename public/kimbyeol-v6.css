@@ -1,0 +1,32 @@
+/* 김별 v6 - 덧입히는 반응형 브랜드 스타일, 기존 기능 CSS 유지 */
+:root{--kb6-ink:#15384c;--kb6-teal:#087d7c;--kb6-sun:#ffcb76;--kb6-cream:#fff7e8}
+.kb6-hero,.kb6-links,.kb6-note{box-sizing:border-box;font-family:'Noto Sans KR',sans-serif}
+.kb6-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:1.15fr .85fr;gap:16px;min-height:370px;margin:16px auto 12px;padding:clamp(24px,4vw,48px);max-width:1300px;border-radius:30px;background:radial-gradient(circle at 87% 25%,#c2ebec,transparent 40%),linear-gradient(125deg,#fff9ed,#e0f0e9 72%,#d4eefa);color:var(--kb6-ink);border:1px solid #d8e6e1}
+.kb6-hero-text{z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:14px}
+.kb6-overline{font-size:11px;letter-spacing:.15em;color:#276e71;font-weight:900}
+.kb6-hero h1{font-size:clamp(31px,3.6vw,54px);line-height:1.25;letter-spacing:-.055em;margin:0;font-weight:900}
+.kb6-hero h1 em{font-style:normal;color:#057d7d}
+.kb6-hero p{max-width:580px;color:#3c6269;font-size:clamp(13px,1.25vw,16px);line-height:1.8;margin:0}
+.kb6-hero small{font-size:11px;line-height:1.65;color:#537077}
+.kb6-buttons{display:flex;flex-wrap:wrap;gap:9px}
+.kb6-buttons a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:12px 18px;border-radius:40px;background:var(--kb6-ink);color:#fff;text-decoration:none;font-weight:800;font-size:13px}
+.kb6-buttons a+ a{background:#fff;color:var(--kb6-ink);border:1px solid #c9dbdb}
+.kb6-hero-characters{display:flex;align-items:center;justify-content:center;position:relative;min-width:0}
+.kb6-hero-characters>img:first-child{width:min(96%,320px);max-height:340px;object-fit:contain;filter:drop-shadow(0 12px 15px #09474925)}
+.kb6-hero-characters img.kb6-spark{position:absolute;width:38%;max-width:120px;right:0;bottom:0;filter:drop-shadow(0 8px 10px #0947492a)}
+.kb6-hero-characters span{position:absolute;right:-4px;top:9%;max-width:174px;padding:10px 12px;background:white;border:2px solid #ffe2aa;border-radius:20px;font-weight:900;font-size:13px;transform:rotate(3deg)}
+.kb6-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:1300px;margin:0 auto 35px;padding:0 6px}
+.kb6-links>a{display:flex;min-width:0;align-items:center;gap:10px;border:1px solid #dfebe7;border-radius:20px;background:white;padding:11px;text-decoration:none;box-shadow:0 8px 22px #0b44500d;color:#25444d}
+.kb6-links>a:hover{transform:translateY(-2px);border-color:#8bc7bd}
+.kb6-links img{width:65px;height:68px;object-fit:contain;flex:none}
+.kb6-links strong{display:block;font-size:13px;letter-spacing:-.04em;line-height:1.35}
+.kb6-links span{display:block;font-size:11px;color:#617e81;margin-top:5px}
+.kb6-note{max-width:1200px;margin:16px auto 10px;padding:12px 20px;display:flex;align-items:center;gap:14px;background:linear-gradient(100deg,#fff8e8,#e8f4f0);border:1px solid #e5ebde;border-radius:20px;min-height:110px}
+.kb6-note>img{width:78px;height:82px;object-fit:contain}
+.kb6-note strong{display:block;font-size:16px;color:var(--kb6-ink)}
+.kb6-note p{font-size:12px;color:#597379;line-height:1.6;margin:5px 0}
+.kb6-note a{font-size:12px;color:#087d7c;text-decoration:underline;font-weight:800}
+.kb6-hero :focus-visible,.kb6-links :focus-visible,.kb6-note :focus-visible{outline:3px solid #f0a34a;outline-offset:3px}
+@media(max-width:900px){.kb6-hero{margin:10px 12px 12px;padding:26px;grid-template-columns:1fr 190px;min-height:320px}.kb6-hero-characters>img:first-child{max-height:230px}.kb6-hero-characters span{display:none}.kb6-links{grid-template-columns:repeat(2,minmax(0,1fr));margin:0 12px 22px;padding:0}.kb6-note{margin:12px}}
+@media(max-width:550px){.kb6-hero{display:flex;flex-direction:column;gap:5px;min-height:0;padding:23px 20px;border-radius:22px}.kb6-hero h1{font-size:clamp(26px,7vw,36px)}.kb6-hero-text{gap:10px}.kb6-hero p{font-size:13px}.kb6-hero-characters{justify-content:flex-end;max-height:145px}.kb6-hero-characters>img:first-child{height:145px;width:190px}.kb6-hero-characters img.kb6-spark{height:75px;width:75px;bottom:0;right:15%}.kb6-links{gap:7px}.kb6-links>a{padding:9px 6px;gap:4px;border-radius:13px}.kb6-links img{width:49px;height:54px}.kb6-links strong{font-size:11px}.kb6-links span{font-size:10px}.kb6-note{padding:9px 12px;min-height:0}.kb6-note>img{width:58px;height:64px}.kb6-note strong{font-size:13px}.kb6-note p,.kb6-note a{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.kb6-links>a:hover{transform:none}}
