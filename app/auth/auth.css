@@ -144,3 +144,7 @@
   color: #6a8792;
   text-decoration: none;
 }
+
+.auth-oauth-btn.kakao{display:block;text-align:center;text-decoration:none;background:#fee500;border-color:#fee500;color:#191919}
+.auth-oauth-btn.kakao:hover{background:#f5d900;border-color:#f5d900}
+.auth-oauth-btn.kakao:disabled{background:#fff8cf;color:#766e4b;cursor:not-allowed;opacity:0.75}
