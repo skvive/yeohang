@@ -28,9 +28,12 @@ export function configuredOrigin(): string | null {
 }
 
 export function kakaoConfigured(): boolean {
+  // Kakao REST API keys are provisioned with client-secret enforcement by default.
+  // Fail closed until the secret is configured, rather than showing a broken login button.
   return Boolean(
     configuredOrigin() &&
     /^[A-Za-z0-9]{20,128}$/.test(process.env.KAKAO_REST_API_KEY || '') &&
+    (process.env.KAKAO_CLIENT_SECRET || '').trim().length >= 16 &&
     key()
   );
 }
