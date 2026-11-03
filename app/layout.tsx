@@ -10,11 +10,11 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/assets/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: '/apple-icon.png' },
   manifest: '/manifest.webmanifest',
   ...(process.env.AGODA_VERIFY_META ? { other: { 'agoda-verification': process.env.AGODA_VERIFY_META } } : {}),
-  twitter: { card: 'summary_large_image', title: '여행갈지도 NAV', images: ['/opengraph-image'] },
+  twitter: { card: 'summary_large_image', title: '여행갈지도 NAV', images: ['/opengraph-image.jpg'] },
   openGraph: {
     title: '여행갈지도 NAV | 그때는 대동여지도, 지금은 여행갈지도',
     description: '인공지능 검색으로 여행과 숙소를 탐색하세요. 데모용 숙소 정보입니다.',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: '여행갈지도 여행 내비게이션 브랜드' }],
+    images: [{ url: '/opengraph-image.jpg', width: 1200, height: 630, alt: '여행갈지도 여행 내비게이션 브랜드' }],
   },
 };
 
