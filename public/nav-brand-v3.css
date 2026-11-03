@@ -1,0 +1,100 @@
+/* NAV Brand V3 · 2026-11-04. Source design tokens derived from existing asset system. */
+:root{--nav-v3-ink:#082c42;--nav-v3-teal:#087f7b;--nav-v3-accent:#ff7925;--nav-v3-cream:#fff8ec;--nav-v3-border:#d9e8e5}
+html{scroll-behavior:smooth}
+body{background:#f7faf8}
+.site-header{backdrop-filter:blur(18px)}
+.brand.v2-brand{width:241px;height:67px;background:transparent;overflow:visible;max-width:31vw}
+.brand.v2-brand .v2-wordmark{mix-blend-mode:normal;object-fit:contain;object-position:left center}
+.site-header .header-actions .outline-btn{border-radius:99px}
+.hero.brand-hero{position:relative;background-position:center 43%;min-height:560px}
+.hero.brand-hero:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg,rgba(0,25,39,.25),transparent 45%)}
+.hero.brand-hero .brand-hero-inner{position:relative;z-index:1}
+.hero-logo-stage{height:103px;max-width:325px;background:rgba(255,253,247,.98);border:1px solid #fff6;box-shadow:0 14px 44px #001f3426;border-radius:18px;padding:10px 14px}
+.hero-logo-stage img{height:92px;mix-blend-mode:normal;max-width:100%}
+.brand-hero .hero-kicker{letter-spacing:.01em;font-weight:800}
+.brand-hero .hero-cta{background:linear-gradient(128deg,#006f78,#018d84);box-shadow:0 12px 34px #00272733}
+.brand-hero .hero-outline{backdrop-filter:blur(10px)}
+.hero-micro span{backdrop-filter:blur(8px)}
+.property-image,.marquee-photo img{background:linear-gradient(125deg,#dfede7,#f9f0df);object-fit:cover}
+.property-card,.story-card{overflow:hidden}
+.property-card img,.story-card img{transition:transform .3s ease}
+.property-card:hover img,.story-card:hover img{transform:scale(1.03)}
+/* Travel-map immersive shell: retain real map engine, marker data, attribution and access. */
+body.yeohang-map-mode{background:#f0f6f4}
+body.yeohang-map-mode .site-header{background:rgba(255,255,255,.97)}
+.y-nav-shell{margin-top:2px}
+.y-nav-top{position:relative;isolation:isolate;overflow:hidden;padding:20px 25px;border:1px solid #cfe4de;border-radius:23px;min-height:115px;background:linear-gradient(120deg,#ffffff 0%,#f7fcf9 52%,#e5f7f1 100%);box-shadow:0 12px 37px #043d330e}
+.y-nav-top:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.09;background:linear-gradient(95deg,#fff 42%,transparent 80%),url('/assets/brand-hero.webp') center 50%/cover no-repeat}
+.y-nav-top:after{content:"";position:absolute;right:-33px;bottom:-93px;width:190px;height:190px;border-radius:50%;border:29px solid #36b5a515;z-index:-1}
+.y-nav-brand{gap:15px}
+.y-nav-brand img{width:74px;height:74px;object-fit:contain;filter:drop-shadow(0 4px 7px #043f4120)}
+.y-nav-brand small{font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:10px;font-weight:900;letter-spacing:.18em;color:#12827b}
+.y-nav-brand b{font-size:clamp(21px,2.2vw,28px);letter-spacing:-.06em;color:var(--nav-v3-ink);line-height:1.23}
+.y-nav-brand-copy{display:block;margin-top:4px;font-size:12px;color:#466a70;font-weight:700;letter-spacing:-.025em}
+.y-nav-info{max-width:245px;display:flex;flex-direction:column;align-items:end;gap:5px;font-size:12px;color:#5a7475;text-align:right}
+.y-nav-info strong{font-size:14px;color:var(--nav-v3-ink);background:#ffffffd9;border:1px solid #d1e4dc;padding:8px 11px;border-radius:999px}
+.y-nav-search{min-height:66px;border:1px solid #bad9ce;border-radius:18px;background:#fff;padding-left:19px;box-shadow:0 14px 30px #08394712}
+.y-nav-search input{font-size:15px}
+.y-nav-search button{background:var(--nav-v3-ink);padding:0 22px;min-height:46px;border-radius:12px;transition:background .15s ease}
+.y-nav-search button:hover{background:var(--nav-v3-teal)}
+.y-nav-quick{gap:9px;margin-bottom:16px}
+.y-nav-quick button{min-height:43px;background:#fff;border:1px solid #d2e5de;box-shadow:0 3px 11px #183e3310;font-size:12px;color:#154c52}
+.y-nav-quick button:hover{border-color:#09a79b;background:#effbf7}
+body.yeohang-map-mode .map-wrap{align-items:stretch;gap:16px}
+body.yeohang-map-mode .map-canvas{height:min(72vh,770px);min-height:515px;border:1px solid #cadfdc!important;box-shadow:0 20px 60px #0a39391a;border-radius:24px!important;background:#e6f0e9;overflow:hidden}
+body.yeohang-map-mode .map-canvas #multiStayMap{border-radius:24px}
+body.yeohang-map-mode .map-canvas iframe{border-radius:24px}
+body.yeohang-map-mode .map-side{border:1px solid #d7e9e2;border-radius:24px;max-height:min(72vh,770px);background:#fff;box-shadow:0 15px 40px #0a393908}
+body.yeohang-map-mode .map-side .map-list-row{border-bottom:1px solid #edf1ed;transition:background .15s ease,border-color .15s ease}
+body.yeohang-map-mode .map-side .map-list-row:hover{background:#f1faf8}
+body.yeohang-map-mode .map-list-row img{object-fit:cover;background:#ecf4ef;border-radius:12px}
+body.yeohang-map-mode .map-list-row.active{border-color:#08a89e;box-shadow:inset 3px 0 #00a99b;background:#eefbf8}
+body.yeohang-map-mode .map-row-actions .near-button{border-radius:11px;background:#edfaf7;color:#086e70}
+body.yeohang-map-mode .map-row-actions .near-button:hover{background:#daf5ee}
+.y-nav-float{right:16px;bottom:59px;gap:10px}
+.y-nav-float button,.y-nav-float a{border:1px solid #d7e5dc;background:#fffdfa;box-shadow:0 7px 26px #052c4240;backdrop-filter:blur(9px);font-size:12px;border-radius:14px}
+.y-nav-float button:hover{background:#f4fff9}
+.y-nav-float .y-nav-character{border-color:#ffdd96;background:#fff9eb}
+.y-nav-character img{height:44px;width:44px}
+.y-nav-location-caption{font-size:12px;line-height:1.7;color:#637d7a}
+body.yeohang-map-mode .map-engine-status,body.yeohang-map-mode .map-geo-status{color:#4c6c6e;line-height:1.65}
+body.yeohang-map-mode .map-open-google{background:#ffffffeb;color:#105b68;border:1px solid #d6e7e0;box-shadow:0 5px 21px #133c391b;font-weight:750}
+body.yeohang-map-mode .disclosure{font-size:11px;line-height:1.8;max-width:950px;color:#6c817f}
+.y-nav-bottom{border:1px solid #dae8e2;box-shadow:0 -10px 30px #143c3522;background:rgba(255,255,255,.98);backdrop-filter:blur(16px)}
+.y-nav-bottom a[aria-current="page"]{color:#05847d}
+:where(a,button,input):focus-visible{outline:3px solid #ff8d22!important;outline-offset:3px}
+@media(max-width:1150px){.brand.v2-brand{width:211px;max-width:29vw}}
+@media(max-width:900px){.brand.v2-brand{width:210px;max-width:42vw}.y-nav-top{padding:15px 19px}}
+@media(max-width:760px){
+ .site-header .header-inner{min-height:65px}
+ .brand.v2-brand{width:195px;max-width:57vw;height:62px}
+ .brand.v2-brand .v2-wordmark{height:60px}
+ .hero.brand-hero{min-height:590px;background-position:53% center}
+ .hero-logo-stage{height:92px;max-width:250px}
+ .hero-logo-stage img{height:76px}
+ body.yeohang-map-mode .section-tight>.wrap{padding-left:9px;padding-right:9px}
+ .y-nav-top{min-height:76px;padding:10px 13px;border-radius:17px;gap:8px;margin-bottom:10px}
+ .y-nav-brand{gap:8px;flex:1;min-width:0}
+ .y-nav-brand img{width:49px;height:49px}
+ .y-nav-brand b{font-size:17px;white-space:nowrap}
+ .y-nav-brand small{font-size:8px;letter-spacing:.1em}
+ .y-nav-brand-copy{font-size:10px;white-space:nowrap}
+ .y-nav-info{max-width:98px;gap:3px}
+ .y-nav-info strong{font-size:10px;padding:6px 7px;white-space:nowrap}
+ .y-nav-info span{font-size:9px;line-height:1.35}
+ .y-nav-search{min-height:56px;padding-left:12px}
+ .y-nav-search input{font-size:13px}
+ .y-nav-search button{min-height:39px;padding:0 12px}
+ .y-nav-quick{margin-bottom:10px;gap:6px}
+ .y-nav-quick button{min-height:40px;padding:8px 12px}
+ body.yeohang-map-mode .map-canvas{height:52dvh;min-height:315px;border-radius:16px!important;box-shadow:0 9px 30px #092d4320}
+ body.yeohang-map-mode .map-canvas #multiStayMap,body.yeohang-map-mode .map-canvas iframe{border-radius:16px}
+ body.yeohang-map-mode .map-side{max-height:44vh;border-radius:16px}
+ .y-nav-float{right:8px;bottom:37px;gap:7px}
+ .y-nav-float button{min-height:39px;font-size:11px;padding:7px 9px}
+ .y-nav-character img{width:32px;height:32px}
+ .y-nav-bottom{border-radius:16px;bottom:8px}
+ .y-nav-location-caption{font-size:10px}
+}
+@media(max-width:375px){.y-nav-info{display:none}.y-nav-brand b{font-size:16px}.y-nav-search input{font-size:12px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.property-card img,.story-card img{transition:none}}
