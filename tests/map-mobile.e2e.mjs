@@ -76,7 +76,21 @@ try {
   const mapErrors = errors.filter(message => /TypeError|ReferenceError|YeohangMultiMap|leaflet|map-multipin|app\.js/i.test(message));
   assert.equal(mapErrors.length, 0, 'no map JavaScript errors: ' + mapErrors.join('; '));
   if(errors.length)console.warn('Non-map authentication test-environment errors:', errors);
+  // The brand hero and its actual generated PNG must load at a 390 px mobile width.
+  await page.goto(base + '/#home', { waitUntil: 'domcontentloaded' });
+  await page.locator('.hero.brand-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('.hero-logo-stage img').waitFor({ state: 'visible', timeout: 15000 });
+  assert.ok(await page.locator('.hero-logo-stage img').evaluate(img => img.complete && img.naturalWidth > 0), 'new hero logo must load');
+  await page.screenshot({ path: resolve(shotDir, 'home-brand-390px.png'), fullPage: true });
   await context.close();
+
+  const desktopContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const desktop = await desktopContext.newPage();
+  await desktop.route(/\\/api\\/home(?:\\?|$)/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [], coupons: [], plans: [] }) }));
+  await desktop.goto(base + '/#home', { waitUntil: 'domcontentloaded', timeout: 45000 });
+  await desktop.locator('.hero.brand-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await desktop.screenshot({ path: resolve(shotDir, 'home-brand-1440px.png'), fullPage: true });
+  await desktopContext.close();
 
   const gpsRun = await makePage(true);
   await gpsRun.page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('내 위치 주변'), { timeout: 25000 });
