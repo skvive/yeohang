@@ -4,11 +4,16 @@ on:
     paths:
       - 'public/app.js'
       - 'public/map-multipin.js'
+      - 'public/nav-brand-v3.css'
+      - 'app/page.tsx'
+      - 'app/icon.svg'
+      - 'app/opengraph-image.jpg'
+      - 'tests/navigation-v9.test.mjs'
       - 'tests/map-mobile.e2e.mjs'
       - 'vercel.json'
       - '.github/workflows/map-mobile-e2e.yml'
   push:
-    branches: [main]
+    branches: [main, chatgpt/yeohang-nav-brand-20261104]
     paths:
       - 'public/app.js'
       - 'public/map-multipin.js'

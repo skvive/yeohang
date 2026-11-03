@@ -20,7 +20,7 @@ export default function HomePage() {
       <header className="site-header">
         <div className="header-inner">
           <a className="brand v2-brand" href="#home" aria-label="여행갈지도 홈">
-            <img className="v2-wordmark" src="/assets/wordmark.svg" alt="여행갈지도" />
+            <img className="v2-wordmark" src="/assets/yeohang-nav-master-logo.png" alt="여행갈지도 Travel Galjido" />
           </a>
           <nav className="main-nav" id="mainNav" aria-label="기본 메뉴">
             <a href="#home" data-nav="home">
@@ -32,8 +32,8 @@ export default function HomePage() {
             <a href="#ask" data-nav="ask">
               AI 검색
             </a>
-            <a href="#map" data-nav="map">
-              내 주변
+            <a href="/navigation" data-nav="map">
+              내비게이션
             </a>
             <a href="#images" data-nav="images">
               숙소 사진
@@ -88,8 +88,8 @@ export default function HomePage() {
         <a href="#ask">
           ✧<small>AI</small>
         </a>
-        <a href="#map">
-          ♧<small>내 주변</small>
+        <a href="/navigation">
+          ⌖<small>내비</small>
         </a>
         <a href="#weekly">
           ◇<small>주간 혜택</small>

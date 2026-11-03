@@ -1,21 +1,43 @@
 {
-  "name": "여행갈지도 (가칭) · 인공지능 여행 및 숙소 발견",
+  "name": "여행갈지도 NAV · 여행 지도·숙소 탐색",
   "short_name": "여행갈지도",
-  "description": "인공지능 숙소 검색과 여행 콘텐츠 큐레이션",
+  "description": "김별과 길별이가 안내하는 스마트 여행 지도, 숙소 탐색과 외부 길찾기",
   "start_url": "/#home",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#092D43",
+  "background_color": "#FFF9EE",
+  "theme_color": "#083747",
   "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/yeohang-nav-appicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
     {
       "src": "/assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
-    },
+    }
+  ],
+  "shortcuts": [
     {
-      "src": "/assets/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "name": "주변 여행지도",
+      "short_name": "내비게이션",
+      "description": "주변 숙소와 여행지 지도 열기",
+      "url": "/#map",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

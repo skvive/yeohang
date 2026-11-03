@@ -15,7 +15,8 @@ test('V9 navigation controller parses and does not replace 5 km server filtering
 });
 test('V9 UI keeps mascot branding and existing filters', () => {
   const source = root('public/navigation-v9.js');
-  assert.match(source, /mascot-jido\.webp/);
+  assert.match(source, /nav-brand-mark\.svg/);
+  assert.match(root('public/app.js'), /mascot-jido\.webp/);
   assert.match(source, /mascot-gilbyeoli\.webp/);
   assert.match(source, /\[data-mapcategory="all"\]/);
   assert.match(source, /\[data-near\]/);
@@ -96,4 +97,29 @@ test('Kakao OAuth server protects state, token exchange and traveler-only scopes
   assert.match(account, /provider === 'kakao'/);
   assert.match(button, /kakaoReady/);
   assert.doesNotMatch(oauth + callback + session, /console\.log\(.*accessToken/);
+});
+
+
+test('NAV brand v3 keeps metadata, navigation entry point, and original data engine', () => {
+  const layout=root('app/layout.tsx');
+  const page=root('app/page.tsx');
+  const css=root('public/nav-brand-v3.css');
+  const manifest=JSON.parse(root('public/manifest.webmanifest'));
+  const icon=root('app/icon.svg');
+  const lockup=root('public/assets/nav-brand-lockup.svg');
+  const og = readFileSync(new URL('../app/opengraph-image.jpg', import.meta.url));
+  const apple = readFileSync(new URL('../app/apple-icon.png', import.meta.url));
+  const nav=root('app/navigation/page.tsx');
+  assert.match(layout, /\/opengraph-image\.jpg/);
+  assert.match(layout, /nav-brand-v3\.css/);
+  assert.match(page, /\/assets\/yeohang-nav-master-logo\.png/);
+  assert.match(nav, /redirect\('\/#map'\)/);
+  assert.match(icon, /<svg[\s\S]*여행갈지도/);
+  assert.match(lockup, /TRAVEL GALJIDO/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /focus-visible/);
+  assert.ok(og.length > 200000);
+  assert.equal(apple.subarray(1,4).toString('ascii'), 'PNG');
+  assert.ok(manifest.icons.some(icon => icon.src === '/icon.svg'));
+  assert.match(root('public/app.js'), /distance_km<=5/);
 });
