@@ -67,6 +67,11 @@ try {
   await page.locator('[data-mapcategory="all"]').click();
   await page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('전체 3곳'));
   assert.equal(await markerCount(page), 3);
+  // Diagnose map-tile sources independently from mock API pins; an image background is not a verified live map.
+  const tiles = await page.locator('#multiStayMap .leaflet-tile').evaluateAll(nodes =>
+    nodes.slice(0, 6).map(node => ({ src: node.currentSrc || node.src, width: node.naturalWidth, height: node.naturalHeight }))
+  );
+  console.log('MAP_TILE_DIAGNOSTIC', JSON.stringify(tiles));
   await page.screenshot({ path: resolve(shotDir, 'garak-map-390px.png'), fullPage: true });
   const mapErrors = errors.filter(message => /TypeError|ReferenceError|YeohangMultiMap|leaflet|map-multipin|app\.js/i.test(message));
   assert.equal(mapErrors.length, 0, 'no map JavaScript errors: ' + mapErrors.join('; '));
