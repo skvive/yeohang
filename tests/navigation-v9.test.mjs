@@ -110,7 +110,7 @@ test('NAV brand v3 keeps metadata, navigation entry point, and original data eng
   const og = readFileSync(new URL('../app/opengraph-image.jpg', import.meta.url));
   const apple = readFileSync(new URL('../app/apple-icon.png', import.meta.url));
   const nav=root('app/navigation/page.tsx');
-  assert.match(layout, /\/opengraph-image/);
+  assert.match(layout, /\/opengraph-image\.jpg/);
   assert.match(layout, /nav-brand-v3\.css/);
   assert.match(page, /\/assets\/yeohang-nav-master-logo\.png/);
   assert.match(nav, /redirect\('\/#map'\)/);
