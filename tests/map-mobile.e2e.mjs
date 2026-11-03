@@ -86,7 +86,7 @@ try {
 
   const desktopContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const desktop = await desktopContext.newPage();
-  await desktop.route(/\\/api\\/home(?:\\?|$)/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [], coupons: [], plans: [] }) }));
+  await desktop.route(/\/api\/home(?:\?|$)/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [], coupons: [], plans: [] }) }));
   await desktop.goto(base + '/#home', { waitUntil: 'domcontentloaded', timeout: 45000 });
   await desktop.locator('.hero.brand-hero').waitFor({ state: 'visible', timeout: 15000 });
   await desktop.screenshot({ path: resolve(shotDir, 'home-brand-1440px.png'), fullPage: true });
