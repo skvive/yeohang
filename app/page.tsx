@@ -20,7 +20,7 @@ export default function HomePage() {
       <header className="site-header">
         <div className="header-inner">
           <a className="brand v2-brand" href="#home" aria-label="여행갈지도 홈">
-            <img className="v2-wordmark" src="/assets/nav-brand-lockup.svg" alt="여행갈지도 Travel Galjido" />
+            <img className="v2-wordmark" src="/assets/yeohang-nav-master-logo.png" alt="여행갈지도 Travel Galjido" />
           </a>
           <nav className="main-nav" id="mainNav" aria-label="기본 메뉴">
             <a href="#home" data-nav="home">
