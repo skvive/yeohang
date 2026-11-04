@@ -268,4 +268,12 @@ async function init(){state.userLoc=window.YeohangGeo?.read?.()||null;route();re
 init();
 
 // Offline and missing-source resilience: replace broken images without inline JavaScript.
-document.addEventListener('error',e=>{if(e.target instanceof HTMLImageElement&&!e.target.dataset.fallback){e.target.dataset.fallback='1';e.target.src='/assets/hero.webp'}},true);
+document.addEventListener('error', e => {
+  const image = e.target;
+  if (!(image instanceof HTMLImageElement) || image.dataset.fallback) return;
+  // Leaflet map tiles and other map-provider images are infrastructure, not
+  // editorial images: never replace a failed tile with a hotel photograph.
+  if (image.classList.contains('leaflet-tile') || image.closest('#mapCanvas, .leaflet-container')) return;
+  image.dataset.fallback = '1';
+  image.src = '/assets/hero.webp';
+}, true);
