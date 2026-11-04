@@ -104,7 +104,7 @@ try {
   await page.goto(base + '/#home', { waitUntil: 'domcontentloaded' });
   await page.locator('.hero.brand-hero').waitFor({ state: 'visible', timeout: 15000 });
   await page.locator('.hero-logo-stage img').waitFor({ state: 'visible', timeout: 15000 });
-  assert.ok(await page.locator('.hero-logo-stage img').evaluate(img => img.complete && img.naturalWidth > 0), 'new hero logo must load');
+  await page.waitForFunction(() => { const img = document.querySelector('.hero-logo-stage img'); return img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0; }, null, { timeout: 20000 });
   await page.screenshot({ path: resolve(shotDir, 'home-brand-390px.png'), fullPage: true });
   await context.close();
 
