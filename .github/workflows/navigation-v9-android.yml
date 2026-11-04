@@ -59,6 +59,7 @@ jobs:
           script: |
             mkdir -p android-app/artifacts
             adb install -r android-app/app/build/outputs/apk/debug/app-debug.apk
+            timeout 90 bash -c 'until adb shell dumpsys connectivity | grep -q "VALIDATED"; do sleep 2; done'
             adb logcat -c
             adb shell am start -W -n site.lexid.yeohangnav/.MainActivity
             sleep 22
@@ -77,3 +78,4 @@ jobs:
           path: android-app/artifacts/
           if-no-files-found: ignore
           retention-days: 14
+
