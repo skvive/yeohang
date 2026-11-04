@@ -71,6 +71,7 @@
     container = null;
     markers = new Map();
     current = '';
+    document.getElementById('mapTileNotice')?.remove();
   }
   function makeIcon(type, selected) {
     const label = ICONS[type] || ICONS.other;
@@ -152,10 +153,37 @@
         if (fallbackIframe) { fallbackIframe.classList.add('map-fallback-hidden'); fallbackIframe.hidden = true; }
         const initial = validPoint(center) ? [Number(center.lat), Number(center.lng)] : [37.5665, 126.978];
         map = L.map(surface, { preferCanvas: true, scrollWheelZoom: false, zoomControl: true }).setView(initial, 11);
-        L.tileLayer(safeTiles(), {
+        const tiles = L.tileLayer(safeTiles(), {
           minZoom: 5, maxZoom: 18, attribution: ATTRIBUTION, detectRetina: false,
           updateWhenIdle: true, keepBuffer: 2
-        }).addTo(map);
+        });
+        tiles.addTo(map);
+        // Missing map tiles must be explained, not disguised as a hotel photo.
+        // Keep OSM attribution and markers visible even if background tiles fail.
+        let failedTiles = 0;
+        let loadedTiles = 0;
+        if (typeof tiles.on === 'function') {
+          tiles.on('tileload', () => {
+            loadedTiles += 1;
+            const notice = document.getElementById('mapTileNotice');
+            if (notice) notice.remove();
+          });
+          tiles.on('tileerror', () => {
+            failedTiles += 1;
+            if (loadedTiles > 0 || failedTiles < 3) return;
+            const host = document.getElementById('mapCanvas');
+            if (!host || !host.contains(surface)) return;
+            let notice = document.getElementById('mapTileNotice');
+            if (!notice) {
+              notice = document.createElement('p');
+              notice.id = 'mapTileNotice';
+              notice.className = 'ym-tile-notice';
+              notice.setAttribute('role', 'status');
+              host.appendChild(notice);
+            }
+            notice.textContent = '지도 배경 연결에 실패했습니다. 외부 지도 버튼으로 위치를 확인해 주세요.';
+          });
+        }
         group = L.layerGroup().addTo(map);
       }
       group.clearLayers();
