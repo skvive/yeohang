@@ -53,6 +53,14 @@ test('CI live map verification is a separate gate from Android package build', (
  assert.doesNotMatch(yaml, /continue-on-error: true/);
 });
 
+test('CI waits for validated emulator network before loading the WebView', () => {
+ const yaml = root('.github/workflows/navigation-v9-android.yml');
+ const networkReady = yaml.indexOf('adb shell dumpsys connectivity');
+ const appStart = yaml.indexOf('adb shell am start');
+ assert.ok(networkReady > 0, 'network readiness gate is required');
+ assert.ok(networkReady < appStart, 'network gate must run before app launch');
+});
+
 test('Kakao map provider is strictly opt-in, valid JS, and preserves default Leaflet renderer', () => {
  const source = root('public/map-kakao-provider.js');
  assert.doesNotThrow(() => new Script(source));
@@ -97,3 +105,4 @@ test('Kakao OAuth server protects state, token exchange and traveler-only scopes
   assert.match(button, /kakaoReady/);
   assert.doesNotMatch(oauth + callback + session, /console\.log\(.*accessToken/);
 });
+
