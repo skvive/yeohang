@@ -104,3 +104,54 @@ body.yeohang-map-mode .disclosure{font-size:11px;line-height:1.8;max-width:950px
 .brand-hero .brand-hero-copy h1 em{color:#ffbf67}
 .brand-hero .hero-buttons{display:flex;flex-wrap:wrap;gap:11px}
 @media(max-width:760px){.brand-hero .brand-hero-copy h1{font-size:clamp(31px,8.3vw,43px);line-height:1.3;letter-spacing:-.07em}.brand-hero .hero-buttons>a{min-height:47px;display:inline-flex;align-items:center;justify-content:center}}
+
+/* V3.1 mobile map QA: bring the actual map above the fold and separate
+   floating map controls from the persistent bottom navigation. */
+@media (max-width:760px) {
+  body.yeohang-map-mode { padding-bottom:calc(82px + env(safe-area-inset-bottom, 0px)); }
+  body.yeohang-map-mode .section-tight { padding-top:4px; }
+  body.yeohang-map-mode .y-nav-top { min-height:59px; padding:8px 11px; margin-bottom:7px; border-radius:15px; }
+  body.yeohang-map-mode .y-nav-brand img { width:42px; height:42px; }
+  body.yeohang-map-mode .y-nav-brand b { font-size:17px; }
+  body.yeohang-map-mode .y-nav-brand small,
+  body.yeohang-map-mode .y-nav-brand-copy,
+  body.yeohang-map-mode .y-nav-info { display:none; }
+  body.yeohang-map-mode .y-nav-search { min-height:49px; margin-bottom:5px; padding:4px 6px 4px 12px; }
+  body.yeohang-map-mode .y-nav-search button { min-height:39px; }
+  body.yeohang-map-mode .y-nav-quick { margin-bottom:3px; padding-bottom:2px; gap:6px; }
+  body.yeohang-map-mode .y-nav-quick button { min-height:37px; padding:6px 10px; font-size:11px; }
+  body.yeohang-map-mode .filters { gap:7px; margin-bottom:4px; padding-bottom:3px; }
+  /* The matching "내 위치" action is already provided in the quick toolbar. */
+  body.yeohang-map-mode .filters [data-near] { display:none; }
+  body.yeohang-map-mode .filters .region-pill { min-height:37px; padding:6px 13px; font-size:12px; }
+  body.yeohang-map-mode .map-category-filter { margin:4px 0 5px; padding:6px 8px; border-radius:14px; box-shadow:none; background:#fff; }
+  body.yeohang-map-mode .map-category-title { display:none; }
+  body.yeohang-map-mode .map-category-chips { gap:6px; padding:1px 0 3px; }
+  body.yeohang-map-mode .map-category-chip { min-height:38px; padding:6px 12px; font-size:11px; }
+  body.yeohang-map-mode #mapGeoStatus { margin:3px 5px 7px; font-size:11px; line-height:1.5; max-height:34px; overflow:hidden; }
+  body.yeohang-map-mode .map-canvas { height:64dvh; min-height:405px; max-height:680px; }
+  body.yeohang-map-mode .map-side { max-height:40vh; }
+  body.yeohang-map-mode .y-nav-float { top:60px; right:9px; bottom:auto; gap:7px; }
+  body.yeohang-map-mode .y-nav-float .y-nav-character { display:none; }
+  body.yeohang-map-mode .y-nav-float button { min-height:40px; font-size:11px; padding:7px 11px; }
+  body.yeohang-map-mode .y-nav-bottom {
+    position:fixed;
+    bottom:max(7px,env(safe-area-inset-bottom, 0px));
+    left:50%;
+    transform:translateX(-50%);
+    width:min(calc(100vw - 18px), 480px);
+    min-height:57px;
+    margin:0;
+    padding:4px 6px;
+    z-index:860;
+    border-radius:17px;
+    box-shadow:0 8px 28px #072a3f35;
+  }
+  body.yeohang-map-mode .y-nav-bottom a { min-width:0; flex:1; min-height:46px; padding:5px 4px; }
+  body.yeohang-map-mode .footer { padding-bottom:18px; }
+}
+@media (max-width:375px) {
+  body.yeohang-map-mode .y-nav-brand b { font-size:16px; }
+  body.yeohang-map-mode .y-nav-search input { font-size:12px; }
+  body.yeohang-map-mode .map-canvas { min-height:390px; }
+}
