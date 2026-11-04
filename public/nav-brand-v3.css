@@ -155,3 +155,16 @@ body.yeohang-map-mode .disclosure{font-size:11px;line-height:1.8;max-width:950px
   body.yeohang-map-mode .y-nav-search input { font-size:12px; }
   body.yeohang-map-mode .map-canvas { min-height:390px; }
 }
+
+/* Accessible, non-modal tile-provider failure notice. Do not hide map attribution. */
+#mapCanvas .ym-tile-notice {
+  position:absolute; z-index:650; left:12px; bottom:18px;
+  max-width:min(70%, 360px); padding:10px 12px; margin:0;
+  background:rgba(255,250,239,.97); color:#563920;
+  border:1px solid #f1d8ad; border-radius:11px;
+  box-shadow:0 7px 19px #113b3c20; font-size:11px;
+  font-weight:750; line-height:1.6; pointer-events:none;
+}
+@media(max-width:760px) {
+  #mapCanvas .ym-tile-notice { max-width:59%; bottom:16px; left:8px; padding:7px 9px; font-size:10px; }
+}
