@@ -7,7 +7,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.kakaomobility.knsdk.ui.view.KNNaviView
+import com.kakaomobility.knsdk.map.knmapview.KNMapView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,12 +51,13 @@ class KakaoNavigationSmokeTest {
                     }
                     if (failure != null) return@runOnMainSync
                     val root = content.getChildAt(0) as? LinearLayout ?: return@runOnMainSync
-                    val header = root.getChildAt(0) as? LinearLayout
-                    val title = header?.getChildAt(1) as? TextView
-                    val status = root.getChildAt(2) as? TextView
+                    val title = root.getChildAt(0) as? LinearLayout
+                    val destination = title?.getChildAt(1) as? TextView
+                    val map = root.getChildAt(2)
+                    val status = root.getChildAt(4) as? TextView
 
-                    if (title?.text?.toString()?.contains("QA Test Destination") == true &&
-                        root.getChildAt(1) is KNNaviView && status?.visibility == View.GONE) {
+                    if (destination?.text?.toString()?.contains("QA Test Destination") == true &&
+                        map is KNMapView && status?.visibility == View.GONE) {
                         guidanceStarted = true
                     }
                 }

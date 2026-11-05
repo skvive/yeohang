@@ -9,10 +9,13 @@ import android.location.Criteria
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -28,9 +31,13 @@ import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.common.objects.KNError
+import com.kakaomobility.knsdk.map.knmapview.KNMapCameraUpdate
+import com.kakaomobility.knsdk.map.knmapview.KNMapTheme
+import com.kakaomobility.knsdk.map.knmapview.KNMapView
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
-import com.kakaomobility.knsdk.ui.view.KNNaviView
+import java.io.ByteArrayOutputStream
+import java.io.File
 import kotlin.math.roundToInt
 
 class KakaoNavigationActivity : Activity(),
@@ -48,13 +55,18 @@ class KakaoNavigationActivity : Activity(),
         private const val LOCATION_REQUEST = 2310
     }
 
-    private lateinit var naviView: KNNaviView
+    private lateinit var mapView: KNMapView
     private lateinit var status: TextView
+    private lateinit var turnTitle: TextView
+    private lateinit var turnDistance: TextView
+    private lateinit var routeSummary: TextView
     private var locationManager: LocationManager? = null
     private var pendingLocationListener: LocationListener? = null
+    private var voicePlayer: MediaPlayer? = null
     private var destinationName = ""
     private var destinationLat = 0.0
     private var destinationLng = 0.0
+    private var currentRoute: KNRoute? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,8 +78,7 @@ class KakaoNavigationActivity : Activity(),
         (application as YeohangApplication).authenticate { authenticated, errorDetail ->
             runOnUiThread {
                 if (!authenticated) {
-                    val reason = errorDetail ?: "SDK 오류"
-                    status.text = "카카오내비 인증 실패: $reason"
+                    status.text = "카카오내비 인증 실패: ${errorDetail ?: "SDK 오류"}"
                     return@runOnUiThread
                 }
                 buildBrandedNavigationScreen()
@@ -108,29 +119,72 @@ class KakaoNavigationActivity : Activity(),
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         brandBar.addView(TextView(this).apply {
-            text = "카카오내비 길안내 · $destinationName"
+            text = "목적지 · $destinationName"
             textSize = 13f
             setTextColor(Color.rgb(218, 238, 237))
             maxLines = 1
         })
         root.addView(brandBar, LinearLayout.LayoutParams(-1, dp(64)))
 
-        naviView = KNNaviView(this).apply {
-            useDarkMode = false
-            sndVolume = 1f
+        val guidanceCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(10), dp(18), dp(10))
+            setBackgroundColor(Color.rgb(239, 248, 247))
         }
-        root.addView(naviView, LinearLayout.LayoutParams(-1, 0, 1f))
+        turnTitle = TextView(this).apply {
+            text = "현재 위치와 경로를 준비하고 있습니다."
+            textSize = 19f
+            setTextColor(Color.rgb(17, 61, 77))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        turnDistance = TextView(this).apply {
+            text = destinationName
+            textSize = 14f
+            setTextColor(Color.rgb(56, 92, 99))
+        }
+        guidanceCard.addView(turnTitle)
+        guidanceCard.addView(turnDistance)
+        root.addView(guidanceCard, LinearLayout.LayoutParams(-1, dp(92)))
+
+        mapView = KNMapView(this)
+        root.addView(mapView, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val footer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setBackgroundColor(Color.WHITE)
+        }
+        routeSummary = TextView(this).apply {
+            text = "경로 정보를 불러오고 있습니다."
+            textSize = 14f
+            setTextColor(Color.rgb(31, 69, 79))
+            setPadding(0, 0, dp(12), 0)
+        }
+        footer.addView(routeSummary, LinearLayout.LayoutParams(0, -2, 1f))
+        footer.addView(Button(this).apply {
+            text = "안내 종료"
+            setTextColor(Color.rgb(17, 61, 77))
+            setOnClickListener {
+                YeohangApplication.sdk.sharedGuidance()?.stop()
+                finish()
+            }
+        }, LinearLayout.LayoutParams(-2, -2))
+        root.addView(footer, LinearLayout.LayoutParams(-1, dp(64)))
 
         status = TextView(this).apply {
-            text = "현재 위치와 경로를 준비하고 있습니다."
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(31, 69, 79))
-            setBackgroundColor(Color.rgb(239, 248, 247))
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            text = ""
+            visibility = View.GONE
         }
-        root.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
+        root.addView(status, LinearLayout.LayoutParams(-1, dp(40)))
         setContentView(root)
+        YeohangApplication.sdk.bindingMapView(mapView, KNMapTheme.driveDay()) { error ->
+            if (error != null) runOnUiThread {
+                status.text = "카카오 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+                status.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun showStatusScreen(message: String) {
@@ -146,10 +200,7 @@ class KakaoNavigationActivity : Activity(),
 
     private fun checkLocationPermission() {
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_REQUEST
-            )
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_REQUEST)
             return
         }
         requestCurrentLocation()
@@ -212,6 +263,7 @@ class KakaoNavigationActivity : Activity(),
                         status.text = "카카오내비 경로 응답에 실패했습니다."
                         return@runOnUiThread
                     }
+                    mapView.moveCamera(KNMapCameraUpdate.targetTo(startPoint), false)
                     startGuidance(trip, priority)
                 }
             }
@@ -233,17 +285,39 @@ class KakaoNavigationActivity : Activity(),
             citsGuideDelegate = this@KakaoNavigationActivity
         }
         status.visibility = View.GONE
-        naviView.initWithGuidance(guidance, trip, priority, 0)
+        guidance.startWithTrip(trip, priority, 0)
     }
 
-    override fun guidanceCheckingRouteChange(guidance: KNGuidance) = naviView.guidanceCheckingRouteChange(guidance)
-    override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) =
-        naviView.guidanceDidUpdateRoutes(guidance, routes, multiRouteInfo)
-    override fun guidanceDidUpdateIndoorRoute(guidance: KNGuidance, route: KNRoute?) =
-        naviView.guidanceDidUpdateIndoorRoute(guidance, route)
-    override fun guidanceGuideEnded(guidance: KNGuidance) = naviView.guidanceGuideEnded(guidance)
-    override fun guidanceGuideStarted(guidance: KNGuidance) = naviView.guidanceGuideStarted(guidance)
-    override fun guidanceOutOfRoute(guidance: KNGuidance) = naviView.guidanceOutOfRoute(guidance)
+    override fun guidanceCheckingRouteChange(guidance: KNGuidance) {
+        turnTitle.text = "경로를 다시 확인하고 있습니다."
+    }
+
+    override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) {
+        currentRoute = routes.firstOrNull()
+        mapView.setRoutes(routes)
+        currentRoute?.let { route ->
+            routeSummary.text = "${formatDistance(route.totalDist)} · 약 ${formatDuration(route.totalTime)}"
+        }
+    }
+
+    override fun guidanceDidUpdateIndoorRoute(guidance: KNGuidance, route: KNRoute?) {
+        route?.let { mapView.setRoute(it) }
+    }
+
+    override fun guidanceGuideEnded(guidance: KNGuidance) {
+        turnTitle.text = "목적지에 도착했습니다."
+        turnDistance.text = destinationName
+    }
+
+    override fun guidanceGuideStarted(guidance: KNGuidance) {
+        turnTitle.text = "안내를 시작합니다."
+        turnDistance.text = destinationName
+    }
+
+    override fun guidanceOutOfRoute(guidance: KNGuidance) {
+        turnTitle.text = "경로를 벗어나 다시 안내합니다."
+    }
+
     override fun guidanceRouteChanged(
         guidance: KNGuidance,
         fromRoute: KNRoute,
@@ -251,27 +325,90 @@ class KakaoNavigationActivity : Activity(),
         toRoute: KNRoute,
         toLocation: KNLocation,
         changeReason: KNGuideRouteChangeReason
-    ) = naviView.guidanceRouteChanged(guidance)
-    override fun guidanceRouteUnchanged(guidance: KNGuidance) = naviView.guidanceRouteUnchanged(guidance)
-    override fun guidanceRouteUnchangedWithError(guidance: KNGuidance, error: KNError) =
-        naviView.guidanceRouteUnchangedWithError(guidance, error)
-    override fun guidanceDidUpdateLocation(guidance: KNGuidance, locationGuide: KNGuide_Location) =
-        naviView.guidanceDidUpdateLocation(guidance, locationGuide)
-    override fun guidanceDidUpdateRouteGuide(guidance: KNGuidance, routeGuide: KNGuide_Route) =
-        naviView.guidanceDidUpdateRouteGuide(guidance, routeGuide)
-    override fun guidanceDidUpdateSafetyGuide(guidance: KNGuidance, safetyGuide: KNGuide_Safety?) =
-        naviView.guidanceDidUpdateSafetyGuide(guidance, safetyGuide)
-    override fun guidanceDidUpdateAroundSafeties(guidance: KNGuidance, safeties: List<KNSafety>?) =
-        naviView.guidanceDidUpdateAroundSafeties(guidance, safeties)
-    override fun shouldPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice, newData: MutableList<ByteArray>) =
-        naviView.shouldPlayVoiceGuide(guidance, voiceGuide, newData)
-    override fun willPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) = naviView.willPlayVoiceGuide(guidance, voiceGuide)
-    override fun didFinishPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) =
-        naviView.didFinishPlayVoiceGuide(guidance, voiceGuide)
-    override fun didUpdateCitsGuide(guidance: KNGuidance, citsGuide: KNGuide_Cits) = naviView.didUpdateCitsGuide(guidance, citsGuide)
+    ) {
+        currentRoute = toRoute
+        mapView.setRoute(toRoute)
+        routeSummary.text = "${formatDistance(toRoute.totalDist)} · 약 ${formatDuration(toRoute.totalTime)}"
+    }
+
+    override fun guidanceRouteUnchanged(guidance: KNGuidance) = Unit
+
+    override fun guidanceRouteUnchangedWithError(guidance: KNGuidance, error: KNError) {
+        turnTitle.text = "경로를 유지하고 있습니다."
+    }
+
+    override fun guidanceDidUpdateLocation(guidance: KNGuidance, locationGuide: KNGuide_Location) {
+        val location = locationGuide.locationForPrimaryRoute ?: locationGuide.location ?: return
+        mapView.moveCamera(KNMapCameraUpdate.targetTo(location.pos), true)
+        mapView.cullPassedRoute(location, true)
+    }
+
+    override fun guidanceDidUpdateRouteGuide(guidance: KNGuidance, routeGuide: KNGuide_Route) {
+        val direction = routeGuide.curDirection
+        turnTitle.text = direction?.nodeName?.takeIf { it.isNotBlank() }
+            ?: direction?.directionNames?.firstOrNull()
+            ?: "경로를 따라 이동하세요."
+        val distance = guidance.locationGuide?.locationForPrimaryRoute
+            ?.let { current -> direction?.location?.let(current::distToLocation) }
+        turnDistance.text = distance?.let { "${formatDistance(it)} 후 안내 · $destinationName" }
+            ?: destinationName
+    }
+
+    override fun guidanceDidUpdateSafetyGuide(guidance: KNGuidance, safetyGuide: KNGuide_Safety?) = Unit
+
+    override fun guidanceDidUpdateAroundSafeties(guidance: KNGuidance, safeties: List<KNSafety>?) = Unit
+
+    override fun shouldPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice, newData: MutableList<ByteArray>): Boolean = true
+
+    override fun willPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) {
+        playVoiceGuide(voiceGuide)
+    }
+
+    override fun didFinishPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) = Unit
+
+    override fun didUpdateCitsGuide(guidance: KNGuidance, citsGuide: KNGuide_Cits) = Unit
+
+    private fun playVoiceGuide(voiceGuide: KNGuide_Voice) {
+        val bytes = ByteArrayOutputStream().apply {
+            voiceGuide.data.forEach { write(it) }
+        }.toByteArray()
+        if (bytes.isEmpty()) return
+        try {
+            voicePlayer?.release()
+            val audioFile = File(cacheDir, "kakao-guide.mp3")
+            audioFile.writeBytes(bytes)
+            voicePlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                setDataSource(audioFile.absolutePath)
+                setOnCompletionListener { player -> player.release(); voicePlayer = null }
+                setOnErrorListener { player, _, _ -> player.release(); voicePlayer = null; true }
+                prepareAsync()
+                setOnPreparedListener { it.start() }
+            }
+        } catch (_: Exception) {
+            voicePlayer?.release()
+            voicePlayer = null
+        }
+    }
+
+    private fun formatDistance(meters: Int): String =
+        if (meters >= 1000) String.format("%.1f km", meters / 1000.0) else "$meters m"
+
+    private fun formatDuration(seconds: Int): String {
+        val minutes = (seconds / 60).coerceAtLeast(1)
+        return if (minutes >= 60) "${minutes / 60}시간 ${minutes % 60}분" else "$minutes분"
+    }
 
     override fun onDestroy() {
         pendingLocationListener?.let { locationManager?.removeUpdates(it) }
+        voicePlayer?.runCatching { stop() }
+        voicePlayer?.release()
+        voicePlayer = null
         super.onDestroy()
     }
 
