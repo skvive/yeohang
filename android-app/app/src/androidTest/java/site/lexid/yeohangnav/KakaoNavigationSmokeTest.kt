@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kakaomobility.knsdk.ui.view.KNNaviView
@@ -18,8 +17,10 @@ import org.junit.runner.RunWith
 class KakaoNavigationSmokeTest {
     @Test
     fun authenticatesAndStartsDestinationGuidance() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
         val intent = Intent(context, KakaoNavigationActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_NAME, "QA Test Destination")
             putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_LAT, 37.5010)
             putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_LNG, 127.0396)
@@ -27,10 +28,11 @@ class KakaoNavigationSmokeTest {
         var guidanceStarted = false
         var failure: String? = null
 
-        ActivityScenario.launch<KakaoNavigationActivity>(intent).use { scenario ->
+        val activity = instrumentation.startActivitySync(intent)
+        try {
             val deadline = System.currentTimeMillis() + 75_000
             while (System.currentTimeMillis() < deadline && !guidanceStarted && failure == null) {
-                scenario.onActivity { activity ->
+                instrumentation.runOnMainSync {
                     val content = activity.findViewById<ViewGroup>(android.R.id.content)
                     val root = content.getChildAt(0) as? LinearLayout ?: return@onActivity
                     val header = root.getChildAt(0) as? LinearLayout
@@ -52,6 +54,8 @@ class KakaoNavigationSmokeTest {
                 }
                 if (!guidanceStarted && failure == null) Thread.sleep(500)
             }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
         }
 
         assertEquals("Kakao navigation did not start: $failure", null, failure)
