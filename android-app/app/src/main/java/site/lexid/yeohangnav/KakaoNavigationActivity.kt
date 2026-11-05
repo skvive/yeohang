@@ -61,7 +61,7 @@ class KakaoNavigationActivity : Activity(),
         window.statusBarColor = Color.rgb(17, 61, 77)
         window.navigationBarColor = Color.BLACK
         readDestination() ?: return
-        buildBrandedNavigationScreen()
+        showStatusScreen("카카오내비에 연결하고 있습니다.")
 
         (application as YeohangApplication).authenticate { authenticated ->
             runOnUiThread {
@@ -69,6 +69,7 @@ class KakaoNavigationActivity : Activity(),
                     status.text = "카카오내비 연결을 확인할 수 없습니다. 앱 키와 등록 상태를 확인해 주세요."
                     return@runOnUiThread
                 }
+                buildBrandedNavigationScreen()
                 checkLocationPermission()
             }
         }
@@ -129,6 +130,17 @@ class KakaoNavigationActivity : Activity(),
         }
         root.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
         setContentView(root)
+    }
+
+    private fun showStatusScreen(message: String) {
+        status = TextView(this).apply {
+            text = message
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(31, 69, 79))
+            setBackgroundColor(Color.WHITE)
+        }
+        setContentView(status)
     }
 
     private fun checkLocationPermission() {

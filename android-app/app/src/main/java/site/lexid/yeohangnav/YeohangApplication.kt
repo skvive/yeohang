@@ -5,6 +5,8 @@ import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 
 class YeohangApplication : Application() {
+    private var authenticated = false
+
     companion object {
         lateinit var sdk: KNSDK
             private set
@@ -18,6 +20,10 @@ class YeohangApplication : Application() {
     }
 
     fun authenticate(onResult: (Boolean) -> Unit) {
+        if (authenticated) {
+            onResult(true)
+            return
+        }
         val appKey = BuildConfig.KAKAO_MOBILITY_APP_KEY.trim()
         if (appKey.isEmpty()) {
             onResult(false)
@@ -27,7 +33,10 @@ class YeohangApplication : Application() {
             aAppKey = appKey,
             aClientVersion = BuildConfig.VERSION_NAME,
             aLangType = KNLanguageType.KNLanguageType_KOREAN,
-            aCompletion = { error -> onResult(error == null) }
+            aCompletion = { error ->
+                authenticated = error == null
+                onResult(authenticated)
+            }
         )
     }
 }
