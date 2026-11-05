@@ -31,8 +31,8 @@ import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.common.objects.KNError
-import com.kakaomobility.knsdk.map.knmapview.KNMapCameraUpdate
-import com.kakaomobility.knsdk.map.knmapview.KNMapTheme
+import com.kakaomobility.knsdk.map.knmaprenderer.objects.KNMapCameraUpdate
+import com.kakaomobility.knsdk.map.uicustomsupport.renewal.theme.base.KNMapTheme
 import com.kakaomobility.knsdk.map.knmapview.KNMapView
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
@@ -401,7 +401,7 @@ class KakaoNavigationActivity : Activity(),
 
     private fun formatDuration(seconds: Int): String {
         val minutes = (seconds / 60).coerceAtLeast(1)
-        return if (minutes >= 60) "${minutes / 60}시간 ${minutes % 60}분" else "$minutes분"
+        return if (minutes >= 60) "${minutes / 60}시간 ${minutes % 60}분" else "${minutes}분"
     }
 
     override fun onDestroy() {
