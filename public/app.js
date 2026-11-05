@@ -187,6 +187,11 @@ window.YeohangNavigation=Object.freeze({
   openDirections(){
     const pin=state.mapPins.find(p=>p.id===state.mapSelected);
     if(!pin||!window.YeohangMultiMap?.validPoint?.(pin))return false;
+    if(window.__YE0HANG_ANDROID_NAVI__){
+      const params=new URLSearchParams({name:String(pin.name||'목적지'),lat:String(Number(pin.lat)),lng:String(Number(pin.lng))});
+      window.location.assign('yeohangnav://navigate?'+params.toString());
+      return true;
+    }
     // Kakao Maps 공식 Web URL 규격. 로케이션 권한이 없더라도 목적지만 전달한다.
     const dest=encodeURIComponent(String(pin.name||'목적지'))+','+Number(pin.lat)+','+Number(pin.lng);
     const url='https://map.kakao.com/link/to/'+dest;

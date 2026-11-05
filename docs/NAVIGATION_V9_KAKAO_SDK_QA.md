@@ -1,4 +1,4 @@
-# 여행갈지도 Navigation V9: 공식 카카오맵 지도 엔진 전환 게이트
+# 여행갈지도 Navigation V10: 카카오내비 인앱 길안내 게이트
 
 ## 확정된 사실
 - 현재 기본 지도: Leaflet + OpenStreetMap (운영 타일 사용 조건은 별도 확인)
@@ -16,18 +16,20 @@
 5. 지도 공급자 라이선스/서비스 약관/쿼터 검토 후 운영 전환. 운영 DB 마이그레이션·시딩은 UI 배포와 분리.
 6. 서버 검색 API `/api/map`은 그대로 사용하므로 해당 API 데이터가 잘못되거나 비어 있으면 지도 SDK가 떠도 핀이 없을 수 있음.
 
-## Android
-- V9 APK는 `site.lexid.yeohangnav` WebView 방식. 앱 내 라이브 경로 안내 SDK가 아니다.
-- 카카오맵 링크를 외부 앱 또는 브라우저로 연결하며 GPS 미허용 시 출발지를 임의로 설정하지 않는다.
-- 공식 카카오모빌리티 In-App Directions SDK는 별도 제품·이용 조건이므로 키 없이 강제 적용 불가.
+## Android 인앱 길안내
+- 앱은 `site.lexid.yeohangnav` WebView를 유지하고, 선택 숙소의 이름·WGS84 좌표를 전용 `yeohangnav:` scheme으로 네이티브 Activity에 전달한다.
+- 네이티브 Activity가 전경 위치 권한을 확인하고 새 GPS 위치를 받아 KNSDK로 양쪽 좌표를 KATEC으로 변환한 뒤 경로 요청과 음성 안내를 시작한다. 임의 기본 출발지는 사용하지 않는다.
+- SDK는 `knsdk_ui:1.12.8-hotfix05`; 화면 상단 여행갈지도 브랜드 바를 두고 SDK 길안내 뷰를 내장한다. Kakao SDK 내부 구성 요소 전체를 임의 재브랜딩하는 구현은 아니다.
+- 네이티브 앱 키는 `android-app/local.properties`의 `kakaoMobilityAppKey` 또는 빌드 환경변수 `KAKAO_MOBILITY_APP_KEY`로만 주입하며 git에 포함하지 않는다.
+- SDK 실인증은 Kakao Developers 앱에 Android package `site.lexid.yeohangnav`와 해당 서명 키 해시가 등록된 뒤 검증한다. 현재 키/해시 등록 상태는 아직 확인하지 않았다.
 
 ## QA 판정
-- `built`: `gradle assembleDebug` 성공
+- `built`: `gradle :app:assembleDebug` 성공
 - `installed-on-emulator`: APK 설치, Activity/프로세스 실제 시작
 - `web-view-loaded`: `NAV_PAGE_READY`
 - `map-ui-loaded`: `NAV_MAP_SURFACE_READY`
-- `sdk-kakao-loaded`: 카카오 승인 도메인에서 키가 있는 상태로 실제 SDK 지도·로고 표시 검증 (현재 미확인)
-- `live-route-test`: 실기기 도로에서 법령·안전 준수한 주행 안내 검증 (미실시)
+- `sdk-kakao-loaded`: 네이티브 앱 키와 패키지·키 해시를 확인한 SDK 인증 성공 후 검증
+- `live-route-test`: GPS·음성·재탐색은 에뮬레이터와 실기기에서 각각 검증 필요
 - `signed-release` / `play-store-submitted`: 진행하지 않음
 
 ## 근거

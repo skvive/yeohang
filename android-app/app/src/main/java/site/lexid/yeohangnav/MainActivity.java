@@ -90,6 +90,12 @@ public final class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 if (uri == null) return true;
                 String scheme = uri.getScheme();
+                if ("yeohangnav".equalsIgnoreCase(scheme) &&
+                        "navigate".equalsIgnoreCase(uri.getHost()) &&
+                        isFirstPartyPage(view)) {
+                    openNativeNavigation(uri);
+                    return true;
+                }
                 if ("https".equalsIgnoreCase(scheme) &&
                         APP_HOST.equalsIgnoreCase(uri.getHost())) return false;
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme) ||
@@ -273,12 +279,38 @@ public final class MainActivity extends Activity {
             String js = readAsset("navigation-v9.js");
             webView.evaluateJavascript("(function(){if(window.__YV9_APK__)return;" +
                 "window.__YV9_APK__=true;" +
+                "window.__YE0HANG_ANDROID_NAVI__=true;" +
                 "var s=document.createElement('style');s.textContent=" + JSONObject.quote(css) +
                 ";document.head.appendChild(s);})();", ignored -> {
                     if (webView != null && !pageFailed) webView.evaluateJavascript(js, null);
                 });
         } catch (Exception error) {
             Log.w(TAG, "NAV_BRAND_OVERLAY_FAILED");
+        }
+    }
+
+    private boolean isFirstPartyPage(WebView view) {
+        Uri current = Uri.parse(view.getUrl() == null ? "" : view.getUrl());
+        return "https".equalsIgnoreCase(current.getScheme()) &&
+            APP_HOST.equalsIgnoreCase(current.getHost());
+    }
+
+    private void openNativeNavigation(Uri uri) {
+        String name = uri.getQueryParameter("name");
+        String lat = uri.getQueryParameter("lat");
+        String lng = uri.getQueryParameter("lng");
+        try {
+            double latitude = Double.parseDouble(lat);
+            double longitude = Double.parseDouble(lng);
+            if (name == null || name.trim().isEmpty() || name.length() > 120 ||
+                latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return;
+            Intent intent = new Intent(this, KakaoNavigationActivity.class);
+            intent.putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_NAME, name.trim());
+            intent.putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_LAT, latitude);
+            intent.putExtra(KakaoNavigationActivity.EXTRA_DESTINATION_LNG, longitude);
+            startActivity(intent);
+        } catch (NumberFormatException ignored) {
+            Log.w(TAG, "NAV_INVALID_DESTINATION");
         }
     }
 

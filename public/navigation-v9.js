@@ -91,6 +91,11 @@
          coordinates=u.searchParams.get('query')||u.searchParams.get('q')||'';
        }catch{}
        const match=coordinates.match(/(-?\d{2}\.\d+)\s*,\s*(-?\d{3}\.\d+)/);
+       if(window.__YE0HANG_ANDROID_NAVI__&&match){
+         const params=new URLSearchParams({name,lat:match[1],lng:match[2]});
+         location.assign('yeohangnav://navigate?'+params.toString());
+         return true;
+       }
        const route=match?
          'https://map.kakao.com/link/to/'+encodeURIComponent(name)+','+match[1]+','+match[2]:
          'https://map.kakao.com/link/search/'+encodeURIComponent(name);

@@ -1,6 +1,16 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+def kakaoMobilityAppKey = localProperties.getProperty('kakaoMobilityAppKey',
+    System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '')
+
 android {
     namespace 'site.lexid.yeohangnav'
     compileSdk 35
@@ -8,14 +18,20 @@ android {
         applicationId 'site.lexid.yeohangnav'
         minSdk 26
         targetSdk 35
-        versionCode 9
-        versionName '9.0-map-brand-preview'
+        versionCode 10
+        versionName '10.0-kakao-navigation-preview'
+        buildConfigField 'String', 'KAKAO_MOBILITY_APP_KEY', '\"' + kakaoMobilityAppKey + '\"'
     }
+    buildFeatures { buildConfig true }
     buildTypes { release { minifyEnabled false } }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    implementation 'com.kakaomobility.knsdk:knsdk_ui:1.12.8-hotfix05'
 }
 
 // Embed the first-party V9 UI overlay into the APK. The production site may still

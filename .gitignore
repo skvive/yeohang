@@ -2,6 +2,11 @@ node_modules
 .next
 .vercel
 .neon
+android-app/local.properties
+android-app/.gradle/
+android-app/app/build/
+android-app/app/src/main/assets/
+android-app/app/src/main/res/
 .env
 .env.local
 .env*.local
