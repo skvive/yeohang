@@ -16,8 +16,19 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import com.kakaomobility.knsdk.*
+import com.kakaomobility.knsdk.KNRoutePriority
+import com.kakaomobility.knsdk.guidance.knguidance.*
+import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
+import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
+import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
+import com.kakaomobility.knsdk.guidance.knguidance.routeguide.objects.KNMultiRouteInfo
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
+import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.common.objects.KNPOI
+import com.kakaomobility.knsdk.common.objects.KNError
+import com.kakaomobility.knsdk.trip.kntrip.KNTrip
+import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import com.kakaomobility.knsdk.ui.view.KNNaviView
 import kotlin.math.roundToInt
 
@@ -181,7 +192,7 @@ class KakaoNavigationActivity : Activity(),
                 runOnUiThread { status.text = "경로를 계산하지 못했습니다. 잠시 후 다시 시도해 주세요." }
                 return@makeTripWithStart
             }
-            trip.routeWithPriority(priority.value, 0) { routeError, _ ->
+            trip.routeWithPriority(priority, 0) { routeError, _ ->
                 runOnUiThread {
                     if (routeError != null) {
                         status.text = "카카오내비 경로 응답에 실패했습니다."
