@@ -27,6 +27,7 @@ class KakaoNavigationSmokeTest {
         }
         var guidanceStarted = false
         var failure: String? = null
+        var visibleText = ""
 
         val activity = instrumentation.startActivitySync(intent)
         try {
@@ -34,6 +35,16 @@ class KakaoNavigationSmokeTest {
             while (System.currentTimeMillis() < deadline && !guidanceStarted && failure == null) {
                 instrumentation.runOnMainSync {
                     val content = activity.findViewById<ViewGroup>(android.R.id.content)
+                    val screenText = mutableListOf<String>()
+                    collectText(content, screenText)
+                    visibleText = screenText.joinToString(" | ")
+                    failure = screenText.firstOrNull { message ->
+                        message.contains("확인할 수 없습니다") ||
+                            message.contains("경로를 계산하지 못했습니다") ||
+                            message.contains("경로 응답에 실패") ||
+                            message.contains("위치 서비스를 켠 뒤")
+                    }
+                    if (failure != null) return@runOnMainSync
                     val root = content.getChildAt(0) as? LinearLayout ?: return@runOnMainSync
                     val header = root.getChildAt(0) as? LinearLayout
                     val title = header?.getChildAt(1) as? TextView
@@ -42,14 +53,6 @@ class KakaoNavigationSmokeTest {
                     if (title?.text?.toString()?.contains("QA Test Destination") == true &&
                         root.getChildAt(1) is KNNaviView && status?.visibility == View.GONE) {
                         guidanceStarted = true
-                    } else {
-                        val message = status?.text?.toString().orEmpty()
-                        if (message.contains("확인할 수 없습니다") ||
-                            message.contains("경로를 계산하지 못했습니다") ||
-                            message.contains("경로 응답에 실패") ||
-                            message.contains("위치 서비스를 켠 뒤")) {
-                            failure = message
-                        }
                     }
                 }
                 if (!guidanceStarted && failure == null) Thread.sleep(500)
@@ -59,6 +62,14 @@ class KakaoNavigationSmokeTest {
         }
 
         assertEquals("Kakao navigation did not start: $failure", null, failure)
-        assertTrue("Kakao navigation did not start for the test destination", guidanceStarted)
+        assertTrue("Kakao navigation did not start for the test destination. Screen: $visibleText", guidanceStarted)
+    }
+
+    private fun collectText(view: View, texts: MutableList<String>) {
+        if (view is TextView) {
+            view.text?.toString()?.takeIf { it.isNotBlank() }?.let(texts::add)
+        } else if (view is ViewGroup) {
+            for (index in 0 until view.childCount) collectText(view.getChildAt(index), texts)
+        }
     }
 }
