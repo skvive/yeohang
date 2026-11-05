@@ -34,7 +34,7 @@ class KakaoNavigationSmokeTest {
             while (System.currentTimeMillis() < deadline && !guidanceStarted && failure == null) {
                 instrumentation.runOnMainSync {
                     val content = activity.findViewById<ViewGroup>(android.R.id.content)
-                    val root = content.getChildAt(0) as? LinearLayout ?: return@onActivity
+                    val root = content.getChildAt(0) as? LinearLayout ?: return@runOnMainSync
                     val header = root.getChildAt(0) as? LinearLayout
                     val title = header?.getChildAt(1) as? TextView
                     val status = root.getChildAt(2) as? TextView
