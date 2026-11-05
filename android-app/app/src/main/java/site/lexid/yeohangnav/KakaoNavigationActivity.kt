@@ -3,6 +3,7 @@ package site.lexid.yeohangnav
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Criteria
@@ -11,12 +12,14 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.kakaomobility.knsdk.KNRoutePriority
@@ -39,6 +42,9 @@ import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 import kotlin.math.roundToInt
 
 class KakaoNavigationActivity : Activity(),
@@ -68,6 +74,8 @@ class KakaoNavigationActivity : Activity(),
     private var destinationLat = 0.0
     private var destinationLng = 0.0
     private var currentRoute: KNRoute? = null
+    private var guidanceStarted = false
+    private var guidanceEnded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -168,8 +176,8 @@ class KakaoNavigationActivity : Activity(),
             text = "안내 종료"
             setTextColor(Color.rgb(17, 61, 77))
             setOnClickListener {
+                showPostDriveScreen()
                 YeohangApplication.sdk.sharedGuidance()?.stop()
-                finish()
             }
         }, LinearLayout.LayoutParams(-2, -2))
         root.addView(footer, LinearLayout.LayoutParams(-1, dp(64)))
@@ -286,6 +294,7 @@ class KakaoNavigationActivity : Activity(),
             citsGuideDelegate = this@KakaoNavigationActivity
         }
         status.visibility = View.GONE
+        guidanceStarted = true
         guidance.startWithTrip(trip, priority, 0)
     }
 
@@ -296,9 +305,8 @@ class KakaoNavigationActivity : Activity(),
     override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) {
         currentRoute = routes.firstOrNull()
         mapView.setRoutes(routes)
-        currentRoute?.let { route ->
-            routeSummary.text = "${formatDistance(route.totalDist)} · 약 ${formatDuration(route.totalTime)}"
-        }
+        guidance.locationGuide?.locationForPrimaryRoute?.let(::updateRemainingSummary)
+            ?: currentRoute?.let(::showFullRouteSummary)
     }
 
     override fun guidanceDidUpdateIndoorRoute(guidance: KNGuidance, route: KNRoute?) {
@@ -306,11 +314,11 @@ class KakaoNavigationActivity : Activity(),
     }
 
     override fun guidanceGuideEnded(guidance: KNGuidance) {
-        turnTitle.text = "목적지에 도착했습니다."
-        turnDistance.text = destinationName
+        showPostDriveScreen(arrived = true)
     }
 
     override fun guidanceGuideStarted(guidance: KNGuidance) {
+        guidanceStarted = true
         turnTitle.text = "안내를 시작합니다."
         turnDistance.text = destinationName
     }
@@ -329,7 +337,7 @@ class KakaoNavigationActivity : Activity(),
     ) {
         currentRoute = toRoute
         mapView.setRoute(toRoute)
-        routeSummary.text = "${formatDistance(toRoute.totalDist)} · 약 ${formatDuration(toRoute.totalTime)}"
+        showFullRouteSummary(toRoute)
     }
 
     override fun guidanceRouteUnchanged(guidance: KNGuidance) = Unit
@@ -342,6 +350,7 @@ class KakaoNavigationActivity : Activity(),
         val location = locationGuide.locationForPrimaryRoute ?: locationGuide.location ?: return
         mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())), true)
         mapView.cullPassedRoute(location, true)
+        updateRemainingSummary(location)
     }
 
     override fun guidanceDidUpdateRouteGuide(guidance: KNGuidance, routeGuide: KNGuide_Route) {
@@ -397,8 +406,176 @@ class KakaoNavigationActivity : Activity(),
         }
     }
 
+    private fun showPostDriveScreen(arrived: Boolean = false) {
+        if (guidanceEnded) return
+        guidanceEnded = true
+        pendingLocationListener?.let { locationManager?.removeUpdates(it) }
+        pendingLocationListener = null
+        voicePlayer?.runCatching { stop() }
+        voicePlayer?.release()
+        voicePlayer = null
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.rgb(247, 250, 249))
+        }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(22), dp(18), dp(22), dp(18))
+            setBackgroundColor(Color.rgb(17, 61, 77))
+        }
+        header.addView(TextView(this).apply {
+            text = "여행갈지도"
+            textSize = 14f
+            setTextColor(Color.rgb(196, 229, 224))
+        })
+        header.addView(TextView(this).apply {
+            text = if (arrived) "목적지에 도착했어요" else "운행을 마쳤어요"
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, dp(5), 0, dp(3))
+        })
+        header.addView(TextView(this).apply {
+            text = destinationName
+            textSize = 15f
+            setTextColor(Color.rgb(218, 238, 237))
+        })
+        root.addView(header, LinearLayout.LayoutParams(-1, -2))
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(14), dp(18), dp(18))
+        }
+        content.addView(TextView(this).apply {
+            text = "여행갈지도 여행 혜택"
+            textSize = 21f
+            setTextColor(Color.rgb(17, 61, 77))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        content.addView(TextView(this).apply {
+            text = "주행 안내가 끝났습니다. 관광지와 숙소를 둘러보고, 등록된 쿠폰을 확인해 보세요."
+            textSize = 14f
+            setTextColor(Color.rgb(68, 91, 96))
+            setPadding(0, dp(6), 0, dp(12))
+        })
+
+        val categories = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        addCategoryButton(categories, "관광지", "둘러보기", "https://yeohang.lexid.site/places")
+        addCategoryButton(categories, "숙박", "주변 숙소", "https://yeohang.lexid.site/#map")
+        content.addView(categories, LinearLayout.LayoutParams(-1, -2))
+        val food = Button(this).apply {
+            text = "식당 찾기 · 카카오맵"
+            setOnClickListener { openBrowseUrl("https://map.kakao.com/link/search/${Uri.encode(destinationName + " 맛집")}") }
+        }
+        content.addView(food, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+
+        content.addView(TextView(this).apply {
+            text = "사용 가능한 숙박 쿠폰"
+            textSize = 18f
+            setTextColor(Color.rgb(17, 61, 77))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, dp(18), 0, dp(8))
+        })
+        val couponList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        couponList.addView(TextView(this).apply {
+            text = "승인된 쿠폰을 확인하고 있어요."
+            textSize = 14f
+            setTextColor(Color.rgb(68, 91, 96))
+        })
+        content.addView(couponList, LinearLayout.LayoutParams(-1, -2))
+        loadApprovedCoupons(couponList)
+
+        content.addView(Button(this).apply {
+            text = "전체 여행 혜택 보기"
+            setOnClickListener { openBrowseUrl("https://yeohang.lexid.site/events") }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        content.addView(Button(this).apply {
+            text = "지도 화면으로 돌아가기"
+            setOnClickListener { finish() }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+
+        val scroll = ScrollView(this).apply { addView(content) }
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        setContentView(root)
+    }
+
+    private fun addCategoryButton(parent: LinearLayout, title: String, subtitle: String, url: String) {
+        val button = Button(this).apply {
+            text = "$title\n$subtitle"
+            setOnClickListener { openBrowseUrl(url) }
+        }
+        parent.addView(button, LinearLayout.LayoutParams(0, dp(72), 1f).apply {
+            if (parent.childCount > 0) marginStart = dp(8)
+        })
+    }
+
+    private fun openBrowseUrl(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE))
+        } catch (_: Exception) {
+            Toast.makeText(this, "혜택 페이지를 열지 못했습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun loadApprovedCoupons(container: LinearLayout) {
+        Thread {
+            val coupons = runCatching {
+                val connection = (URL("https://yeohang.lexid.site/api/coupons").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 4000
+                    readTimeout = 4000
+                }
+                try {
+                    if (connection.responseCode !in 200..299) return@runCatching emptyList<String>()
+                    val body = connection.inputStream.bufferedReader().use { it.readText() }
+                    val rows = JSONObject(body).optJSONArray("coupons") ?: return@runCatching emptyList<String>()
+                    (0 until rows.length()).mapNotNull { index ->
+                        val row = rows.optJSONObject(index) ?: return@mapNotNull null
+                        val name = row.optString("property_name").trim()
+                        val discount = row.optInt("discount_pct", 0)
+                        if (name.isBlank() || discount !in 1..100) null else "$name · ${discount}% 할인"
+                    }.take(3)
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrDefault(emptyList())
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                container.removeAllViews()
+                val messages = if (coupons.isEmpty()) listOf("현재 확인할 수 있는 승인 쿠폰이 없습니다.") else coupons
+                messages.forEach { text ->
+                    container.addView(TextView(this).apply {
+                        this.text = text
+                        textSize = 14f
+                        setTextColor(Color.rgb(45, 78, 77))
+                        setPadding(dp(12), dp(10), dp(12), dp(10))
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            cornerRadius = dp(12).toFloat()
+                            setColor(Color.WHITE)
+                        }
+                    }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+                }
+            }
+        }.start()
+    }
+
     private fun formatDistance(meters: Int): String =
         if (meters >= 1000) String.format("%.1f km", meters / 1000.0) else "$meters m"
+
+    private fun showFullRouteSummary(route: KNRoute) {
+        routeSummary.text = "${formatDistance(route.totalDist)} · 약 ${formatDuration(route.totalTime)}"
+    }
+
+    private fun updateRemainingSummary(location: KNLocation) {
+        val route = currentRoute ?: return
+        val remainingMeters = (route.totalDist - location.distFromS).coerceAtLeast(0)
+        val remainingSeconds = if (route.totalDist > 0) {
+            (route.totalTime.toLong() * remainingMeters / route.totalDist).toInt()
+        } else route.totalTime
+        routeSummary.text = "${formatDistance(remainingMeters)} 남음 · 약 ${formatDuration(remainingSeconds)}"
+    }
 
     private fun formatDuration(seconds: Int): String {
         val minutes = (seconds / 60).coerceAtLeast(1)
@@ -407,6 +584,7 @@ class KakaoNavigationActivity : Activity(),
 
     override fun onDestroy() {
         pendingLocationListener?.let { locationManager?.removeUpdates(it) }
+        if (guidanceStarted && !guidanceEnded) YeohangApplication.sdk.sharedGuidance()?.stop()
         voicePlayer?.runCatching { stop() }
         voicePlayer?.release()
         voicePlayer = null
