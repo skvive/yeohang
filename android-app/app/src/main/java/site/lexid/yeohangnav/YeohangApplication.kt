@@ -35,7 +35,12 @@ class YeohangApplication : Application() {
             aLangType = KNLanguageType.KNLanguageType_KOREAN,
             aCompletion = { error ->
                 authenticated = error == null
-                onResult(authenticated, error?.code?.toString())
+                val detail = error?.let {
+                    "${it.code}: ${it.msg}"
+                        .replace(Regex("[A-Za-z0-9_-]{32,}"), "[REDACTED]")
+                        .take(120)
+                }
+                onResult(authenticated, detail)
             }
         )
     }
