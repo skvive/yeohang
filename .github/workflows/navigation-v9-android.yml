@@ -61,6 +61,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Android 35 emulator smoke test
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
         with:
           api-level: 35
           arch: x86_64
