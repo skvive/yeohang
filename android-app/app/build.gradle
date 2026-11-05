@@ -32,6 +32,7 @@ android {
 
 dependencies {
     implementation 'com.kakaomobility.knsdk:knsdk_ui:1.12.8-hotfix05'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
 
 // Embed the first-party V9 UI overlay into the APK. The production site may still
