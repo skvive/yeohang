@@ -226,7 +226,7 @@ class KakaoNavigationActivity : Activity(),
     override fun guidanceCheckingRouteChange(guidance: KNGuidance) = naviView.guidanceCheckingRouteChange(guidance)
     override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) =
         naviView.guidanceDidUpdateRoutes(guidance, routes, multiRouteInfo)
-    override fun guidanceDidUpdateIndoorRoute(guidance: KNGuidance, route: KNRoute) =
+    override fun guidanceDidUpdateIndoorRoute(guidance: KNGuidance, route: KNRoute?) =
         naviView.guidanceDidUpdateIndoorRoute(guidance, route)
     override fun guidanceGuideEnded(guidance: KNGuidance) = naviView.guidanceGuideEnded(guidance)
     override fun guidanceGuideStarted(guidance: KNGuidance) = naviView.guidanceGuideStarted(guidance)
