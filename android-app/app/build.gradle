@@ -9,7 +9,7 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 def kakaoMobilityAppKey = localProperties.getProperty('kakaoMobilityAppKey',
-    System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '')
+    System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '').trim()
 
 android {
     namespace 'site.lexid.yeohangnav'

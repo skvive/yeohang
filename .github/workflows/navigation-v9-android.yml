@@ -33,6 +33,15 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Validate Kakao Native app key format
+        env:
+          KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
+        run: |
+          if [[ ! "$KAKAO_MOBILITY_APP_KEY" =~ ^[A-Fa-f0-9]{32}$ ]]; then
+            echo 'Kakao Native app key must be 32 hexadecimal characters.'
+            exit 1
+          fi
+          echo 'Kakao Native app key format validated.'
       - name: Reuse stable Android debug signing key
         uses: actions/cache@v4
         with:
