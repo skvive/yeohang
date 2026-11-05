@@ -31,6 +31,7 @@ import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.common.objects.KNError
+import com.kakaomobility.knsdk.common.util.FloatPoint
 import com.kakaomobility.knsdk.map.knmaprenderer.objects.KNMapCameraUpdate
 import com.kakaomobility.knsdk.map.uicustomsupport.renewal.theme.base.KNMapTheme
 import com.kakaomobility.knsdk.map.knmapview.KNMapView
@@ -263,7 +264,7 @@ class KakaoNavigationActivity : Activity(),
                         status.text = "카카오내비 경로 응답에 실패했습니다."
                         return@runOnUiThread
                     }
-                    mapView.moveCamera(KNMapCameraUpdate.targetTo(startPoint), false)
+                    mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(startPoint.x.toFloat(), startPoint.y.toFloat())), false)
                     startGuidance(trip, priority)
                 }
             }
@@ -339,7 +340,7 @@ class KakaoNavigationActivity : Activity(),
 
     override fun guidanceDidUpdateLocation(guidance: KNGuidance, locationGuide: KNGuide_Location) {
         val location = locationGuide.locationForPrimaryRoute ?: locationGuide.location ?: return
-        mapView.moveCamera(KNMapCameraUpdate.targetTo(location.pos), true)
+        mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())), true)
         mapView.cullPassedRoute(location, true)
     }
 
