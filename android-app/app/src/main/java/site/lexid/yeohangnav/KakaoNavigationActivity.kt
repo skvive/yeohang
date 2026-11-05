@@ -18,6 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.guidance.knguidance.*
+import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
 import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
 import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
@@ -228,7 +229,14 @@ class KakaoNavigationActivity : Activity(),
     override fun guidanceGuideEnded(guidance: KNGuidance) = naviView.guidanceGuideEnded(guidance)
     override fun guidanceGuideStarted(guidance: KNGuidance) = naviView.guidanceGuideStarted(guidance)
     override fun guidanceOutOfRoute(guidance: KNGuidance) = naviView.guidanceOutOfRoute(guidance)
-    override fun guidanceRouteChanged(guidance: KNGuidance) = naviView.guidanceRouteChanged(guidance)
+    override fun guidanceRouteChanged(
+        guidance: KNGuidance,
+        fromRoute: KNRoute,
+        fromLocation: KNLocation,
+        toRoute: KNRoute,
+        toLocation: KNLocation,
+        changeReason: KNGuideRouteChangeReason
+    ) = naviView.guidanceRouteChanged(guidance)
     override fun guidanceRouteUnchanged(guidance: KNGuidance) = naviView.guidanceRouteUnchanged(guidance)
     override fun guidanceRouteUnchangedWithError(guidance: KNGuidance, error: KNError) =
         naviView.guidanceRouteUnchangedWithError(guidance, error)

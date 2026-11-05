@@ -24,11 +24,10 @@ class YeohangApplication : Application() {
             return
         }
         sdk.initializeWithAppKey(
-            appKey,
-            BuildConfig.VERSION_NAME,
-            "yeohang-android",
-            KNLanguageType.KNLanguageType_KOREAN,
-            completion = { error -> onResult(error == null) }
+            aAppKey = appKey,
+            aClientVersion = BuildConfig.VERSION_NAME,
+            aLangType = KNLanguageType.KNLanguageType_KOREAN,
+            aCompletion = { error -> onResult(error == null) }
         )
     }
 }
