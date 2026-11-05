@@ -19,14 +19,14 @@ class YeohangApplication : Application() {
         }
     }
 
-    fun authenticate(onResult: (Boolean) -> Unit) {
+    fun authenticate(onResult: (Boolean, String?) -> Unit) {
         if (authenticated) {
-            onResult(true)
+            onResult(true, null)
             return
         }
         val appKey = BuildConfig.KAKAO_MOBILITY_APP_KEY.trim()
         if (appKey.isEmpty()) {
-            onResult(false)
+            onResult(false, "APP_KEY_MISSING")
             return
         }
         sdk.initializeWithAppKey(
@@ -35,7 +35,7 @@ class YeohangApplication : Application() {
             aLangType = KNLanguageType.KNLanguageType_KOREAN,
             aCompletion = { error ->
                 authenticated = error == null
-                onResult(authenticated)
+                onResult(authenticated, error?.code?.toString())
             }
         )
     }

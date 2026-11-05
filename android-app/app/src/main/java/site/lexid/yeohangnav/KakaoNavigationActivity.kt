@@ -63,10 +63,11 @@ class KakaoNavigationActivity : Activity(),
         readDestination() ?: return
         showStatusScreen("카카오내비에 연결하고 있습니다.")
 
-        (application as YeohangApplication).authenticate { authenticated ->
+        (application as YeohangApplication).authenticate { authenticated, errorCode ->
             runOnUiThread {
                 if (!authenticated) {
-                    status.text = "카카오내비 연결을 확인할 수 없습니다. 앱 키와 등록 상태를 확인해 주세요."
+                    val reason = if (errorCode == "APP_KEY_MISSING") "앱 키 누락" else "오류 코드 ${errorCode ?: "UNKNOWN"}"
+                    status.text = "카카오내비 인증 실패: $reason"
                     return@runOnUiThread
                 }
                 buildBrandedNavigationScreen()

@@ -29,6 +29,10 @@ class KakaoNavigationSmokeTest {
         var failure: String? = null
         var visibleText = ""
 
+        assertTrue(
+            "Kakao app key missing from Android test build",
+            site.lexid.yeohangnav.BuildConfig.KAKAO_MOBILITY_APP_KEY.isNotBlank()
+        )
         val activity = instrumentation.startActivitySync(intent)
         try {
             val deadline = System.currentTimeMillis() + 75_000
@@ -40,6 +44,7 @@ class KakaoNavigationSmokeTest {
                     visibleText = screenText.joinToString(" | ")
                     failure = screenText.firstOrNull { message ->
                         message.contains("확인할 수 없습니다") ||
+                            message.contains("인증 실패") ||
                             message.contains("경로를 계산하지 못했습니다") ||
                             message.contains("경로 응답에 실패") ||
                             message.contains("위치 서비스를 켠 뒤")
