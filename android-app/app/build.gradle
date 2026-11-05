@@ -34,9 +34,9 @@ android {
 dependencies {
     implementation 'com.kakaomobility.knsdk:knsdk_ui:1.12.8-hotfix05'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    androidTestImplementation 'androidx.test:runner:1.6.2'
-    androidTestImplementation 'androidx.test:core:1.6.1'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test:core:1.4.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
 }
 
 // Embed the first-party V9 UI overlay into the APK. The production site may still
