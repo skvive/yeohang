@@ -85,7 +85,7 @@ class KakaoNavigationSmokeTest {
                 val drawer = content.findViewWithTag<View>("nav-side-drawer")
                 val title = content.findViewWithTag<TextView>("nav-guidance-title")
                 assertTrue("The native KNSDK map must fill the screen", map is KNMapView)
-                assertTrue("The navigation map must match its parent", map?.layoutParams?.width == -1 && map.layoutParams.height == -1)
+                assertTrue("The navigation map must match its parent", map?.layoutParams?.width == -1 && map?.layoutParams?.height == -1)
                 assertTrue("Drawer must be closed on app launch", drawer?.visibility == View.GONE)
                 assertTrue("Default screen should request a destination", title?.text?.contains("목적지") == true)
                 fun findMenu(view: View): View? {
