@@ -1,0 +1,82 @@
+name: NAV Native Ten Screens and SDK Pre-auth Contract
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [qa/navigation-sdk-preauth-ten-screens-20261108]
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/android-navigation-ten-sdk-preauth.yml'
+permissions:
+  contents: read
+jobs:
+  ten-screens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Verify Kakao bridge contract and safe mock isolation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          n=Path('android-app/app/src/main/java/site/lexid/yeohangnav/KakaoNavigationActivity.kt').read_text()
+          a=Path('android-app/app/src/main/java/site/lexid/yeohangnav/MainActivity.java').read_text()
+          g=Path('android-app/app/build.gradle').read_text()
+          tests=Path('android-app/app/src/androidTest/java/site/lexid/yeohangnav/NavigationQaTenStatesTest.kt').read_text()
+          for item in ('bindingMapView(', 'makeTripWithStart(', 'routeWithPriority(', 'startWithTrip(', 'guidanceDidUpdateLocation(', 'willPlayVoiceGuide(', 'nav-side-drawer', 'nav-sdk-map'):
+              assert item in n, item
+          assert 'openNativeNavigation' in a and 'EXTRA_DESTINATION_LAT' in a and 'EXTRA_DESTINATION_LNG' in a
+          assert 'knsdk_ui:1.12.8-hotfix05' in g
+          assert 'if (BuildConfig.DEBUG)' in n
+          assert 'if (!BuildConfig.DEBUG || qaScreen == 0) return' in n
+          assert 'fun tenSdkIndependentUiStatesAndMainUserFlow()' in tests
+          assert '실제 카카오 지도 아님' in Path('android-app/app/src/main/java/site/lexid/yeohangnav/NavigationQaMapView.kt').read_text()
+          print('KAKAO_NATIVE_BRIDGE_SOURCE_CONTRACT_PASS')
+          PY
+      - name: Build APK and native instrumented tests
+        working-directory: android-app
+        run: |
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Save debug test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: YEOHAENG_NAV_10_FUNCTIONS_DEBUG_APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=1"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 35 ten real captures and functional UI instrumentation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_7
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          script: bash android-app/capture-navigation-ten-state.sh
+      - name: Publish ten screenshots, XML and instrumentation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: YEOHAENG_NAV_NATIVE_10_FUNCTION_SCREENSHOTS
+          path: |
+            android-app/artifacts/navigation-ten-state/
+            android-app/app/build/reports/androidTests/connected/
+          if-no-files-found: ignore
+          retention-days: 14
