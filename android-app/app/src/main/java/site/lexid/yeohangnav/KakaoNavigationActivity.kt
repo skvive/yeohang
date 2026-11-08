@@ -83,12 +83,23 @@ class KakaoNavigationActivity : Activity(),
         window.navigationBarColor = Color.BLACK
         readDestination() ?: return
         buildBrandedNavigationScreen()
-        showStatus("카카오내비 SDK 인증을 확인하고 있습니다.")
+        // KNSDK requires foreground GPS permission before SDK certification (C302).
+        // Never ask for background location or use a synthetic default origin.
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            showStatus("카카오 지도 표시를 위해 현재 위치 권한이 필요합니다.")
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_REQUEST)
+        } else {
+            authenticateAndBindMap()
+        }
+    }
 
+    private fun authenticateAndBindMap() {
+        showStatus("카카오내비 SDK 인증을 확인하고 있습니다.")
         (application as YeohangApplication).authenticate { authenticated, errorDetail ->
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 if (!authenticated) {
-                    showStatus("카카오내비 SDK 인증 실패: ${errorDetail ?: "SDK 오류"}")
+                    showStatus("카카오내비 SDK 인증 실패: " + (errorDetail ?: "SDK 오류"))
                     return@runOnUiThread
                 }
                 YeohangApplication.sdk.bindingMapView(mapView, KNMapTheme.driveDay()) { error ->
@@ -96,14 +107,45 @@ class KakaoNavigationActivity : Activity(),
                         if (error != null) {
                             showStatus("카카오 지도를 불러오지 못했습니다. 네트워크와 인증을 확인해 주세요.")
                         } else if (destinationName.isBlank()) {
-                            showStatus("목적지를 선택하면 길안내를 시작합니다.")
+                            status.visibility = View.GONE
+                            focusMapOnCurrentLocation()
                         } else {
                             showStatus("GPS를 확인하고 있습니다.")
                         }
                     }
                 }
-                if (destinationName.isNotBlank()) checkLocationPermission()
+                if (destinationName.isNotBlank()) requestCurrentLocation()
             }
+        }
+    }
+
+    // Standby mode: center the real Kakao map without starting a route.
+    @Suppress("DEPRECATION")
+    private fun focusMapOnCurrentLocation() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        try {
+            val manager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val provider = manager.getBestProvider(Criteria().apply { accuracy = Criteria.ACCURACY_FINE }, true) ?: return
+            val listener = object : LocationListener {
+                override fun onLocationChanged(location: Location) {
+                    manager.removeUpdates(this)
+                    val point = YeohangApplication.sdk.convertWGS84ToKATEC(location.longitude, location.latitude)
+                    mapView.moveCamera(
+                        KNMapCameraUpdate.targetTo(FloatPoint(point.x.toFloat(), point.y.toFloat())),
+                        false
+                    )
+                }
+                override fun onProviderEnabled(provider: String) = Unit
+                override fun onProviderDisabled(provider: String) = Unit
+                override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+            }
+            pendingLocationListener = listener
+            locationManager = manager
+            manager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+        } catch (_: SecurityException) {
+            showStatus("위치 권한을 확인한 뒤 지도 연결을 다시 시도해 주세요.")
+        } catch (_: IllegalArgumentException) {
+            showStatus("GPS를 활성화한 뒤 지도 연결을 다시 시도해 주세요.")
         }
     }
 
@@ -185,9 +227,19 @@ class KakaoNavigationActivity : Activity(),
         turn.addView(turnTitle)
         turn.addView(turnDistance)
         top.addView(turn, LinearLayout.LayoutParams(0, -2, 1f))
-        root.addView(top, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
+        val topParams = android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
             setMargins(dp(12), dp(12), dp(12), 0)
-        })
+        }
+        root.addView(top, topParams)
+        // Android 15+ edge-to-edge can draw system icons over app chrome.
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val insetTop = if (android.os.Build.VERSION.SDK_INT >= 30)
+                insets.getInsets(android.view.WindowInsets.Type.statusBars()).top
+                else insets.systemWindowInsetTop
+            topParams.topMargin = insetTop + dp(12)
+            top.layoutParams = topParams
+            insets
+        }
 
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -275,7 +327,15 @@ class KakaoNavigationActivity : Activity(),
         }
         addDrawerItem(drawerItems, "⌕   목적지 검색") { openTravelCatalog() }
         addDrawerItem(drawerItems, "⌂   내 주변 숙소") { openTravelCatalog() }
-        addDrawerItem(drawerItems, "♧   관광지 · 맛집") { openBrowseUrl("https://yeohang.lexid.site/places") }
+        addDrawerItem(drawerItems, "♧   관광지 · 맛집") {
+            if (guidanceStarted && !guidanceEnded) {
+                Toast.makeText(this, "안전한 곳에 정차한 뒤 탐색해 주세요.", Toast.LENGTH_LONG).show()
+                closeDrawer()
+            } else {
+                closeDrawer()
+                openBrowseUrl("https://yeohang.lexid.site/places")
+            }
+        }
         addDrawerItem(drawerItems, "♬   음성 안내 켜기 / 끄기") {
             voiceMuted = !voiceMuted
             Toast.makeText(this, if (voiceMuted) "음성 안내를 껐습니다" else "음성 안내를 켰습니다", Toast.LENGTH_SHORT).show()
@@ -324,6 +384,10 @@ class KakaoNavigationActivity : Activity(),
 
     private fun openTravelCatalog() {
         closeDrawer()
+        if (guidanceStarted && !guidanceEnded) {
+            Toast.makeText(this, "안전한 곳에 정차한 후 여행 정보를 탐색해 주세요.", Toast.LENGTH_LONG).show()
+            return
+        }
         startActivity(Intent(this, MainActivity::class.java))
     }
 
@@ -360,8 +424,10 @@ class KakaoNavigationActivity : Activity(),
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != LOCATION_REQUEST) return
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            requestCurrentLocation()
-        } else status.text = "정확한 현재 위치 권한이 없어 길안내를 시작하지 않았습니다."
+            authenticateAndBindMap()
+        } else {
+            showStatus("현재 위치 권한이 없어 카카오 SDK 지도를 실행할 수 없습니다. 설정에서 위치 접근을 허용해 주세요.")
+        }
     }
 
     @Suppress("DEPRECATION")
