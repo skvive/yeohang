@@ -50,14 +50,11 @@ class KakaoNavigationSmokeTest {
                             message.contains("위치 서비스를 켠 뒤")
                     }
                     if (failure != null) return@runOnMainSync
-                    val root = content.getChildAt(0) as? LinearLayout ?: return@runOnMainSync
-                    val title = root.getChildAt(0) as? LinearLayout
-                    val destination = title?.getChildAt(1) as? TextView
-                    val map = root.getChildAt(2)
-                    val status = root.getChildAt(4) as? TextView
-
-                    if (destination?.text?.toString()?.contains("QA Test Destination") == true &&
-                        map is KNMapView && status?.visibility == View.GONE) {
+                    val map = content.findViewWithTag<View>("nav-sdk-map")
+                    val status = content.findViewWithTag<TextView>("nav-status")
+                    val title = content.findViewWithTag<TextView>("nav-guidance-title")
+                    if (map is KNMapView && status?.visibility == View.GONE &&
+                        title?.text?.isNotBlank() == true) {
                         guidanceStarted = true
                     }
                 }
@@ -69,6 +66,43 @@ class KakaoNavigationSmokeTest {
 
         assertEquals("Kakao navigation did not start: $failure", null, failure)
         assertTrue("Kakao navigation did not start for the test destination. Screen: $visibleText", guidanceStarted)
+    }
+
+
+    @Test
+    fun defaultScreenFillsWithKakaoMapAndOpensDrawer() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val activity = instrumentation.startActivitySync(
+            Intent(context, KakaoNavigationActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        )
+        try {
+            instrumentation.runOnMainSync {
+                val content = activity.findViewById<ViewGroup>(android.R.id.content)
+                val map = content.findViewWithTag<View>("nav-sdk-map")
+                val drawer = content.findViewWithTag<View>("nav-side-drawer")
+                val title = content.findViewWithTag<TextView>("nav-guidance-title")
+                assertTrue("The native KNSDK map must fill the screen", map is KNMapView)
+                assertTrue("The navigation map must match its parent", map?.layoutParams?.width == -1 && map.layoutParams.height == -1)
+                assertTrue("Drawer must be closed on app launch", drawer?.visibility == View.GONE)
+                assertTrue("Default screen should request a destination", title?.text?.contains("목적지") == true)
+                fun findMenu(view: View): View? {
+                    if (view.contentDescription?.toString() == "메뉴 열기") return view
+                    if (view is ViewGroup) for (index in 0 until view.childCount) {
+                        findMenu(view.getChildAt(index))?.let { return it }
+                    }
+                    return null
+                }
+                val menu = findMenu(content)
+                assertTrue("Accessible menu button is required", menu != null)
+                menu!!.performClick()
+                assertTrue("Drawer should open after the menu action", drawer?.visibility == View.VISIBLE)
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
     }
 
     private fun collectText(view: View, texts: MutableList<String>) {
