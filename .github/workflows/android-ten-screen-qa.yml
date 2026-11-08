@@ -61,13 +61,13 @@ jobs:
             mkdir -p android-10-screen-results
             cp android-lab-results/0[2-9]-*.png android-10-screen-results/
             adb shell am force-stop site.lexid.yeohangnav
-            adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
+            adb shell am start -W -n site.lexid.yeohangnav/.NearbyMapActivity --es category all
             sleep 8
             adb shell input tap 120 870
             sleep 3
             adb exec-out screencap -p > android-10-screen-results/10-map-zoom.png
             adb shell am force-stop site.lexid.yeohangnav
-            adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
+            adb shell am start -W -n site.lexid.yeohangnav/.NearbyMapActivity --es category all
             sleep 8
             adb shell input tap 495 1180
             sleep 3
