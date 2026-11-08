@@ -1,0 +1,95 @@
+name: Android v8 Ten Real Emulator Screens QA
+on:
+  push:
+    branches: [qa/android-emulator-lab-20261101]
+    paths: ['.github/workflows/android-ten-screen-qa.yml']
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  capture-10:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack checked source bundle
+        run: |
+          echo '51147e2367e14d98333d39b115a7f1a8385211eb2c90a86946fc543a55bac65c  android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip' | sha256sum --check
+          unzip -q android-lab-src/YEOHAENG_ANDROID_V8_SOURCE.zip -d .
+          test -f android-app/app/src/main/java/site/lexid/yeohangnav/NearbyMapActivity.java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Install Android 36 build prerequisites
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+      - name: Verify map logic source
+        run: |
+          node --check android-app/app/src/main/assets/nearby-map.js
+          node --test tests/map_v8_logic.test.cjs
+      - name: Compile real Android APK
+        run: |
+          cd android-app
+          gradle --no-daemon :app:assembleMapsLinkDebug
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+      - name: Run Android 35 and capture 10 feature screens
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          script: |
+            bash android-lab-scripts/capture-nine-emulator-screens.sh
+            mkdir -p android-10-screen-results
+            cp android-lab-results/0[2-9]-*.png android-10-screen-results/
+            PKG=site.lexid.yeohangnav
+            adb shell am force-stop "$PKG"
+            adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
+            sleep 8
+            adb shell input tap 120 870
+            sleep 3
+            adb exec-out screencap -p > android-10-screen-results/10-map-zoom.png
+            adb shell am force-stop "$PKG"
+            adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
+            sleep 8
+            adb shell input tap 495 1180
+            sleep 3
+            adb exec-out screencap -p > android-10-screen-results/11-map-marker-detail.png
+            python3 - <<'PYVERIFY'
+            import glob,struct
+            files=glob.glob('android-10-screen-results/*.png')
+            assert len(files)==10, f'Expected exactly 10 screens: {len(files)}'
+            for f in sorted(files):
+                b=open(f,'rb').read(24)
+                assert b[:8]==b'\x89PNG\r\n\x1a\n',f
+                w,h=struct.unpack('>II',b[16:24]);assert w>=700 and h>=1000
+                print('SCREEN_VERIFIED',f,w,h)
+            PYVERIFY
+      - name: Upload 10 real Android emulator screenshots and APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: YEOHAENG_NAV_ANDROID_10_REAL_EMULATOR_SCREENS
+          path: |
+            android-10-screen-results/*
+            android-app/app/build/outputs/apk/mapsLink/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 14
