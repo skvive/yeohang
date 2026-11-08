@@ -133,6 +133,11 @@ internal class NavVoiceAssistant(
             contentDescription="로그인된 계정의 앱 전용 AI 세션에 텍스트 보내기"
             setOnClickListener { sendToAi() }
         }, LinearLayout.LayoutParams(-1,dp(54)))
+        sheet.addView(Button(activity).apply {
+            text="연결된 AI 세션 불러오기"
+            contentDescription="내 계정의 이전 여행갈지도 AI 대화 세션 목록"
+            setOnClickListener { loadCloudSessions() }
+        },LinearLayout.LayoutParams(-1,dp(47)))
         val actions=LinearLayout(activity).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(activity).apply {
             text="웹 로그인"
@@ -288,6 +293,39 @@ internal class NavVoiceAssistant(
         val answer=execute(command)
         saveTurn("NAV",answer)
         status.text=answer
+    }
+
+    private fun loadCloudSessions() {
+        status.text="여행갈지도 계정의 AI 세션을 조회합니다."
+        NavAiSessionClient.listSessions(activity) { result ->
+            if (disposed) return@listSessions
+            val sessions=result.getOrNull()
+            if (sessions==null) {
+                status.text="세션 목록을 불러올 수 없습니다. 웹 로그인과 AI 서버 배포 상태를 확인하세요."
+                return@listSessions
+            }
+            if (sessions.isEmpty()) {
+                status.text="기존 AI 세션이 없습니다. 질문을 보내면 새 세션이 만들어집니다."
+                return@listSessions
+            }
+            val labels=sessions.map {
+                (it.lastQuestion.ifBlank { "이전 대화" }.take(28)) + " · " + it.count + "개 질문"
+            }.toTypedArray()
+            AlertDialog.Builder(activity)
+                .setTitle("여행갈지도 AI 세션 이어하기")
+                .setItems(labels){_,idx->
+                    val chosen=sessions[idx]
+                    sessionId=chosen.id
+                    items=JSONArray()
+                    prefs.edit().putString("session_id",sessionId).remove("history").apply()
+                    if(chosen.lastQuestion.isNotBlank()) saveTurn("나",chosen.lastQuestion)
+                    if(chosen.lastAnswer.isNotBlank()) saveTurn("AI",chosen.lastAnswer)
+                    renderHistory()
+                    status.text="선택한 AI 세션에 연결했습니다. 다음 질문부터 대화를 이어갑니다."
+                }
+                .setNegativeButton("취소",null)
+                .show()
+        }
     }
 
     private fun sendToAi() {
