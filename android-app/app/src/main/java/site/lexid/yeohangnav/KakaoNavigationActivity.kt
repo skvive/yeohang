@@ -76,6 +76,7 @@ class KakaoNavigationActivity : Activity(),
     private var currentRoute: KNRoute? = null
     private var guidanceStarted = false
     private var guidanceEnded = false
+    private var voiceAssistant: NavVoiceAssistant? = null
     // Debug-only test seam: never accepts route or location data from mock during release.
     private var qaScreen = 0
     private lateinit var qaRoot: android.widget.FrameLayout
@@ -244,6 +245,22 @@ class KakaoNavigationActivity : Activity(),
             setMargins(dp(12), dp(12), dp(12), 0)
         }
         root.addView(top, topParams)
+        val aiVoiceButton = TextView(this).apply {
+            text = "🎙"
+            textSize = 27f
+            gravity = Gravity.CENTER
+            contentDescription = "AI 음성 명령 열기"
+            background = navShape(Color.WHITE, 19)
+            elevation = dp(8).toFloat()
+            setOnClickListener {
+                if (drawerOpen) closeDrawer()
+                voiceAssistant?.show()
+            }
+        }
+        val aiVoiceParams = android.widget.FrameLayout.LayoutParams(
+            dp(58), dp(58), Gravity.TOP or Gravity.END
+        ).apply { setMargins(0, dp(124), dp(17), 0) }
+        root.addView(aiVoiceButton, aiVoiceParams)
         // Android 15+ edge-to-edge can draw system icons over app chrome.
         root.setOnApplyWindowInsetsListener { _, insets ->
             val insetTop = if (android.os.Build.VERSION.SDK_INT >= 30)
@@ -251,6 +268,8 @@ class KakaoNavigationActivity : Activity(),
                 else insets.systemWindowInsetTop
             topParams.topMargin = insetTop + dp(12)
             top.layoutParams = topParams
+            aiVoiceParams.topMargin = insetTop + dp(110)
+            aiVoiceButton.layoutParams = aiVoiceParams
             insets
         }
 
@@ -353,6 +372,10 @@ class KakaoNavigationActivity : Activity(),
                 openBrowseUrl("https://yeohang.lexid.site/places")
             }
         }
+        addDrawerItem(drawerItems, "🎙   AI 음성·텍스트 명령") {
+            closeDrawer()
+            voiceAssistant?.show()
+        }
         addDrawerItem(drawerItems, "♬   음성 안내 켜기 / 끄기") {
             voiceMuted = !voiceMuted
             if (qaScreen > 0) { switchQaScreen(10); return@addDrawerItem }
@@ -363,6 +386,7 @@ class KakaoNavigationActivity : Activity(),
         drawer.addView(ScrollView(this).apply { addView(drawerItems) }, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(drawer, android.widget.FrameLayout.LayoutParams(drawerWidth, -1, Gravity.START))
         setContentView(root)
+        voiceAssistant = NavVoiceAssistant(this, root, ::executeVoiceCommand)
     }
 
     private lateinit var scrim: View
@@ -528,13 +552,60 @@ class KakaoNavigationActivity : Activity(),
         })
     }
 
+    private fun executeVoiceCommand(command: NavVoiceCommandEngine.Command): String {
+        when (command.action) {
+            NavVoiceCommandEngine.Action.OPEN_MENU -> {
+                voiceAssistant?.close()
+                openDrawer()
+                return "왼쪽 메뉴를 열었습니다."
+            }
+            NavVoiceCommandEngine.Action.CLOSE_MENU -> {
+                closeDrawer()
+                return "메뉴를 닫았습니다."
+            }
+            NavVoiceCommandEngine.Action.MUTE_GUIDANCE -> {
+                voiceMuted = true
+                return "음성 길안내를 껐습니다."
+            }
+            NavVoiceCommandEngine.Action.UNMUTE_GUIDANCE -> {
+                voiceMuted = false
+                return "음성 길안내를 켰습니다."
+            }
+            NavVoiceCommandEngine.Action.OPEN_LODGING,
+            NavVoiceCommandEngine.Action.SEARCH_DESTINATION -> {
+                if (guidanceStarted && !guidanceEnded) return "주행 중 화면 검색은 제한됩니다. 안전한 곳에 정차한 뒤 진행하세요."
+                voiceAssistant?.close()
+                if (qaScreen > 0) switchQaScreen(if (command.action ==
+                    NavVoiceCommandEngine.Action.OPEN_LODGING) 4 else 3)
+                else openTravelCatalog()
+                return command.summary
+            }
+            NavVoiceCommandEngine.Action.OPEN_PLACES -> {
+                if (guidanceStarted && !guidanceEnded) return "주행 중 탐색은 제한됩니다. 안전한 곳에 정차한 뒤 진행하세요."
+                voiceAssistant?.close()
+                if (qaScreen > 0) switchQaScreen(5)
+                else openBrowseUrl("https://yeohang.lexid.site/places")
+                return "관광지·맛집 화면을 열었습니다."
+            }
+            NavVoiceCommandEngine.Action.STOP_GUIDANCE -> {
+                if (!guidanceStarted || guidanceEnded) return "현재 진행 중인 길안내가 없습니다."
+                YeohangApplication.sdk.sharedGuidance()?.stop()
+                showPostDriveScreen()
+                return "길안내를 종료했습니다."
+            }
+            NavVoiceCommandEngine.Action.HELP, NavVoiceCommandEngine.Action.ASK_AI ->
+                return command.summary
+        }
+    }
+
     private fun showStatus(message: String) {
         status.text = message
         status.visibility = View.VISIBLE
     }
 
     override fun onBackPressed() {
-        if (drawerOpen) closeDrawer()
+        if (voiceAssistant?.isOpen() == true) voiceAssistant?.close()
+        else if (drawerOpen) closeDrawer()
         else super.onBackPressed()
     }
 
@@ -559,6 +630,10 @@ class KakaoNavigationActivity : Activity(),
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NavVoiceAssistant.AUDIO_PERMISSION_REQUEST) {
+            voiceAssistant?.onPermissionResult()
+            return
+        }
         if (requestCode != LOCATION_REQUEST) return
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             authenticateAndBindMap()
@@ -930,7 +1005,14 @@ class KakaoNavigationActivity : Activity(),
         return if (minutes >= 60) "${minutes / 60}시간 ${minutes % 60}분" else "${minutes}분"
     }
 
+    override fun onStop() {
+        voiceAssistant?.close()
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        voiceAssistant?.destroy()
+        voiceAssistant = null
         pendingLocationListener?.let { locationManager?.removeUpdates(it) }
         if (guidanceStarted && !guidanceEnded) YeohangApplication.sdk.sharedGuidance()?.stop()
         voicePlayer?.runCatching { stop() }

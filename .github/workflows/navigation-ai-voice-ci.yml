@@ -1,0 +1,200 @@
+name: NAV AI Voice Command Android + Web Contracts
+on:
+  workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: 'Build a signed release candidate only if Kakao and signing secrets are configured'
+        type: boolean
+        default: false
+  push:
+    branches: [feature/nav-voice-ai-session-20261108]
+    paths:
+      - 'android-app/**'
+      - 'app/api/nav/ai/**'
+      - 'sql/010_nav_ai_sessions.sql'
+      - '.github/workflows/navigation-ai-voice-ci.yml'
+permissions:
+  contents: read
+jobs:
+  android-voice:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 43
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Check original SDK and opt-in speech / cloud safety contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-app/app/src/main/java/site/lexid/yeohangnav')
+          nav=(base/'KakaoNavigationActivity.kt').read_text()
+          voice=(base/'NavVoiceAssistant.kt').read_text()
+          client=(base/'NavAiSessionClient.kt').read_text()
+          manifest=Path('android-app/app/src/main/AndroidManifest.xml').read_text()
+          backend=Path('app/api/nav/ai/route.ts').read_text()
+          sql=Path('sql/010_nav_ai_sessions.sql').read_text()
+          assert 'root.addView(mapView, android.widget.FrameLayout.LayoutParams(-1, -1))' in nav
+          for name in ('bindingMapView(', 'makeTripWithStart(', 'startWithTrip(', 'willPlayVoiceGuide('):
+              assert name in nav, name
+          assert 'NavVoiceAssistant(this, root' in nav
+          assert 'RECORD_AUDIO' in manifest
+          assert 'SpeechRecognizer.createOnDeviceSpeechRecognizer' in voice
+          assert 'AI에게' not in voice or 'sendToAi()' in voice
+          assert 'getCookie("https://yeohang.lexid.site")' in client
+          assert 'api.openai.com/v1/responses' in backend
+          assert 'OPENAI_API_KEY' in backend and 'auth.getSession()' in backend
+          assert 'nav_ai_daily_usage' in sql and 'nav_ai_sessions' in sql
+          assert 'Bearer ' not in client
+          assert 'MediaRecorder' not in voice
+          print('NAV_VOICE_PREAUTH_STATIC_CONTRACTS_PASS')
+          PY
+      - name: Assemble app and Android speech-intent tests
+        working-directory: android-app
+        run: |
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+          test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify release signing gate rejects missing credentials
+        working-directory: android-app
+        run: |
+          if gradle --no-daemon :app:verifyNavReleaseCredentials > /tmp/nav-release-gate.log 2>&1; then
+            echo 'SECURITY_REGRESSION: unsigned/keyless release gate unexpectedly passed' >&2
+            exit 1
+          fi
+          grep -q 'RELEASE_BLOCKED:' /tmp/nav-release-gate.log
+          echo 'RELEASE_GATE_EXPECTED_BLOCK_PASS'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NAV_VOICE_AI_NATIVE_DEBUG_APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=1"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Pixel 7 voice UI and Korean command Android instrumented test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_7
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          script: |
+            mkdir -p android-app/artifacts/voice-ai
+            adb install -r android-app/app/build/outputs/apk/debug/app-debug.apk
+            # Capture a clean native UI BEFORE instrumentation taxes the emulator/launcher.
+            sleep 10
+            adb shell am start -W -n site.lexid.yeohangnav/.KakaoNavigationActivity --ei nav_qa_screen 1
+            sleep 5
+            adb shell input tap 940 430
+            sleep 3
+            adb shell uiautomator dump /sdcard/voice-qa.xml >/dev/null
+            adb pull /sdcard/voice-qa.xml android-app/artifacts/voice-ai/ui.xml
+            ! grep -Eiq 'isn.t responding|is not responding|system ui is not responding' android-app/artifacts/voice-ai/ui.xml
+            grep -q 'AI 음성 패널 닫기' android-app/artifacts/voice-ai/ui.xml
+            adb exec-out screencap -p > android-app/artifacts/voice-ai/01-voice-command-panel.png
+            test -s android-app/artifacts/voice-ai/01-voice-command-panel.png
+            adb logcat -d > android-app/artifacts/voice-ai/logcat.txt
+            # The instrumented Android test checks Korean commands and real drawer state.
+            gradle --no-daemon -p android-app :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=site.lexid.yeohangnav.NavVoiceCommandEngineTest
+      - name: Save screenshot and instrumentation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NAV_VOICE_AI_EMULATOR_UI_EVIDENCE
+          path: |
+            android-app/artifacts/voice-ai/
+            android-app/app/build/reports/androidTests/connected/
+          if-no-files-found: ignore
+          retention-days: 14
+  signed-release-gate:
+    if: github.event_name == 'workflow_dispatch' && inputs.release_candidate == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Check owner-provided signing and Kakao secrets
+        env:
+          KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
+          NAV_RELEASE_KEYSTORE_BASE64: ${{ secrets.NAV_RELEASE_KEYSTORE_BASE64 }}
+          NAV_RELEASE_STORE_PASSWORD: ${{ secrets.NAV_RELEASE_STORE_PASSWORD }}
+          NAV_RELEASE_KEY_ALIAS: ${{ secrets.NAV_RELEASE_KEY_ALIAS }}
+          NAV_RELEASE_KEY_PASSWORD: ${{ secrets.NAV_RELEASE_KEY_PASSWORD }}
+        run: |
+          test -n "$KAKAO_MOBILITY_APP_KEY" || { echo 'BLOCKED: Kakao native app key is not configured'; exit 51; }
+          test -n "$NAV_RELEASE_KEYSTORE_BASE64" || { echo 'BLOCKED: stable release signing keystore is not configured'; exit 52; }
+          test -n "$NAV_RELEASE_STORE_PASSWORD" || { echo 'BLOCKED: signing store password is missing'; exit 53; }
+          test -n "$NAV_RELEASE_KEY_ALIAS" || { echo 'BLOCKED: signing alias is missing'; exit 54; }
+          test -n "$NAV_RELEASE_KEY_PASSWORD" || { echo 'BLOCKED: signing key password is missing'; exit 55; }
+      - name: Build signed Android release candidate
+        env:
+          KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
+          NAV_RELEASE_KEYSTORE_BASE64: ${{ secrets.NAV_RELEASE_KEYSTORE_BASE64 }}
+          NAV_RELEASE_STORE_PASSWORD: ${{ secrets.NAV_RELEASE_STORE_PASSWORD }}
+          NAV_RELEASE_KEY_ALIAS: ${{ secrets.NAV_RELEASE_KEY_ALIAS }}
+          NAV_RELEASE_KEY_PASSWORD: ${{ secrets.NAV_RELEASE_KEY_PASSWORD }}
+        run: |
+          install -m 700 -d "$RUNNER_TEMP/nav-signing"
+          printf '%s' "$NAV_RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/nav-signing/release.jks"
+          chmod 600 "$RUNNER_TEMP/nav-signing/release.jks"
+          export NAV_RELEASE_KEYSTORE_PATH="$RUNNER_TEMP/nav-signing/release.jks"
+          gradle --no-daemon -p android-app :app:verifyNavReleaseCredentials :app:assembleRelease :app:bundleRelease
+          test -s android-app/app/build/outputs/apk/release/app-release.apk
+          test -s android-app/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify android-app/app/build/outputs/bundle/release/app-release.aab
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android-app/app/build/outputs/apk/release/app-release.apk \
+            | grep -E 'Verified|Signer #1 certificate SHA-(1|256) digest'
+          echo 'Kakao Developers requires the base64 SHA1 hash for the exact release signing certificate:'
+          keytool -exportcert -alias "$NAV_RELEASE_KEY_ALIAS" \
+            -keystore "$NAV_RELEASE_KEYSTORE_PATH" -storepass "$NAV_RELEASE_STORE_PASSWORD" \
+            | openssl dgst -sha1 -binary | openssl base64 -A
+          echo
+          echo 'Register the printed hash under package site.lexid.yeohangnav and the SAME native app key.'
+          echo 'For Play App Signing, register the separate Google Play signing certificate hash too.'
+          echo 'This signed build does NOT certify live Kakao SDK routing, hardware GPS, or STT.'
+      - name: Upload signed candidate for physical-device certification
+        uses: actions/upload-artifact@v4
+        with:
+          name: NAV_V12_SIGNED_RELEASE_CANDIDATE_NEEDS_KAKAO_DEVICE_CERT
+          path: |
+            android-app/app/build/outputs/apk/release/app-release.apk
+            android-app/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 10
+
+  web-ai:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install existing dependencies
+        run: npm ci --ignore-scripts
+      - name: Check typed secure authenticated Responses API route
+        run: npx tsc --noEmit
