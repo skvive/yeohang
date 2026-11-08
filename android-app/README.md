@@ -35,3 +35,20 @@
 - Android CI: `.github/workflows/native-nav-fullscreen-qa.yml` compiles APK, installs it on Android 35, captures native home + sidebar, and checks the drawer's visibility and map layout.
 - Known unresolved gate from the previous V10 emulator run: `C103: SDK Certification Failed - INVALID_TOKEN`; verify Kakao Native app key, app package `site.lexid.yeohangnav`, and the actual signed APK's key hash in Kakao Developers. Do not claim SDK authentication success from an APK build alone.
 
+
+
+## V12 — 한국어 음성 명령 / 여행갈지도 AI 세션 (개발 브랜치)
+
+- 브랜치: \`feature/nav-voice-ai-session-20261108\` — 운영 \`main\`은 변경하지 않습니다.
+- 네이티브 전체 화면 카카오 SDK 지도, 목적지 검색, 안내/재탐색 UI를 보존하고 오른쪽 플로팅 마이크 및 메뉴의 AI 음성 항목을 추가했습니다.
+- Android \`SpeechRecognizer\`: 기기 내 한국어 인식 우선, 지원하지 않으면 외부 음성 인식 서비스 이용 동의 후 사용. 마이크 권한은 명시적 탭 후 요청하며 종료/백그라운드에서는 중지합니다. **앱 자체는 녹음된 원본 음성 파일을 저장하지 않습니다.**
+- 인식 결과는 입력창에서 편집할 수 있습니다. 자동 실행하지 않고 사용자가 **명령 실행** 또는 **ChatGPT AI 질문 보내기**를 눌러야 처리합니다.
+- 기기 내부 명령: 메뉴 열기/닫기, 숙소, 관광지, 목적지 검색, 음성 켜기/끄기, 안내 종료(확인 대화상자). 목적지 검색은 미확인 좌표로 길안내를 강행하지 않고 사용자의 결과 선택 단계로 이동합니다.
+- **ChatGPT 연동의 범위:** OpenAI **Responses API**로 구동되는 여행갈지도 전용 AI 대화 세션입니다. ChatGPT.com / ChatGPT 앱에서 작성한 기존 개인 대화 세션을 직접 읽거나 병합하지 않습니다.
+- 기존 Neon Auth 로그인 쿠키로 인증한 \`/api/nav/ai\` 서버를 통해 텍스트만 전송. API 키는 반드시 서버 환경변수 \`OPENAI_API_KEY\`에만 설정합니다. \`NAV_AI_MODEL\` 선택 가능. 단말기에는 API 키를 두지 않습니다.
+- 세션 \`UUID\`를 앱 전용 로컬 설정에 보존하며, 서버는 로그인 이메일 + 세션 ID로 OpenAI \`previous_response_id\`를 보존합니다. **연결된 AI 세션 불러오기** 기능으로 동일 계정의 기존 세션을 이어받을 수 있습니다.
+- 마이크 오디오/실시간 GPS 좌표는 AI 서버에 보내지 않습니다. 텍스트 질문은 사용자가 **AI 질문 보내기**를 눌렀을 때만 전송합니다. 로컬 기록은 최근 24개 텍스트 턴을 \`MODE_PRIVATE\`로 보관하며 사용자 조작으로 삭제·새 세션이 가능합니다.
+- 저장소의 \`sql/010_nav_ai_sessions.sql\`을 배포 DB에 마이그레이션하고 웹 서버에 OpenAI API 키를 설정해야 실제 AI 세션 송수신이 됩니다. Android 빌드 통과만으로 AI API 사용 가능 여부를 보증하지 않습니다.
+- 제한: 로그인 전 또는 서버 미배포/키 미설정 시 텍스트 기반 기기 로컬 명령은 계속 동작하지만 클라우드 답변은 동작하지 않습니다. 데모 모드 화면은 실제 카카오 지도나 길안내의 성공을 의미하지 않습니다.
+- 계측 QA: \`NavVoiceCommandEngineTest\`가 한국어 10개 명령 패턴과 Android UI 진입·메뉴 열기 전환을 검사합니다.
+- 음성 인식은 Android 기본 제공 기능으로 실제 기기별 인식 서비스 지원 여부와 네트워크 동의가 다를 수 있습니다.
