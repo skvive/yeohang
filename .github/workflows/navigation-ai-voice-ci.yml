@@ -62,6 +62,15 @@ jobs:
         run: |
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
           test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify release signing gate rejects missing credentials
+        working-directory: android-app
+        run: |
+          if gradle --no-daemon :app:verifyNavReleaseCredentials > /tmp/nav-release-gate.log 2>&1; then
+            echo 'SECURITY_REGRESSION: unsigned/keyless release gate unexpectedly passed' >&2
+            exit 1
+          fi
+          grep -q 'RELEASE_BLOCKED:' /tmp/nav-release-gate.log
+          echo 'RELEASE_GATE_EXPECTED_BLOCK_PASS'
       - uses: actions/upload-artifact@v4
         with:
           name: NAV_VOICE_AI_NATIVE_DEBUG_APK
