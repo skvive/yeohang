@@ -103,6 +103,6 @@ tasks.register('verifyNavReleaseCredentials') {
         }
     }
 }
-tasks.named('preReleaseBuild').configure {
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
     dependsOn tasks.named('verifyNavReleaseCredentials')
 }
