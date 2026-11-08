@@ -64,24 +64,12 @@ jobs:
           api-level: 35
           arch: x86_64
           target: google_apis
-          profile: pixel_6
+          profile: pixel_7
+          cores: 2
+          ram-size: 3072M
           disable-animations: true
-          script: |
-            mkdir -p android-app/artifacts/fullscreen
-            adb install -r android-app/app/build/outputs/apk/debug/app-debug.apk
-            adb shell pm grant site.lexid.yeohangnav android.permission.ACCESS_FINE_LOCATION
-            adb shell settings put secure location_mode 3
-            adb emu geo fix 127.0276 37.4979
-            adb logcat -c
-            adb shell am start -W -n site.lexid.yeohangnav/.KakaoNavigationActivity
-            sleep 15
-            adb exec-out screencap -p > android-app/artifacts/fullscreen/01-native-navigation-home.png
-            adb shell input tap 90 170
-            sleep 3
-            adb exec-out screencap -p > android-app/artifacts/fullscreen/02-slide-out-drawer.png
-            adb shell pidof site.lexid.yeohangnav > android-app/artifacts/fullscreen/process.txt
-            adb logcat -d > android-app/artifacts/fullscreen/logcat.txt
-            gradle --no-daemon -p android-app :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=site.lexid.yeohangnav.KakaoNavigationSmokeTest#defaultScreenFillsWithKakaoMapAndOpensDrawer
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          script: bash android-app/capture-native-fullscreen.sh
       - name: Publish screenshot and test evidence (including on failure)
         if: always()
         uses: actions/upload-artifact@v4
