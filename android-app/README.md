@@ -52,3 +52,42 @@
 - 제한: 로그인 전 또는 서버 미배포/키 미설정 시 텍스트 기반 기기 로컬 명령은 계속 동작하지만 클라우드 답변은 동작하지 않습니다. 데모 모드 화면은 실제 카카오 지도나 길안내의 성공을 의미하지 않습니다.
 - 계측 QA: \`NavVoiceCommandEngineTest\`가 한국어 10개 명령 패턴과 Android UI 진입·메뉴 열기 전환을 검사합니다.
 - 음성 인식은 Android 기본 제공 기능으로 실제 기기별 인식 서비스 지원 여부와 네트워크 동의가 다를 수 있습니다.
+
+
+## V12 출시 인증 게이트 (2026-11-08)
+
+현재 확인된 증빙:
+- Android 35 Pixel 7 에뮬레이터에서 음성/내비 UI 계측 테스트 2개 통과, 10화면 사전 SDK 연결 QA 통과.
+- Vercel \`yeohang\` Preview에서 \`/api/nav/ai\` 서버 함수가 포함된 빌드 READY.
+- 기존 Neon \`yeohang\` 프로젝트에 \`nav_ai_sessions\`, \`nav_ai_daily_usage\` 스키마 적용, 운영 데이터 삭제 없음.
+- **외부 키/실기기/릴리스 서명 인증은 미검증**. CI 디버그 APK나 UI 모의 캡처는 출시 인증서가 아닙니다.
+
+### 카카오내비 SDK C103 (INVALID_TOKEN)
+1. [Kakao Developers 앱 콘솔](https://developers.kakao.com/console/app)에서 여행갈지도 앱을 선택하고, **앱 → 플랫폼 키 → 네이티브 앱 키**의 활성 상태를 확인합니다.
+2. 동일한 키에 Android 패키지 **\`site.lexid.yeohangnav\`**를 등록하고, 이번 설치 APK를 서명한 인증서의 **Base64(SHA1(DER 인증서))** 값을 등록합니다. V10 CI 디버그 키는 실행마다 변경될 수 있으므로 테스트 기기별 키 해시를 안정적으로 관리하세요.
+3. Play App Signing 사용 시, Play Console의 *앱 서명 인증서*로 생성한 키 해시를 별도로 등록합니다(업로드용 keystore 인증서 해시와 다를 수 있음).
+4. GitHub 저장소 Secrets에 동일한 네이티브 앱 키 **\`KAKAO_MOBILITY_APP_KEY\`**를 등록해야 KNSDK 릴리스 후보에 포함됩니다. *웹 JavaScript / REST API 키를 대용하지 마세요.*
+5. KNSDK 초기화 로그의 \`KNError.code\`와 \`KNError.msg\`를 실기기에서 검사합니다. \`C103 - INVALID_TOKEN\`이 남으면 앱 키/패키지/실제 서명 해시를 재확인하고 Kakao Mobility SDK 기술 지원에 앱 등록 상태를 문의합니다. 키 값은 GitHub Issue/로그에 공개하지 않습니다.
+6. \`KNMapView\` 실지도, 출발지/도착지 경로 요청, 경로 재탐색, 주행 안내 음성, GPS 포그라운드 권한을 실제 스마트폰에서 검증한 뒤 출시 승인합니다.
+
+공식 문서: https://developers.kakaomobility.com/guide/android-ui/start.html · https://developers.kakaomobility.com/guide/android-ui/solution.html
+
+### Android 안정적인 서명 및 CI 출시 후보
+GitHub Secrets에 다음 항목을 생성합니다.
+- \`KAKAO_MOBILITY_APP_KEY\`: 위에서 검증한 **동일 네이티브 앱 키**
+- \`NAV_RELEASE_KEYSTORE_BASE64\`: 기존 고정된 릴리스 keystore의 Base64 인코딩 문자열(프로젝트에 체크인 금지)
+- \`NAV_RELEASE_STORE_PASSWORD\`: keystore 비밀번호
+- \`NAV_RELEASE_KEY_ALIAS\`: 서명 키 alias
+- \`NAV_RELEASE_KEY_PASSWORD\`: alias 키 비밀번호
+
+그다음 GitHub Actions → **NAV AI Voice Command Android + Web Contracts** → **Run workflow** → \`release_candidate=true\`를 실행합니다. 출력에는 비밀키를 기록하지 않고 \`apksigner verify\`와 공개 인증서 키 해시만 표시합니다. 고정 서명 키가 없거나 네이티브 앱 키가 없으면 \`RELEASE_BLOCKED\`로 **실패 처리**됩니다. Android \`versionCode=12\`이며, 서명이 다른 이전 Debug APK와 인플레이스 업데이트할 수 없습니다.
+
+### OpenAI Responses API / 세션 인증
+- [OpenAI API Keys](https://platform.openai.com/api-keys)에서 프로젝트용 키를 발급합니다. 키는 **서버 전용**입니다.
+- [Vercel \`yeohang\` 환경변수](https://vercel.com/shinkang888-codes-projects/yeohang/settings/environment-variables)에 \`OPENAI_API_KEY\`를 Preview/Production 범위에 등록한 후 **재배포**합니다. 릴리스용 앱에 API 키를 넣지 않습니다.
+- Neon Auth 로그인을 완료한 뒤, 인증 없는 \`GET /api/nav/ai\`와 \`POST /api/nav/ai\`는 401이어야 합니다. 유효한 사용자 로그인으로 세션 생성·다시 불러오기·다른 사용자 세션 접근 거부를 실제 호출로 테스트합니다.
+- 로그인 계정의 **여행갈지도 전용** AI 세션을 연결합니다. 사용자의 ChatGPT 앱 기존 개인 대화를 API로 열람·합치는 기능은 제공하지 않습니다.
+- \`previous_response_id\` 기반 응답 연결은 무기한 보존이 아닙니다. 오래된 응답을 잇는 경우 서버 측 갱신/기록 보존 정책 검토가 필요합니다.
+
+### 실기기 출고 검수
+실제 Android 휴대폰에서 마이크 on-device 인식 지원 여부, 온라인 서비스 동의/취소, 접근성, 마이크 OFF 상태, 네트워크 종료, 백그라운드 중지, GPS on/off, 실제 차량 목적지 안내, 잠금 화면 및 차 내 음성을 차례로 검증합니다. 담당자 확인 없는 실차 주행 테스트·인증 없이 Play Store 제출을 자동으로 완료로 판단하지 않습니다.
