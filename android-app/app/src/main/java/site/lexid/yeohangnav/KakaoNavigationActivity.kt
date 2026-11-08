@@ -76,13 +76,22 @@ class KakaoNavigationActivity : Activity(),
     private var currentRoute: KNRoute? = null
     private var guidanceStarted = false
     private var guidanceEnded = false
+    // Debug-only test seam: never accepts route or location data from mock during release.
+    private var qaScreen = 0
+    private lateinit var qaRoot: android.widget.FrameLayout
+    private var qaPanel: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(17, 61, 77)
         window.navigationBarColor = Color.BLACK
+        qaScreen = if (BuildConfig.DEBUG) intent.getIntExtra("nav_qa_screen", 0).coerceIn(0, 10) else 0
         readDestination() ?: return
         buildBrandedNavigationScreen()
+        if (qaScreen > 0) {
+            renderQaScreen()
+            return
+        }
         // KNSDK requires foreground GPS permission before SDK certification (C302).
         // Never ask for background location or use a synthetic default origin.
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -187,6 +196,10 @@ class KakaoNavigationActivity : Activity(),
             contentDescription = "카카오내비 SDK 전체 화면 지도"
         }
         root.addView(mapView, android.widget.FrameLayout.LayoutParams(-1, -1))
+        if (BuildConfig.DEBUG && qaScreen > 0) {
+            root.addView(NavigationQaMapView(this), android.widget.FrameLayout.LayoutParams(-1, -1))
+        }
+        qaRoot = root
 
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -261,8 +274,10 @@ class KakaoNavigationActivity : Activity(),
             visibility = View.GONE
             contentDescription = "길안내 종료"
             setOnClickListener {
-                YeohangApplication.sdk.sharedGuidance()?.stop()
-                showPostDriveScreen()
+                if (qaScreen > 0) switchQaScreen(1) else {
+                    YeohangApplication.sdk.sharedGuidance()?.stop()
+                    showPostDriveScreen()
+                }
             }
         }
         bottom.addView(stopButton, LinearLayout.LayoutParams(-2, dp(52)))
@@ -325,10 +340,12 @@ class KakaoNavigationActivity : Activity(),
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(14), dp(10), 0)
         }
-        addDrawerItem(drawerItems, "⌕   목적지 검색") { openTravelCatalog() }
-        addDrawerItem(drawerItems, "⌂   내 주변 숙소") { openTravelCatalog() }
+        addDrawerItem(drawerItems, "⌕   목적지 검색") { if (qaScreen > 0) switchQaScreen(3) else openTravelCatalog() }
+        addDrawerItem(drawerItems, "⌂   내 주변 숙소") { if (qaScreen > 0) switchQaScreen(4) else openTravelCatalog() }
         addDrawerItem(drawerItems, "♧   관광지 · 맛집") {
-            if (guidanceStarted && !guidanceEnded) {
+            if (qaScreen > 0) {
+                switchQaScreen(5)
+            } else if (guidanceStarted && !guidanceEnded) {
                 Toast.makeText(this, "안전한 곳에 정차한 뒤 탐색해 주세요.", Toast.LENGTH_LONG).show()
                 closeDrawer()
             } else {
@@ -338,6 +355,7 @@ class KakaoNavigationActivity : Activity(),
         }
         addDrawerItem(drawerItems, "♬   음성 안내 켜기 / 끄기") {
             voiceMuted = !voiceMuted
+            if (qaScreen > 0) { switchQaScreen(10); return@addDrawerItem }
             Toast.makeText(this, if (voiceMuted) "음성 안내를 껐습니다" else "음성 안내를 켰습니다", Toast.LENGTH_SHORT).show()
             closeDrawer()
         }
@@ -389,6 +407,125 @@ class KakaoNavigationActivity : Activity(),
             return
         }
         startActivity(Intent(this, MainActivity::class.java))
+    }
+
+
+    /** QA scenario reuses the production drawer and turn/ETA controls, with a marked mock route. */
+    private fun switchQaScreen(next: Int) {
+        if (qaScreen == 0 || !BuildConfig.DEBUG) return
+        if (drawerOpen) closeDrawer()
+        qaScreen = next.coerceIn(1, 10)
+        renderQaScreen()
+    }
+
+    private fun renderQaScreen() {
+        if (!BuildConfig.DEBUG || qaScreen == 0) return
+        qaPanel?.let { qaRoot.removeView(it) }
+        qaPanel = null
+        val names = arrayOf(
+            "", "전체화면 지도 대기", "사이드바 메뉴", "목적지 검색",
+            "주변 숙소", "관광지·맛집", "목적지 상세",
+            "경로 미리보기", "모의 길안내", "모의 경로 재탐색", "음성 안내 OFF"
+        )
+        stopButton.visibility = if (qaScreen == 8 || qaScreen == 9) View.VISIBLE else View.GONE
+        turnTitle.text = when (qaScreen) {
+            7 -> "추천 경로 · 8.2 km"
+            8 -> "350 m 후 우회전"
+            9 -> "경로를 다시 계산합니다"
+            10 -> "음성 안내가 꺼졌어요"
+            else -> "여행갈지도 NAV"
+        }
+        turnDistance.text = when (qaScreen) {
+            8 -> "강남대로 · 차로 유지 (데모)"
+            9 -> "다음 안전한 경로 검색 (데모)"
+            7 -> "강남역 → 선릉역 · 테스트 데이터"
+            else -> "SDK 인증 전 UI 기능 점검"
+        }
+        routeSummary.text = when (qaScreen) {
+            7 -> "19분 예상 · 8.2 km · QA 데이터"
+            8 -> "18분 남음 · QA 주행 재현"
+            9 -> "경로 탐색 중 · QA 알림"
+            10 -> "음성 안내 꺼짐 · 알림만 표시"
+            else -> "여행갈지도 NAV · UI 검증"
+        }
+        showStatus("QA 장면 %02d/10 · %s · 실제 카카오 경로 아님".format(qaScreen, names[qaScreen]))
+        if (qaScreen == 2) {
+            drawer.post { if (!isFinishing && !drawerOpen) openDrawer() }
+            return
+        }
+        if (qaScreen == 1 || qaScreen == 8 || qaScreen == 9 || qaScreen == 10) return
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(18))
+            background = navShape(Color.WHITE, 22)
+            elevation = dp(11).toFloat()
+            tag = "nav-qa-functional-panel"
+            contentDescription = names[qaScreen]
+        }
+        fun heading(label: String) {
+            panel.addView(TextView(this).apply {
+                text = label
+                textSize = 21f
+                setTextColor(Color.rgb(14, 61, 67))
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(0, dp(3), 0, dp(12))
+            })
+        }
+        fun detail(label: String) {
+            panel.addView(TextView(this).apply {
+                text = label
+                textSize = 13f
+                setTextColor(Color.rgb(96, 105, 106))
+                setPadding(0, 0, 0, dp(15))
+            })
+        }
+        fun action(label: String, to: Int) {
+            panel.addView(TextView(this).apply {
+                text = label + "     ›"
+                contentDescription = label
+                textSize = 17f
+                setTextColor(Color.rgb(12, 78, 82))
+                setPadding(dp(13), dp(13), dp(13), dp(13))
+                background = navShape(Color.rgb(234, 247, 243), 13)
+                setOnClickListener { switchQaScreen(to) }
+            }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        }
+        when (qaScreen) {
+            3 -> {
+                heading("어디로 갈까요?")
+                detail("목적지 검색 UI · SDK 응답 없이 동작 확인")
+                action("선릉역 · 모의 목적지 선택", 6)
+                action("주변 숙소 보기", 4)
+            }
+            4 -> {
+                heading("내 주변 숙소")
+                detail("실제 API 응답이 아닌 화면 연결 QA 샘플")
+                action("가상 숙소 A · 상세 보기", 6)
+                action("호텔 · 모텔 · 펜션 필터", 4)
+            }
+            5 -> {
+                heading("관광지 · 맛집")
+                detail("선택 흐름 검사용 샘플 콘텐츠")
+                action("도심 공원 · 목적지", 6)
+                action("가상 맛집 B · 목적지", 6)
+            }
+            6 -> {
+                heading("목적지 상세")
+                detail("선릉역 · QA 테스트 좌표 · 실제 검색결과 아님")
+                action("길찾기 · 경로 미리보기", 7)
+                action("다른 장소 선택", 3)
+            }
+            7 -> {
+                heading("추천 경로")
+                detail("8.2 km · 약 19분 · 모의 경로/교통 정보")
+                action("모의 길안내 시작", 8)
+                action("경로 변경 알림 테스트", 9)
+            }
+        }
+        qaPanel = panel
+        qaRoot.addView(panel, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply {
+            setMargins(dp(22), 0, dp(22), dp(5))
+        })
     }
 
     private fun showStatus(message: String) {
