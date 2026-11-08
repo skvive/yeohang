@@ -161,8 +161,10 @@ jobs:
           printf '%s' "$NAV_RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/nav-signing/release.jks"
           chmod 600 "$RUNNER_TEMP/nav-signing/release.jks"
           export NAV_RELEASE_KEYSTORE_PATH="$RUNNER_TEMP/nav-signing/release.jks"
-          gradle --no-daemon -p android-app :app:verifyNavReleaseCredentials :app:assembleRelease
+          gradle --no-daemon -p android-app :app:verifyNavReleaseCredentials :app:assembleRelease :app:bundleRelease
           test -s android-app/app/build/outputs/apk/release/app-release.apk
+          test -s android-app/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify android-app/app/build/outputs/bundle/release/app-release.aab
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android-app/app/build/outputs/apk/release/app-release.apk \
             | grep -E 'Verified|Signer #1 certificate SHA-(1|256) digest'
           echo 'Kakao Developers requires the base64 SHA1 hash for the exact release signing certificate:'
@@ -177,7 +179,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NAV_V12_SIGNED_RELEASE_CANDIDATE_NEEDS_KAKAO_DEVICE_CERT
-          path: android-app/app/build/outputs/apk/release/app-release.apk
+          path: |
+            android-app/app/build/outputs/apk/release/app-release.apk
+            android-app/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 10
 
