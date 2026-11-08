@@ -14,6 +14,53 @@ import kotlin.concurrent.thread
  */
 internal object NavAiSessionClient {
     private const val ENDPOINT = "https://yeohang.lexid.site/api/nav/ai"
+    data class SessionPreview(
+        val id: String,
+        val lastQuestion: String,
+        val lastAnswer: String,
+        val count: Int
+    )
+
+    fun listSessions(activity: Activity, callback: (Result<List<SessionPreview>>) -> Unit) {
+        val cookies = runCatching {
+            CookieManager.getInstance().getCookie("https://yeohang.lexid.site")
+        }.getOrNull()
+        if (cookies.isNullOrBlank()) {
+            callback(Result.failure(IllegalStateException("AUTH_REQUIRED")))
+            return
+        }
+        thread(name = "nav-ai-session-list", start = true) {
+            val answer = runCatching {
+                val conn = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 7000
+                    readTimeout = 12000
+                    instanceFollowRedirects = false
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Cookie", cookies)
+                }
+                try {
+                    val code = conn.responseCode
+                    if (code == 401 || code == 403) throw IllegalStateException("AUTH_REQUIRED")
+                    if (code == 404) throw IllegalStateException("BACKEND_NOT_DEPLOYED")
+                    if (code !in 200..299) throw IllegalStateException("HTTP_$code")
+                    val data = JSONObject(conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                    val rows = data.optJSONArray("sessions") ?: return@runCatching emptyList<SessionPreview>()
+                    (0 until rows.length()).mapNotNull { idx ->
+                        val row = rows.optJSONObject(idx) ?: return@mapNotNull null
+                        val id = row.optString("session_id")
+                        if (id.isBlank()) return@mapNotNull null
+                        SessionPreview(id, row.optString("last_question"),
+                            row.optString("last_answer"), row.optInt("message_count", 0))
+                    }
+                } finally { conn.disconnect() }
+            }
+            activity.runOnUiThread {
+                if (!activity.isFinishing && !activity.isDestroyed) callback(answer)
+            }
+        }
+    }
+
     fun send(activity: Activity, sessionId: String, message: String, callback: (Result<String>) -> Unit) {
         val cookies = runCatching { CookieManager.getInstance().getCookie("https://yeohang.lexid.site") }.getOrNull()
         if (cookies.isNullOrBlank()) {
