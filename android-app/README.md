@@ -20,3 +20,18 @@
 - A Github Actions APK build may succeed while the emulator's live-web gate fails because of DNS/HTTP/network restrictions. Inspect `web-gate.txt` and `emulator-home.png` in the CI evidence artifact.
 - User-initiated retry does not grant background GPS permission. Default location remains Garak Market Station until a foreground GPS grant.
 - App-to-app Kakao Maps links do not confer a license to copy proprietary Kakao map UI, tiles or trademarks. The native SDK uses Kakao's supplied guidance view; the app brands its own header around it.
+
+
+## V11 QA branch — native full-screen Kakao navigation
+
+- Branch: `chatgpt/nav-fullscreen-drawer-20261108` (main untouched)
+- Native launcher: `KakaoNavigationActivity` (no destination required to launch).
+- Real SDK map: `KNMapView` inside a `FrameLayout`, width and height both `MATCH_PARENT`. **It is not Google Maps.** No screenshot or proprietary tile imitation is bundled.
+- Guidance: a floating top route-turn notice and small bottom arrival/remaining-route summary. The large top branding header and permanently visible split-pane buttons are removed.
+- Sidebar: closed by default, opens from the accessible hamburger control, slides from the left and dims the map. Actions: destination search, nearby lodging, attractions/restaurants, voice mute, close. The travel catalog stays inside existing `MainActivity` and opens only when requested.
+- Authentication: the shell is visible before SDK initialization; when the official SDK fails, the UI shows the actual failure rather than presenting a fake interactive map. SDK map binding is requested **only after** successful authentication.
+- Privacy: foreground GPS is requested **only after a destination is selected**. No background location, no promotional alerts while driving.
+- Navigation: the existing KNSDK route, position updates and voice callback implementation remains intact. It is **not** a Play-ready product until Kakao key+registered package/signing certificate, actual road routing, and device testing succeed.
+- Android CI: `.github/workflows/native-nav-fullscreen-qa.yml` compiles APK, installs it on Android 35, captures native home + sidebar, and checks the drawer's visibility and map layout.
+- Known unresolved gate from the previous V10 emulator run: `C103: SDK Certification Failed - INVALID_TOKEN`; verify Kakao Native app key, app package `site.lexid.yeohangnav`, and the actual signed APK's key hash in Kakao Developers. Do not claim SDK authentication success from an APK build alone.
+
