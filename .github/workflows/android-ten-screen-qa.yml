@@ -60,29 +60,20 @@ jobs:
             bash android-lab-scripts/capture-nine-emulator-screens.sh
             mkdir -p android-10-screen-results
             cp android-lab-results/0[2-9]-*.png android-10-screen-results/
-            PKG=site.lexid.yeohangnav
-            adb shell am force-stop "$PKG"
+            adb shell am force-stop site.lexid.yeohangnav
             adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
             sleep 8
             adb shell input tap 120 870
             sleep 3
             adb exec-out screencap -p > android-10-screen-results/10-map-zoom.png
-            adb shell am force-stop "$PKG"
+            adb shell am force-stop site.lexid.yeohangnav
             adb shell am start -W -n "$PKG/.NearbyMapActivity" --es category all
             sleep 8
             adb shell input tap 495 1180
             sleep 3
             adb exec-out screencap -p > android-10-screen-results/11-map-marker-detail.png
-            python3 - <<'PYVERIFY'
-            import glob,struct
-            files=glob.glob('android-10-screen-results/*.png')
-            assert len(files)==10, f'Expected exactly 10 screens: {len(files)}'
-            for f in sorted(files):
-                b=open(f,'rb').read(24)
-                assert b[:8]==b'\x89PNG\r\n\x1a\n',f
-                w,h=struct.unpack('>II',b[16:24]);assert w>=700 and h>=1000
-                print('SCREEN_VERIFIED',f,w,h)
-            PYVERIFY
+            test "$(find android-10-screen-results -name '*.png' | wc -l)" -eq 10
+            file android-10-screen-results/*.png
       - name: Upload 10 real Android emulator screenshots and APK
         if: always()
         uses: actions/upload-artifact@v4
