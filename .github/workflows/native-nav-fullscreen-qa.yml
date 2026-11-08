@@ -69,6 +69,9 @@ jobs:
           script: |
             mkdir -p android-app/artifacts/fullscreen
             adb install -r android-app/app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm grant site.lexid.yeohangnav android.permission.ACCESS_FINE_LOCATION
+            adb shell settings put secure location_mode 3
+            adb emu geo fix 127.0276 37.4979
             adb logcat -c
             adb shell am start -W -n site.lexid.yeohangnav/.KakaoNavigationActivity
             sleep 15
