@@ -82,21 +82,39 @@ class KakaoNavigationActivity : Activity(),
         window.statusBarColor = Color.rgb(17, 61, 77)
         window.navigationBarColor = Color.BLACK
         readDestination() ?: return
-        showStatusScreen("카카오내비에 연결하고 있습니다.")
+        buildBrandedNavigationScreen()
+        showStatus("카카오내비 SDK 인증을 확인하고 있습니다.")
 
         (application as YeohangApplication).authenticate { authenticated, errorDetail ->
             runOnUiThread {
                 if (!authenticated) {
-                    status.text = "카카오내비 인증 실패: ${errorDetail ?: "SDK 오류"}"
+                    showStatus("카카오내비 SDK 인증 실패: ${errorDetail ?: "SDK 오류"}")
                     return@runOnUiThread
                 }
-                buildBrandedNavigationScreen()
-                checkLocationPermission()
+                YeohangApplication.sdk.bindingMapView(mapView, KNMapTheme.driveDay()) { error ->
+                    runOnUiThread {
+                        if (error != null) {
+                            showStatus("카카오 지도를 불러오지 못했습니다. 네트워크와 인증을 확인해 주세요.")
+                        } else if (destinationName.isBlank()) {
+                            showStatus("목적지를 선택하면 길안내를 시작합니다.")
+                        } else {
+                            showStatus("GPS를 확인하고 있습니다.")
+                        }
+                    }
+                }
+                if (destinationName.isNotBlank()) checkLocationPermission()
             }
         }
     }
 
     private fun readDestination(): Unit? {
+        // The launcher intentionally opens navigation-only mode with no destination.
+        if (!intent.hasExtra(EXTRA_DESTINATION_NAME) &&
+            !intent.hasExtra(EXTRA_DESTINATION_LAT) &&
+            !intent.hasExtra(EXTRA_DESTINATION_LNG)) {
+            destinationName = ""
+            return Unit
+        }
         destinationName = intent.getStringExtra(EXTRA_DESTINATION_NAME)?.trim().orEmpty()
         destinationLat = intent.getDoubleExtra(EXTRA_DESTINATION_LAT, Double.NaN)
         destinationLng = intent.getDoubleExtra(EXTRA_DESTINATION_LNG, Double.NaN)
@@ -110,90 +128,213 @@ class KakaoNavigationActivity : Activity(),
         return Unit
     }
 
+    // Map is the entire native navigation surface. All controls float over KNSDK's KNMapView.
+    private fun navShape(color: Int, radius: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+        }
+
     private fun buildBrandedNavigationScreen() {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.WHITE)
+        val root = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(222, 232, 228))
         }
-        val brandBar = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-            setBackgroundColor(Color.rgb(17, 61, 77))
-        }
-        brandBar.addView(TextView(this).apply {
-            text = "여행갈지도"
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-        })
-        brandBar.addView(TextView(this).apply {
-            text = "목적지 · $destinationName"
-            textSize = 13f
-            setTextColor(Color.rgb(218, 238, 237))
-            maxLines = 1
-        })
-        root.addView(brandBar, LinearLayout.LayoutParams(-1, dp(64)))
 
-        val guidanceCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(10), dp(18), dp(10))
-            setBackgroundColor(Color.rgb(239, 248, 247))
+        mapView = KNMapView(this).apply {
+            tag = "nav-sdk-map"
+            contentDescription = "카카오내비 SDK 전체 화면 지도"
         }
-        turnTitle = TextView(this).apply {
-            text = "현재 위치와 경로를 준비하고 있습니다."
-            textSize = 19f
-            setTextColor(Color.rgb(17, 61, 77))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-        }
-        turnDistance = TextView(this).apply {
-            text = destinationName
-            textSize = 14f
-            setTextColor(Color.rgb(56, 92, 99))
-        }
-        guidanceCard.addView(turnTitle)
-        guidanceCard.addView(turnDistance)
-        root.addView(guidanceCard, LinearLayout.LayoutParams(-1, dp(92)))
+        root.addView(mapView, android.widget.FrameLayout.LayoutParams(-1, -1))
 
-        mapView = KNMapView(this)
-        root.addView(mapView, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        val footer = LinearLayout(this).apply {
+        val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
-            setBackgroundColor(Color.WHITE)
+            setPadding(dp(10), dp(9), dp(13), dp(9))
+            background = navShape(Color.rgb(12, 69, 73), 20)
+            elevation = dp(8).toFloat()
+        }
+        val menu = TextView(this).apply {
+            text = "☰"
+            contentDescription = "메뉴 열기"
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = navShape(Color.rgb(22, 107, 107), 16)
+            setOnClickListener { openDrawer() }
+        }
+        top.addView(menu, LinearLayout.LayoutParams(dp(52), dp(56)))
+        val turn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), 0, 0, 0)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        turnTitle = TextView(this).apply {
+            text = if (destinationName.isBlank()) "목적지를 검색하세요" else "길안내를 준비하고 있습니다"
+            textSize = 20f
+            maxLines = 2
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            tag = "nav-guidance-title"
+        }
+        turnDistance = TextView(this).apply {
+            text = if (destinationName.isBlank()) "메뉴에서 목적지를 선택하세요" else destinationName
+            textSize = 13f
+            maxLines = 1
+            setTextColor(Color.rgb(202, 235, 226))
+        }
+        turn.addView(turnTitle)
+        turn.addView(turnDistance)
+        top.addView(turn, LinearLayout.LayoutParams(0, -2, 1f))
+        root.addView(top, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
+            setMargins(dp(12), dp(12), dp(12), 0)
+        })
+
+        val bottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(10), dp(10), dp(10))
+            background = navShape(Color.WHITE, 20)
+            elevation = dp(8).toFloat()
         }
         routeSummary = TextView(this).apply {
-            text = "경로 정보를 불러오고 있습니다."
-            textSize = 14f
-            setTextColor(Color.rgb(31, 69, 79))
-            setPadding(0, 0, dp(12), 0)
-        }
-        footer.addView(routeSummary, LinearLayout.LayoutParams(0, -2, 1f))
-        footer.addView(Button(this).apply {
-            text = "안내 종료"
+            text = if (destinationName.isBlank()) "여행갈지도 NAV · 목적지 검색" else "경로를 불러오고 있습니다."
+            textSize = 15f
+            maxLines = 2
             setTextColor(Color.rgb(17, 61, 77))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        bottom.addView(routeSummary, LinearLayout.LayoutParams(0, -2, 1f))
+        stopButton = Button(this).apply {
+            text = "종료"
+            visibility = View.GONE
+            contentDescription = "길안내 종료"
             setOnClickListener {
-                showPostDriveScreen()
                 YeohangApplication.sdk.sharedGuidance()?.stop()
+                showPostDriveScreen()
             }
-        }, LinearLayout.LayoutParams(-2, -2))
-        root.addView(footer, LinearLayout.LayoutParams(-1, dp(64)))
+        }
+        bottom.addView(stopButton, LinearLayout.LayoutParams(-2, dp(52)))
+        root.addView(bottom, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
+            setMargins(dp(12), 0, dp(12), dp(14))
+        })
 
         status = TextView(this).apply {
             text = ""
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = navShape(Color.rgb(30, 62, 65), 12)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            tag = "nav-status"
             visibility = View.GONE
+            elevation = dp(10).toFloat()
         }
-        root.addView(status, LinearLayout.LayoutParams(-1, dp(40)))
+        root.addView(status, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
+            setMargins(dp(24), 0, dp(24), dp(102))
+        })
+
+        scrim = View(this).apply {
+            setBackgroundColor(Color.argb(145, 0, 25, 29))
+            visibility = View.GONE
+            contentDescription = "메뉴 닫기"
+            setOnClickListener { closeDrawer() }
+        }
+        root.addView(scrim, android.widget.FrameLayout.LayoutParams(-1, -1))
+
+        val drawerWidth = kotlin.math.min(dp(340), resources.displayMetrics.widthPixels - dp(56))
+        drawer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.WHITE)
+            visibility = View.GONE
+            translationX = -drawerWidth.toFloat()
+            elevation = dp(18).toFloat()
+            contentDescription = "여행갈지도 내비게이션 사이드 메뉴"
+            tag = "nav-side-drawer"
+        }
+        val drawerHeading = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(38), dp(24), dp(24))
+            setBackgroundColor(Color.rgb(12, 69, 73))
+        }
+        drawerHeading.addView(TextView(this).apply {
+            text = "여행갈지도 NAV"
+            textSize = 24f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(Color.WHITE)
+        })
+        drawerHeading.addView(TextView(this).apply {
+            text = "어디로 갈까요?"
+            textSize = 15f
+            setTextColor(Color.rgb(205, 233, 225))
+            setPadding(0, dp(8), 0, 0)
+        })
+        drawer.addView(drawerHeading, LinearLayout.LayoutParams(-1, dp(155)))
+        val drawerItems = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(14), dp(10), 0)
+        }
+        addDrawerItem(drawerItems, "⌕   목적지 검색") { openTravelCatalog() }
+        addDrawerItem(drawerItems, "⌂   내 주변 숙소") { openTravelCatalog() }
+        addDrawerItem(drawerItems, "♧   관광지 · 맛집") { openBrowseUrl("https://yeohang.lexid.site/places") }
+        addDrawerItem(drawerItems, "♬   음성 안내 켜기 / 끄기") {
+            voiceMuted = !voiceMuted
+            Toast.makeText(this, if (voiceMuted) "음성 안내를 껐습니다" else "음성 안내를 켰습니다", Toast.LENGTH_SHORT).show()
+            closeDrawer()
+        }
+        addDrawerItem(drawerItems, "✕   메뉴 닫기") { closeDrawer() }
+        drawer.addView(ScrollView(this).apply { addView(drawerItems) }, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(drawer, android.widget.FrameLayout.LayoutParams(drawerWidth, -1, Gravity.START))
         setContentView(root)
-        YeohangApplication.sdk.bindingMapView(mapView, KNMapTheme.driveDay()) { error ->
-            if (error != null) runOnUiThread {
-                status.text = "카카오 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
-                status.visibility = View.VISIBLE
-            }
-        }
+    }
+
+    private lateinit var scrim: View
+    private lateinit var drawer: LinearLayout
+    private lateinit var stopButton: Button
+    private var drawerOpen = false
+    private var voiceMuted = false
+
+    private fun addDrawerItem(parent: LinearLayout, title: String, action: () -> Unit) {
+        parent.addView(TextView(this).apply {
+            text = title
+            textSize = 18f
+            gravity = Gravity.CENTER_VERTICAL
+            setTextColor(Color.rgb(17, 61, 77))
+            setPadding(dp(18), 0, dp(12), 0)
+            contentDescription = title
+            setOnClickListener { action() }
+        }, LinearLayout.LayoutParams(-1, dp(64)))
+    }
+
+    private fun openDrawer() {
+        if (drawerOpen) return
+        drawerOpen = true
+        scrim.visibility = View.VISIBLE
+        drawer.visibility = View.VISIBLE
+        drawer.animate().translationX(0f).setDuration(200).start()
+    }
+
+    private fun closeDrawer() {
+        if (!drawerOpen) return
+        drawerOpen = false
+        scrim.visibility = View.GONE
+        drawer.animate().translationX(-drawer.width.toFloat()).setDuration(180).withEndAction {
+            if (!drawerOpen) drawer.visibility = View.GONE
+        }.start()
+    }
+
+    private fun openTravelCatalog() {
+        closeDrawer()
+        startActivity(Intent(this, MainActivity::class.java))
+    }
+
+    private fun showStatus(message: String) {
+        status.text = message
+        status.visibility = View.VISIBLE
+    }
+
+    override fun onBackPressed() {
+        if (drawerOpen) closeDrawer()
+        else super.onBackPressed()
     }
 
     private fun showStatusScreen(message: String) {
@@ -255,6 +396,7 @@ class KakaoNavigationActivity : Activity(),
     }
 
     private fun startRoute(origin: Location) {
+        status.visibility = View.VISIBLE
         status.text = "카카오내비 경로를 계산하고 있습니다."
         val startPoint = YeohangApplication.sdk.convertWGS84ToKATEC(origin.longitude, origin.latitude)
         val goalPoint = YeohangApplication.sdk.convertWGS84ToKATEC(destinationLng, destinationLat)
@@ -294,12 +436,14 @@ class KakaoNavigationActivity : Activity(),
             citsGuideDelegate = this@KakaoNavigationActivity
         }
         status.visibility = View.GONE
+        stopButton.visibility = View.VISIBLE
         guidanceStarted = true
         guidance.startWithTrip(trip, priority, 0)
     }
 
     override fun guidanceCheckingRouteChange(guidance: KNGuidance) {
         turnTitle.text = "경로를 다시 확인하고 있습니다."
+        showStatus("경로가 변경되어 다시 계산합니다.")
     }
 
     override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) {
@@ -325,6 +469,7 @@ class KakaoNavigationActivity : Activity(),
 
     override fun guidanceOutOfRoute(guidance: KNGuidance) {
         turnTitle.text = "경로를 벗어나 다시 안내합니다."
+        showStatus("경로 이탈 · 안전한 경로를 다시 확인하고 있습니다.")
     }
 
     override fun guidanceRouteChanged(
@@ -371,7 +516,7 @@ class KakaoNavigationActivity : Activity(),
     override fun shouldPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice, newData: MutableList<ByteArray>): Boolean = true
 
     override fun willPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) {
-        playVoiceGuide(voiceGuide)
+        if (!voiceMuted) playVoiceGuide(voiceGuide)
     }
 
     override fun didFinishPlayVoiceGuide(guidance: KNGuidance, voiceGuide: KNGuide_Voice) = Unit
