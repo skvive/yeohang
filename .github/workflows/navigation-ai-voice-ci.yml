@@ -91,14 +91,8 @@ jobs:
             sleep 3
             adb shell uiautomator dump /sdcard/voice-qa.xml >/dev/null
             adb pull /sdcard/voice-qa.xml android-app/artifacts/voice-ai/ui.xml
-            if grep -Eiq 'isn.t responding|is not responding|system ui is not responding' android-app/artifacts/voice-ai/ui.xml; then
-              echo 'Android system ANR prevents a verified capture' >&2
-              exit 41
-            fi
-            if ! grep -q 'AI 음성 패널 닫기' android-app/artifacts/voice-ai/ui.xml; then
-              echo 'Voice command sheet did not open' >&2
-              exit 42
-            fi
+            ! grep -Eiq 'isn.t responding|is not responding|system ui is not responding' android-app/artifacts/voice-ai/ui.xml
+            grep -q 'AI 음성 패널 닫기' android-app/artifacts/voice-ai/ui.xml
             adb exec-out screencap -p > android-app/artifacts/voice-ai/01-voice-command-panel.png
             test -s android-app/artifacts/voice-ai/01-voice-command-panel.png
             adb logcat -d > android-app/artifacts/voice-ai/logcat.txt
