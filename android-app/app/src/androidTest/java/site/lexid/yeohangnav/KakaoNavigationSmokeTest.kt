@@ -13,6 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kakaomobility.knsdk.map.knmapview.KNMapView
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -76,17 +77,19 @@ class KakaoNavigationSmokeTest {
             )
             assertTrue("MainActivity did not inject its initial first-party page: $firstPageState", firstPageInjected)
 
-            val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#').trimEnd('/') + "/__android_bridge_test__#map"
             val fixture = """
-                <!doctype html><html><head><meta name="viewport" content="width=device-width"><script>location.hash='#map'</script></head>
-                <body>
-                  <main id="app"><section class="section-tight"><div class="wrap"><div id="mapCanvas"></div></div></section></main>
+                <main id="app"><section class="section-tight"><div class="wrap">
+                  <div id="mapCanvas"></div>
                   <div id="mapSide"><div class="map-list-row active"><h4>Bridge QA Destination</h4></div></div>
                   <a id="openGoogleMaps" href="https://map.kakao.com/?q=37.5010%2C127.0396">길찾기</a>
-                </body></html>
+                </div></section></main>
             """.trimIndent()
+            val bundledNavigationJs = context.assets.open("navigation-v9.js")
+                .bufferedReader().use { it.readText() }
+            val fixtureSetup = "window.YeohangNavigation=undefined;document.body.innerHTML=" +
+                JSONObject.quote(fixture) + ";location.hash='#map';"
             instrumentation.runOnMainSync {
-                embeddedWebView.loadDataWithBaseURL(baseUrl, fixture, "text/html", "UTF-8", null)
+                embeddedWebView.evaluateJavascript(fixtureSetup + bundledNavigationJs, null)
             }
 
             val readyScript = "Boolean(window.__YE0HANG_ANDROID_NAVI__ && " +
