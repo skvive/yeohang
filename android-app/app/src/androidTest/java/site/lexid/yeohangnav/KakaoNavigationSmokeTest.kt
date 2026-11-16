@@ -61,7 +61,7 @@ class KakaoNavigationSmokeTest {
                 ?: throw AssertionError("MainActivity WebView was not found")
             val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#') + "#map"
             val fixture = """
-                <!doctype html><html><head><meta name="viewport" content="width=device-width"></head>
+                <!doctype html><html><head><meta name="viewport" content="width=device-width"><script>location.hash='#map'</script></head>
                 <body>
                   <main id="app"><section class="section-tight"><div class="wrap"><div id="mapCanvas"></div></div></section></main>
                   <div id="mapSide"><div class="map-list-row active"><h4>Bridge QA Destination</h4></div></div>
@@ -82,7 +82,15 @@ class KakaoNavigationSmokeTest {
                 bridgeReady = evaluateJavascript(instrumentation, embeddedWebView, readyScript) == "true"
                 if (!bridgeReady) Thread.sleep(250)
             }
-            assertTrue("Bundled V9 route action was not injected into the trusted WebView", bridgeReady)
+            val bridgeState = evaluateJavascript(
+                instrumentation,
+                embeddedWebView,
+                "JSON.stringify({hash:location.hash,marker:!!window.__YE0HANG_ANDROID_NAVI__," +
+                    "api:!!window.YeohangNavigation?.openDirections," +
+                    "selected:!!document.querySelector('#mapSide .map-list-row.active')," +
+                    "route:!!document.querySelector('[data-ynav=route]')})"
+            )
+            assertTrue("Bundled V9 route action was not injected into the trusted WebView: $bridgeState", bridgeReady)
 
             instrumentation.runOnMainSync {
                 embeddedWebView.evaluateJavascript("document.querySelector('[data-ynav=route]').click()", null)
