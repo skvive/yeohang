@@ -76,7 +76,7 @@ class KakaoNavigationSmokeTest {
             )
             assertTrue("MainActivity did not inject its initial first-party page: $firstPageState", firstPageInjected)
 
-            val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#') + "#map"
+            val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#').trimEnd('/') + "/__android_bridge_test__#map"
             val fixture = """
                 <!doctype html><html><head><meta name="viewport" content="width=device-width"><script>location.hash='#map'</script></head>
                 <body>
@@ -102,7 +102,7 @@ class KakaoNavigationSmokeTest {
             val bridgeState = evaluateJavascript(
                 instrumentation,
                 embeddedWebView,
-                "JSON.stringify({hash:location.hash,marker:!!window.__YE0HANG_ANDROID_NAVI__," +
+                "JSON.stringify({url:location.href,hash:location.hash,marker:!!window.__YE0HANG_ANDROID_NAVI__," +
                     "api:!!window.YeohangNavigation?.openDirections," +
                     "selected:!!document.querySelector('#mapSide .map-list-row.active')," +
                     "route:!!document.querySelector('[data-ynav=route]')})"
