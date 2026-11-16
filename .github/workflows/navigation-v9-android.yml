@@ -46,25 +46,42 @@ jobs:
         id: android-debug-keystore
         uses: actions/cache/restore@v4
         with:
-          path: ~/.android/debug.keystore
-          key: yeohang-kakao-debug-keystore-v1
+          path: .ci/android-debug.keystore
+          key: yeohang-navigation-ci-debug-keystore-v1
+      - name: Create Android debug signing key on cache miss
+        if: steps.android-debug-keystore.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .ci
+          keytool -genkeypair -v \
+            -keystore .ci/android-debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname 'CN=Android Debug,O=Android,C=US' >/dev/null
       - name: Assemble V9 debug APK
         working-directory: android-app
         env:
           KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon -PciDebugKeystore="$GITHUB_WORKSPACE/.ci/android-debug.keystore" :app:assembleDebug
       - name: Persist Android debug signing key before emulator QA
         if: steps.android-debug-keystore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ~/.android/debug.keystore
-          key: yeohang-kakao-debug-keystore-v1
+          path: .ci/android-debug.keystore
+          key: yeohang-navigation-ci-debug-keystore-v1
       - name: Report APK signing key hash
         run: |
           apk="android-app/app/build/outputs/apk/debug/app-debug.apk"
           sha1_hex="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" \
             | awk -F': ' '/Signer #1 certificate SHA-1 digest:/ { gsub(":", "", $2); print $2 }')"
+          keystore_sha1_hex="$(keytool -exportcert -keystore .ci/android-debug.keystore \
+            -storepass android -alias androiddebugkey \
+            | openssl dgst -sha1 -binary | xxd -p -c 256)"
           test -n "$sha1_hex"
+          test "$sha1_hex" = "$keystore_sha1_hex"
           printf '%s' "$sha1_hex" | xxd -r -p | openssl base64 -A
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
@@ -117,5 +134,6 @@ jobs:
             android-app/app/build/outputs/androidTest-results/connected/
           if-no-files-found: ignore
           retention-days: 14
+
 
 
