@@ -59,6 +59,23 @@ class KakaoNavigationSmokeTest {
             }
             val embeddedWebView = webView
                 ?: throw AssertionError("MainActivity WebView was not found")
+            val firstPageDeadline = System.currentTimeMillis() + 45_000
+            var firstPageInjected = false
+            while (System.currentTimeMillis() < firstPageDeadline && !firstPageInjected) {
+                firstPageInjected = evaluateJavascript(
+                    instrumentation,
+                    embeddedWebView,
+                    "Boolean(window.__YE0HANG_ANDROID_NAVI__)"
+                ) == "true"
+                if (!firstPageInjected) Thread.sleep(250)
+            }
+            val firstPageState = evaluateJavascript(
+                instrumentation,
+                embeddedWebView,
+                "JSON.stringify({url:location.href,marker:!!window.__YE0HANG_ANDROID_NAVI__})"
+            )
+            assertTrue("MainActivity did not inject its initial first-party page: $firstPageState", firstPageInjected)
+
             val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#') + "#map"
             val fixture = """
                 <!doctype html><html><head><meta name="viewport" content="width=device-width"><script>location.hash='#map'</script></head>
