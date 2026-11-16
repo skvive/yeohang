@@ -42,8 +42,8 @@ import org.json.JSONObject;
  */
 public final class MainActivity extends Activity {
     private static final String TAG = "YeohangNav";
-    private static final String HOME = "https://yeohang.lexid.site/#map";
-    private static final String APP_HOST = "yeohang.lexid.site";
+    private static final String HOME = BuildConfig.NAVIGATION_HOME;
+    private static final String APP_HOST = Uri.parse(HOME).getHost();
     private static final int LOCATION_REQUEST = 2309;
     private WebView webView;
     private GeolocationPermissions.Callback pendingGeo;
@@ -108,7 +108,7 @@ public final class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 pageFinished = false;
                 pageFailed = false;
-                if (url != null && url.startsWith("https://" + APP_HOST)) {
+                if (url != null && isFirstPartyUri(Uri.parse(url))) {
                     showNativeState(false, "길별이와 지도를 연결하고 있어요",
                         "연결 상태를 확인한 후 주변 숙소를 불러옵니다.");
                     webView.setVisibility(View.INVISIBLE);
@@ -116,7 +116,7 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if(pageFailed) return; // WebView still fires onPageFinished for its built-in DNS error page.
-                if(url == null || !url.startsWith("https://" + APP_HOST)) return;
+                if(url == null || !isFirstPartyUri(Uri.parse(url))) return;
                 pageFinished = true;
                 injectNavigationOverlay();
                 webView.setVisibility(View.VISIBLE);
@@ -272,8 +272,7 @@ public final class MainActivity extends Activity {
     private void injectNavigationOverlay() {
         if (webView == null || webView.getUrl() == null) return;
         Uri loaded = Uri.parse(webView.getUrl());
-        if (!"https".equalsIgnoreCase(loaded.getScheme()) ||
-            !APP_HOST.equalsIgnoreCase(loaded.getHost())) return;
+        if (!isFirstPartyUri(loaded)) return;
         try {
             String css = readAsset("navigation-v9.css");
             String js = readAsset("navigation-v9.js");
@@ -291,8 +290,12 @@ public final class MainActivity extends Activity {
 
     private boolean isFirstPartyPage(WebView view) {
         Uri current = Uri.parse(view.getUrl() == null ? "" : view.getUrl());
-        return "https".equalsIgnoreCase(current.getScheme()) &&
-            APP_HOST.equalsIgnoreCase(current.getHost());
+        return isFirstPartyUri(current);
+    }
+
+    private boolean isFirstPartyUri(Uri uri) {
+        return uri != null && "https".equalsIgnoreCase(uri.getScheme()) &&
+            APP_HOST.equalsIgnoreCase(uri.getHost());
     }
 
     private void openNativeNavigation(Uri uri) {

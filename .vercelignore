@@ -2,3 +2,4 @@ _delivery
 *.sqlite3
 .cookie-secret.tmp
 docs/brand-v2
+android-app/

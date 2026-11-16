@@ -24,7 +24,25 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { buildConfig true }
-    buildTypes { release { minifyEnabled false } }
+    buildTypes {
+        debug {
+            def defaultNavigationHome = 'https://yeohang.lexid.site/#map'
+            def navigationHome = (project.findProperty('navigationHome') ?: defaultNavigationHome).toString().trim()
+            def navigationUri = new URI(navigationHome)
+            def navigationHost = navigationUri.host?.toLowerCase(Locale.ROOT)
+            def isProductionHost = navigationHost == 'yeohang.lexid.site'
+            def isProjectPreviewHost = navigationHost?.startsWith('yeohang-') &&
+                navigationHost.endsWith('-shinkang888-codes-projects.vercel.app')
+            if (navigationUri.scheme != 'https' || !(isProductionHost || isProjectPreviewHost)) {
+                throw new GradleException('navigationHome must use the production or project Preview HTTPS host')
+            }
+            buildConfigField 'String', 'NAVIGATION_HOME', groovy.json.JsonOutput.toJson(navigationHome)
+        }
+        release {
+            minifyEnabled false
+            buildConfigField 'String', 'NAVIGATION_HOME', '"https://yeohang.lexid.site/#map"'
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
