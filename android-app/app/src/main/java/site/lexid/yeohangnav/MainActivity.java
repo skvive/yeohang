@@ -42,7 +42,9 @@ import org.json.JSONObject;
  */
 public final class MainActivity extends Activity {
     private static final String TAG = "YeohangNav";
-    private static final String HOME = BuildConfig.NAVIGATION_HOME;
+    private static final String PRODUCTION_HOME = "https://yeohang.lexid.site/#map";
+    private static final String HOME = BuildConfig.NAVIGATION_HOME.isEmpty()
+        ? PRODUCTION_HOME : BuildConfig.NAVIGATION_HOME;
     private static final String APP_HOST = Uri.parse(HOME).getHost();
     private static final int LOCATION_REQUEST = 2309;
     private WebView webView;
