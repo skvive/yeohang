@@ -59,11 +59,11 @@ class KakaoNavigationSmokeTest {
             }
             val embeddedWebView = webView
                 ?: throw AssertionError("MainActivity WebView was not found")
-            val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#')
+            val baseUrl = BuildConfig.NAVIGATION_HOME.substringBefore('#') + "#map"
             val fixture = """
                 <!doctype html><html><head><meta name="viewport" content="width=device-width"></head>
                 <body>
-                  <div class="wrap"><div id="mapCanvas"></div></div>
+                  <main id="app"><section class="section-tight"><div class="wrap"><div id="mapCanvas"></div></div></section></main>
                   <div id="mapSide"><div class="map-list-row active"><h4>Bridge QA Destination</h4></div></div>
                   <a id="openGoogleMaps" href="https://map.kakao.com/?q=37.5010%2C127.0396">길찾기</a>
                 </body></html>
