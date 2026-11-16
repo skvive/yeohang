@@ -10,6 +10,7 @@ if (localPropertiesFile.exists()) {
 }
 def kakaoMobilityAppKey = localProperties.getProperty('kakaoMobilityAppKey',
     System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '').trim()
+def ciDebugKeystore = project.findProperty('ciDebugKeystore')
 
 android {
     namespace 'site.lexid.yeohangnav'
@@ -24,8 +25,19 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { buildConfig true }
+    if (ciDebugKeystore) {
+        signingConfigs {
+            ciDebug {
+                storeFile file(ciDebugKeystore)
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
     buildTypes {
         debug {
+            if (ciDebugKeystore) signingConfig signingConfigs.ciDebug
             def defaultNavigationHome = 'https://yeohang.lexid.site/#map'
             def navigationHome = (project.findProperty('navigationHome') ?: defaultNavigationHome).toString().trim()
             def navigationUri = new URI(navigationHome)

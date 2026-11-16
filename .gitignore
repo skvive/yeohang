@@ -1,4 +1,5 @@
 node_modules
+.ci/android-debug.keystore
 .next
 .vercel
 .neon
