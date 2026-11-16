@@ -43,7 +43,8 @@ jobs:
           fi
           echo 'Kakao Native app key format validated.'
       - name: Reuse stable Android debug signing key
-        uses: actions/cache@v4
+        id: android-debug-keystore
+        uses: actions/cache/restore@v4
         with:
           path: ~/.android/debug.keystore
           key: yeohang-kakao-debug-keystore-v1
@@ -52,10 +53,19 @@ jobs:
         env:
           KAKAO_MOBILITY_APP_KEY: ${{ secrets.KAKAO_MOBILITY_APP_KEY }}
         run: gradle --no-daemon :app:assembleDebug
-      - name: Report debug signing key hash
+      - name: Persist Android debug signing key before emulator QA
+        if: steps.android-debug-keystore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: yeohang-kakao-debug-keystore-v1
+      - name: Report APK signing key hash
         run: |
-          keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android \
-            | openssl dgst -sha1 -binary | openssl base64 -A
+          apk="android-app/app/build/outputs/apk/debug/app-debug.apk"
+          sha1_hex="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" \
+            | awk -F': ' '/Signer #1 certificate SHA-1 digest:/ { gsub(":", "", $2); print $2 }')"
+          test -n "$sha1_hex"
+          printf '%s' "$sha1_hex" | xxd -r -p | openssl base64 -A
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -107,4 +117,5 @@ jobs:
             android-app/app/build/outputs/androidTest-results/connected/
           if-no-files-found: ignore
           retention-days: 14
+
 
