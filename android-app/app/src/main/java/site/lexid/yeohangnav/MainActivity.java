@@ -43,8 +43,8 @@ import org.json.JSONObject;
 public final class MainActivity extends Activity {
     private static final String TAG = "YeohangNav";
     private static final String PRODUCTION_HOME = "https://yeohang.lexid.site/#map";
-    private static final String HOME = BuildConfig.NAVIGATION_HOME.isEmpty()
-        ? PRODUCTION_HOME : BuildConfig.NAVIGATION_HOME;
+    private static final String HOME = mapEntryUrl(BuildConfig.NAVIGATION_HOME.isEmpty()
+        ? PRODUCTION_HOME : BuildConfig.NAVIGATION_HOME);
     private static final String APP_HOST = Uri.parse(HOME).getHost();
     private static final int LOCATION_REQUEST = 2309;
     private WebView webView;
@@ -56,6 +56,10 @@ public final class MainActivity extends Activity {
     private Button retryButton;
     private boolean pageFinished;
     private boolean pageFailed;
+
+    private static String mapEntryUrl(String url) {
+        return Uri.parse(url).buildUpon().fragment("map").build().toString();
+    }
 
     private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
 
