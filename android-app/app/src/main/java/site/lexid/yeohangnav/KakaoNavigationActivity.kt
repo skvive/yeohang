@@ -272,7 +272,7 @@ class KakaoNavigationActivity : Activity(),
                         status.text = "카카오내비 경로 응답에 실패했습니다."
                         return@runOnUiThread
                     }
-                    mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(startPoint.x.toFloat(), startPoint.y.toFloat())), false)
+                    mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(startPoint.x.toFloat(), startPoint.y.toFloat())), false, false)
                     startGuidance(trip, priority)
                 }
             }
@@ -348,7 +348,7 @@ class KakaoNavigationActivity : Activity(),
 
     override fun guidanceDidUpdateLocation(guidance: KNGuidance, locationGuide: KNGuide_Location) {
         val location = locationGuide.locationForPrimaryRoute ?: locationGuide.location ?: return
-        mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())), true)
+        mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())), true, false)
         mapView.cullPassedRoute(location, true)
         updateRemainingSummary(location)
     }
