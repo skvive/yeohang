@@ -38,6 +38,7 @@ import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.common.objects.KNError
 import com.kakaomobility.knsdk.common.util.FloatPoint
 import com.kakaomobility.knsdk.map.knmaprenderer.objects.KNMapCameraUpdate
+import com.kakaomobility.knsdk.map.knmapview.idl.KNMapRouteProperties
 import com.kakaomobility.knsdk.map.uicustomsupport.renewal.theme.base.KNMapTheme
 import com.kakaomobility.knsdk.map.knmapview.KNMapView
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
@@ -208,6 +209,8 @@ class KakaoNavigationActivity : Activity(),
                 if (error != null) {
                     status.text = "카카오 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
                     status.visibility = View.VISIBLE
+                } else {
+                    configureRouteStyle()
                 }
             }
         }
@@ -402,6 +405,12 @@ class KakaoNavigationActivity : Activity(),
             isFlat = false
             isVisibleGuideLine = false
             isVisible = true
+        }
+    }
+
+    private fun configureRouteStyle() {
+        mapView.routeProperties = KNMapRouteProperties().apply {
+            isVisibleRGArrow = false
         }
     }
 
