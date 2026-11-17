@@ -5,9 +5,14 @@ node_modules
 .neon
 android-app/local.properties
 android-app/.gradle/
+android-app/build/
 android-app/app/build/
 android-app/app/src/main/assets/
 android-app/app/src/main/res/
+!android-app/app/src/main/res/
+!android-app/app/src/main/res/drawable/
+!android-app/app/src/main/res/drawable/ic_navigation_car.xml
+android-app/app/src/main/res/drawable/yeohang_icon.png
 .env
 .env.local
 .env*.local

@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.location.Criteria
 import android.location.Location
@@ -46,6 +48,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
 import kotlin.math.roundToInt
+import kotlin.math.atan2
+import kotlin.math.hypot
 
 class KakaoNavigationActivity : Activity(),
     KNGuidance_GuideStateDelegate,
@@ -74,8 +78,19 @@ class KakaoNavigationActivity : Activity(),
     private var destinationLat = 0.0
     private var destinationLng = 0.0
     private var currentRoute: KNRoute? = null
+    private var routePathKatec: List<Pair<Double, Double>> = emptyList()
     private var guidanceStarted = false
     private var guidanceEnded = false
+    private var lastHeadingDegrees: Float? = null
+    private var routeHeadingDegrees: Float? = null
+    private var navigationCameraInitialized = false
+    private val navigationCarBitmap: Bitmap by lazy(LazyThreadSafetyMode.NONE) {
+        val drawable = requireNotNull(getDrawable(R.drawable.ic_navigation_car))
+        Bitmap.createBitmap(dp(36), dp(52), Bitmap.Config.ARGB_8888).also { bitmap ->
+            drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+            drawable.draw(Canvas(bitmap))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -189,9 +204,11 @@ class KakaoNavigationActivity : Activity(),
         root.addView(status, LinearLayout.LayoutParams(-1, dp(40)))
         setContentView(root)
         YeohangApplication.sdk.bindingMapView(mapView, KNMapTheme.driveDay()) { error ->
-            if (error != null) runOnUiThread {
-                status.text = "카카오 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
-                status.visibility = View.VISIBLE
+            runOnUiThread {
+                if (error != null) {
+                    status.text = "카카오 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+                    status.visibility = View.VISIBLE
+                }
             }
         }
     }
@@ -258,6 +275,7 @@ class KakaoNavigationActivity : Activity(),
         status.text = "카카오내비 경로를 계산하고 있습니다."
         val startPoint = YeohangApplication.sdk.convertWGS84ToKATEC(origin.longitude, origin.latitude)
         val goalPoint = YeohangApplication.sdk.convertWGS84ToKATEC(destinationLng, destinationLat)
+        routeHeadingDegrees = bearingDegrees(startPoint.x, startPoint.y, goalPoint.x, goalPoint.y)
         val start = KNPOI("현재 위치", startPoint.x.roundToInt(), startPoint.y.roundToInt(), "현재 위치")
         val goal = KNPOI(destinationName, goalPoint.x.roundToInt(), goalPoint.y.roundToInt(), destinationName)
         val priority = KNRoutePriority.KNRoutePriority_Recommand
@@ -304,6 +322,7 @@ class KakaoNavigationActivity : Activity(),
 
     override fun guidanceDidUpdateRoutes(guidance: KNGuidance, routes: List<KNRoute>, multiRouteInfo: KNMultiRouteInfo?) {
         currentRoute = routes.firstOrNull()
+        cacheRoutePolyline(currentRoute)
         mapView.setRoutes(routes)
         guidance.locationGuide?.locationForPrimaryRoute?.let(::updateRemainingSummary)
             ?: currentRoute?.let(::showFullRouteSummary)
@@ -336,6 +355,7 @@ class KakaoNavigationActivity : Activity(),
         changeReason: KNGuideRouteChangeReason
     ) {
         currentRoute = toRoute
+        cacheRoutePolyline(toRoute)
         mapView.setRoute(toRoute)
         showFullRouteSummary(toRoute)
     }
@@ -348,9 +368,74 @@ class KakaoNavigationActivity : Activity(),
 
     override fun guidanceDidUpdateLocation(guidance: KNGuidance, locationGuide: KNGuide_Location) {
         val location = locationGuide.locationForPrimaryRoute ?: locationGuide.location ?: return
-        mapView.moveCamera(KNMapCameraUpdate.targetTo(FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())), true, false)
+        val coordinate = FloatPoint(location.pos.x.toFloat(), location.pos.y.toFloat())
+        val gps = locationGuide.gpsMatched.takeIf { it.valid }
+            ?: locationGuide.gpsOrigin.takeIf { it.valid }
+        val movingHeading = gps?.takeIf { it.speed >= 3 }?.angle?.toFloat()
+        val routeCourse = headingAlongRoute(location)
+        val heading = movingHeading ?: routeCourse ?: lastHeadingDegrees ?: routeHeadingDegrees
+            ?: gps?.angle?.toFloat() ?: 0f
+        if (movingHeading != null) lastHeadingDegrees = movingHeading
+
+        configureVehicleMarker(coordinate, heading)
+
+        val cameraUpdate = KNMapCameraUpdate.targetTo(coordinate)
+            .bearingTo(heading)
+            .tiltTo(40f)
+            .anchorTo(FloatPoint(0.5f, 0.8f))
+        if (navigationCameraInitialized) {
+            mapView.animateCamera(cameraUpdate, 350L, true, false)
+        } else {
+            mapView.moveCamera(cameraUpdate, true, false)
+            navigationCameraInitialized = true
+        }
         mapView.cullPassedRoute(location, true)
+        mapView.post { configureVehicleMarker(coordinate, heading) }
         updateRemainingSummary(location)
+    }
+
+    private fun configureVehicleMarker(coordinate: FloatPoint, heading: Float) {
+        mapView.userLocation?.apply {
+            icon = navigationCarBitmap
+            this.coordinate = coordinate
+            angle = heading
+            isFlat = false
+            isVisibleGuideLine = false
+            isVisible = true
+        }
+    }
+
+    private fun bearingDegrees(startX: Number, startY: Number, goalX: Number, goalY: Number): Float {
+        val east = goalX.toDouble() - startX.toDouble()
+        val north = goalY.toDouble() - startY.toDouble()
+        return ((Math.toDegrees(atan2(east, north)) + 360.0) % 360.0).toFloat()
+    }
+
+    private fun cacheRoutePolyline(route: KNRoute?) {
+        routePathKatec = route?.routePolylineWGS84().orEmpty().mapNotNull { point ->
+            val longitude = point["x"]?.toDouble() ?: return@mapNotNull null
+            val latitude = point["y"]?.toDouble() ?: return@mapNotNull null
+            if (!longitude.isFinite() || !latitude.isFinite()) return@mapNotNull null
+            val coordinate = YeohangApplication.sdk.convertWGS84ToKATEC(longitude, latitude)
+            coordinate.x.toDouble() to coordinate.y.toDouble()
+        }
+    }
+
+    private fun headingAlongRoute(location: KNLocation): Float? {
+        val points = routePathKatec
+        if (points.size < 2) return null
+        val position = location.pos
+        val nearestIndex = points.indices.minByOrNull { index ->
+            val dx = points[index].first - position.x
+            val dy = points[index].second - position.y
+            dx * dx + dy * dy
+        } ?: return null
+        val start = points[nearestIndex]
+        val target = (nearestIndex + 1 until points.size)
+            .firstOrNull { index -> hypot(points[index].first - start.first, points[index].second - start.second) >= 40.0 }
+            ?.let(points::get) ?: points.last()
+        if (hypot(target.first - start.first, target.second - start.second) < 1.0) return null
+        return bearingDegrees(start.first, start.second, target.first, target.second)
     }
 
     override fun guidanceDidUpdateRouteGuide(guidance: KNGuidance, routeGuide: KNGuide_Route) {
