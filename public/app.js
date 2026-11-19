@@ -78,34 +78,49 @@ function mapCategoryControls(){
       `<button type="button" class="map-category-chip ${state.mapCategory===id?'active':''}" data-mapcategory="${id}" aria-pressed="${state.mapCategory===id}"><span aria-hidden="true">${icon}</span> ${label}</button>`
     ).join('')}</div></div>`;
 }
+function validCarPoint(point){
+  return point&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lng))&&Number(point.lat)>=33&&Number(point.lat)<=39.6&&Number(point.lng)>=124.5&&Number(point.lng)<=132;
+}
+function findCarPin(query){
+  const key=String(query||'').replace(/\\s+/g,'').toLocaleLowerCase('ko-KR');
+  if(!key)return null;
+  const names=pin=>[pin.name,pin.address].filter(Boolean).map(x=>String(x).replace(/\\s+/g,'').toLocaleLowerCase('ko-KR'));
+  return state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name===key))
+    ||(key.length>=4?state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name.includes(key))):null);
+}
+function kakaoCarRouteUrl(pin){
+  const name=String(pin.name||pin.address||'목적지').trim();
+  const target=`${encodeURIComponent(name)},${Number(pin.lat)},${Number(pin.lng)}`;
+  const origin=state.userLoc;
+  if(validCarPoint(origin)){
+    const from=`${encodeURIComponent('현재 위치')},${Number(origin.lat)},${Number(origin.lng)}`;
+    return 'https://map.kakao.com/link/by/car/'+from+'/'+target;
+  }
+  return 'https://map.kakao.com/link/to/'+target;
+}
 function openCarRoute(destination,pin=null){
   const query=String(destination||'').trim();
   if(!query){toast('목적지를 입력해 주세요.');return}
-  let url;
-  if(pin&&Number.isFinite(Number(pin.lat))&&Number.isFinite(Number(pin.lng))&&window.YeohangGeo){
-    url=window.YeohangGeo.openDir(state.userLoc||null,pin,'driving');
-  }else{
-    const params=new URLSearchParams({api:'1',destination:query,travelmode:'driving'});
-    if(state.userLoc)params.set('origin',`${state.userLoc.lat},${state.userLoc.lng}`);
-    url='https://www.google.com/maps/dir/?'+params.toString();
-  }
+  const match=validCarPoint(pin)?pin:findCarPin(query);
+  const url=match?kakaoCarRouteUrl(match):'https://map.kakao.com/link/search/'+encodeURIComponent(query);
   const link=document.createElement('a');
   link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.hidden=true;
   document.body.append(link);link.click();link.remove();
+  if(!match)toast('카카오맵에서 목적지를 선택한 뒤 차량 길찾기를 시작하세요.');
 }
 function mapPage(vehicle=false){
   if(vehicle)state.userLoc=window.YeohangGeo?.read?.()||state.userLoc||null;
   else{state.userLoc=null;window.YeohangGeo?.clear?.();}
   const start=vehicle&&state.userLoc?state.userLoc:GARAK_MARKET_STATION;
-  const pageIntro=vehicle?'':`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 길찾기는 Google 지도에서 이어집니다.</p></div></div>`;
-  app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="주변 숙소 여러 위치를 표시하는 지도"></div><iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 차량 길찾기는 Google 지도에서 이어집니다.</p></div></section>`);
+  const pageIntro=vehicle?'':`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 차량 길찾기는 카카오맵에서 이어집니다.</p></div></div>`;
+  app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="주변 숙소 여러 위치를 표시하는 지도"></div><iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 차량 차량 길찾기는 카카오맵에서 이어집니다.</p></div></section>`);
   if(vehicle){
-    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">차량 길안내 시작 <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'현재 위치를 출발점으로 사용합니다.':'위치 권한을 허용하면 현재 위치에서 출발합니다.'}</p></div><p class="car-nav-provider">운전 경로는 Google 지도에서 열립니다. 숙소 핀을 선택해 차량 길안내를 시작할 수도 있습니다.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
+    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">차량 길안내 시작 <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'현재 위치를 출발점으로 사용합니다.':'위치 권한을 허용하면 현재 위치에서 출발합니다.'}</p></div><p class="car-nav-provider">카카오맵에서 목적지를 검색하고 차량 길찾기를 시작합니다. 숙소 핀을 선택하면 차량 경로로 바로 연결합니다.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
     $('#app')?.insertAdjacentHTML('afterbegin',hero);
   }
   loadGoogleMap(start.lat,start.lng,'');maybeAutoGeo();
 }
-function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">🚗 차량 길안내</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
+function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">🚗 카카오맵 차량 안내</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
 function showGoogleMap(pin,dir=false){
   const geo=window.YeohangGeo;
   const frame=$('#googleStayMap');
