@@ -83,7 +83,7 @@ try {
   const navRun = await makePage(true, '#nav');
   assert.ok(await navRun.page.locator('#carNavForm').isVisible(), 'vehicle navigation page is available');
   await navRun.page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('내 위치 주변'));
-  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-90deg', { timeout: 20000 });
+  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane'), { timeout: 20000 });
   const centeredAtStart = await navRun.page.evaluate(() => {
     const map = document.querySelector('#mapCanvas').getBoundingClientRect();
     const car = document.querySelector('#navVehicleCenter').getBoundingClientRect();

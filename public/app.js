@@ -114,13 +114,18 @@ function headingBetween(a,b){
   const y=Math.sin(dLng)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
   return (Math.atan2(y,x)/rad+360)%360;
 }
+function distanceBetween(a,b){
+  const rad=Math.PI/180,lat1=Number(a.lat)*rad,lat2=Number(b.lat)*rad,dLat=lat2-lat1,dLng=(Number(b.lng)-Number(a.lng))*rad;
+  const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 12742000*Math.asin(Math.sqrt(h));
+}
 function headingLabel(value){
   const directions=['북쪽','북동쪽','동쪽','남동쪽','남쪽','남서쪽','서쪽','북서쪽'];
   return directions[Math.round((((Number(value)||0)%360)+360)%360/45)%8]+' 진행 방향';
 }
 function applyVehicleFix(loc,heading=null,demo=false){
   if(!validCarPoint(loc))return;
-  let bearing=Number.isFinite(heading)?heading:(navLastFix?headingBetween(navLastFix,loc):navHeading);
+  let bearing=Number.isFinite(heading)?heading:(navLastFix&&distanceBetween(navLastFix,loc)>5?headingBetween(navLastFix,loc):navHeading);
   bearing=(bearing+360)%360;
   navHeading=bearing;
   navLastFix={lat:Number(loc.lat),lng:Number(loc.lng)};
