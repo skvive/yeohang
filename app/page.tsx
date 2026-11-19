@@ -19,7 +19,7 @@ export default function HomePage() {
       </div>
       <header className="site-header">
         <div className="header-inner">
-          <a className="brand v2-brand" href="#home" aria-label="여행갈지도 홈">
+          <a className="brand v2-brand" href="#nav" aria-label="여행갈지도 네비">
             <img className="v2-wordmark" src="/assets/wordmark.svg" alt="여행갈지도" />
           </a>
           <nav className="main-nav" id="mainNav" aria-label="기본 메뉴">
@@ -76,27 +76,21 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+        <nav className="app-mode-switch" aria-label="앱 모드">
+          <a className="app-mode-choice" href="#home" data-mode="stay" data-nav="home">
+            <span className="mode-index">01</span>
+            <span><strong>숙소 탐색 데모</strong><small>숙소 찾기 · 혜택</small></span>
+          </a>
+          <a className="app-mode-choice" href="#nav" data-mode="nav" data-nav="nav">
+            <span className="mode-index">02</span>
+            <span><strong>여행갈지도 네비</strong><small>차량 길안내</small></span>
+          </a>
+        </nav>
       </header>
       <main id="app" tabIndex={-1} />
-      <nav className="mobile-nav" aria-label="모바일 메뉴">
-        <a href="#home">
-          ⌂<small>홈</small>
-        </a>
-        <a href="#discover">
-          ⌕<small>탐색</small>
-        </a>
-        <a href="#ask">
-          ✧<small>AI</small>
-        </a>
-        <a href="#map">
-          ♧<small>내 주변</small>
-        </a>
-        <a href="#weekly">
-          ◇<small>주간 혜택</small>
-        </a>
-        <a href="#kakao">
-          ✦<small>톡 쿠폰</small>
-        </a>
+      <nav className="mobile-nav app-mode-mobile" aria-label="앱 모드">
+        <a href="#home" data-mode="stay"><span aria-hidden="true">🏨</span><small>숙소 탐색 데모</small></a>
+        <a href="#nav" data-mode="nav"><span aria-hidden="true">🚘</span><small>여행갈지도 네비</small></a>
       </nav>
       <div id="overlay" className="overlay hidden" role="presentation">
         <div className="modal" role="dialog" aria-modal="true" aria-label="상세 정보">
