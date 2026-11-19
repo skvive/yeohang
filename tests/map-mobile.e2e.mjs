@@ -14,7 +14,7 @@ const hotels = [
   { id: 'p1', name: '송파 프라이빗 하우스', city: '서울', category: '프라이빗 하우스', stay_type: 'private', distance_km: 1.2, lat: 37.4970, lng: 127.1270, image_url: '/assets/listing-1.webp', source: 'agoda' }
 ];
 const browser = await chromium.launch({ headless: true });
-async function makePage(gps = false) {
+async function makePage(gps = false, route = '#map') {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 1,
     ...(gps ? { permissions: ['geolocation'], geolocation: { latitude: 37.4900, longitude: 127.1190 } } : {})
@@ -41,7 +41,7 @@ async function makePage(gps = false) {
   await page.route('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css', route => route.fulfill({ path: asset('leaflet.css'), contentType: 'text/css' }));
   await page.route(/https:\/\/tile\.openstreetmap\.org\//, route => route.fulfill({ status: 204, body: '' }));
   await page.route(/https:\/\/maps\.google\.com\//, route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>지도 예비화면</title>' }));
-  await page.goto(base + '/#map', { waitUntil: 'domcontentloaded', timeout: 45000 });
+  await page.goto(base + '/' + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.locator('#mapGeoStatus').waitFor({ state: 'visible', timeout: 15000 });
   await page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('반경 5km'), { timeout: 25000 });
   return { context, page, errors, requests };
@@ -80,6 +80,15 @@ try {
   const gpsMapErrors = gpsRun.errors.filter(message => /TypeError|ReferenceError|YeohangMultiMap|leaflet|map-multipin|app\.js/i.test(message));
   assert.equal(gpsMapErrors.length, 0, 'GPS map errors: ' + gpsMapErrors.join('; '));
   await gpsRun.context.close();
+  const navRun = await makePage(false, '#nav');
+  assert.ok(await navRun.page.locator('#carNavForm').isVisible(), 'vehicle navigation page is available');
+  const popupPromise = navRun.page.waitForEvent('popup');
+  await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
+  await navRun.page.locator('#carNavForm button[type="submit"]').click();
+  const routePage = await popupPromise;
+  assert.match(routePage.url(), /https:\/\/map\.kakao\.com\/link\/to\//, 'a selected lodging opens a Kakao Map destination route');
+  await routePage.close();
+  await navRun.context.close();
   console.log('PASS: real mobile browser filter interaction, map markers, no-GPS fallback, granted GPS');
 } finally {
   await browser.close();
