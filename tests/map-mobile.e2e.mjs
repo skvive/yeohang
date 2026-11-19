@@ -87,7 +87,7 @@ try {
   await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await navRun.page.locator('#carNavForm button[type="submit"]').click();
   const routePage = await popupPromise;
-  await routePage.waitForURL(/target=car|\\/link\\/by\\/car\\//, { timeout: 20000 });
+  await routePage.waitForURL(/target=car/, { timeout: 20000 });
   const gpsRoute = new URL(routePage.url());
   assert.equal(gpsRoute.hostname, 'map.kakao.com');
   assert.equal(gpsRoute.searchParams.get('target'), 'car', 'Kakao Map resolves the link into car route mode');
@@ -101,7 +101,7 @@ try {
   await noGpsRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await noGpsRun.page.locator('#carNavForm button[type="submit"]').click();
   const noGpsRoute = await noGpsPopup;
-  await noGpsRoute.waitForURL(/target=car|\\/link\\/to\\//, { timeout: 20000 });
+  await noGpsRoute.waitForURL(/target=car/, { timeout: 20000 });
   const noGpsDestination = new URL(noGpsRoute.url());
   assert.equal(noGpsDestination.hostname, 'map.kakao.com');
   assert.equal(noGpsDestination.searchParams.get('target'), 'car', 'Kakao Map opens the destination in car route mode');
