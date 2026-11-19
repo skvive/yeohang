@@ -87,7 +87,12 @@ try {
   await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await navRun.page.locator('#carNavForm button[type="submit"]').click();
   const routePage = await popupPromise;
-  assert.match(routePage.url(), /https:\/\/map\.kakao\.com\/link\/by\/car\//, 'a known lodging opens a Kakao Map car route from current GPS');
+  await routePage.waitForURL(/target=car|\\/link\\/by\\/car\\//, { timeout: 20000 });
+  const gpsRoute = new URL(routePage.url());
+  assert.equal(gpsRoute.hostname, 'map.kakao.com');
+  assert.equal(gpsRoute.searchParams.get('target'), 'car', 'Kakao Map resolves the link into car route mode');
+  assert.equal(gpsRoute.searchParams.get('rt2'), '가락 관광 호텔', 'destination pin is preserved');
+  assert.equal((gpsRoute.searchParams.get('rt') || '').split(',').filter(Boolean).length, 4, 'current GPS origin and destination coordinates are both carried');
   await routePage.close();
   await navRun.context.close();
 
@@ -96,7 +101,11 @@ try {
   await noGpsRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await noGpsRun.page.locator('#carNavForm button[type="submit"]').click();
   const noGpsRoute = await noGpsPopup;
-  assert.match(noGpsRoute.url(), /https:\/\/map\.kakao\.com\/link\/to\//, 'without GPS, a known lodging opens Kakao Map destination guidance');
+  await noGpsRoute.waitForURL(/target=car|\\/link\\/to\\//, { timeout: 20000 });
+  const noGpsDestination = new URL(noGpsRoute.url());
+  assert.equal(noGpsDestination.hostname, 'map.kakao.com');
+  assert.equal(noGpsDestination.searchParams.get('target'), 'car', 'Kakao Map opens the destination in car route mode');
+  assert.equal(noGpsDestination.searchParams.get('rt2'), '가락 관광 호텔', 'destination pin is preserved without GPS');
   await noGpsRoute.close();
   await noGpsRun.context.close();
   console.log('PASS: real mobile browser filter interaction, map markers, no-GPS fallback, granted GPS');
