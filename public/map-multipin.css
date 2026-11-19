@@ -19,3 +19,33 @@
 #multiStayMap .leaflet-container a:focus-visible{outline:3px solid #f5a450;outline-offset:2px}
 @media(max-width:760px){#multiStayMap .ym-marker span{width:36px;height:36px}#mapCanvas .map-open-google{font-size:11px;padding:7px 10px;min-height:40px;max-width:160px}}
 @media(prefers-reduced-motion:reduce){#multiStayMap .ym-marker span{transition:none}}
+
+/* 차량 길안내: 지도는 차량 중심으로 이동하고, 지도면만 진행 방향에 맞춰 회전한다. */
+body.vehicle-mode .map-wrap{display:block}
+body.vehicle-mode #mapCanvas{height:min(76vh,860px);min-height:520px;border-radius:0}
+body.vehicle-mode #mapSide,body.vehicle-mode .filters,body.vehicle-mode .map-category-filter,
+body.vehicle-mode #mapGeoStatus,body.vehicle-mode .map-engine-status,body.vehicle-mode .disclosure,
+body.vehicle-mode .car-nav-aside{display:none!important}
+body.vehicle-mode #multiStayMap .leaflet-map-pane{transform-origin:center center;will-change:rotate,transform}
+body.vehicle-mode .car-nav-hero{padding:14px 0 8px}
+body.vehicle-mode .car-nav-layout{display:block}
+body.vehicle-mode .car-nav-main{max-width:1040px;margin:auto}
+body.vehicle-mode .car-nav-main>p:not(.car-nav-provider){display:none}
+body.vehicle-mode .car-nav-kicker{font-size:10px}
+body.vehicle-mode .car-nav-main h1{font-size:clamp(20px,3vw,30px);margin:3px 0 10px}
+body.vehicle-mode .car-nav-provider{display:none}
+body.vehicle-mode .car-nav-controls{margin-top:8px}
+body.vehicle-mode #carNavStatus{font-size:12px}
+.nav-vehicle-center{position:absolute;z-index:640;left:50%;top:50%;width:68px;height:92px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;pointer-events:none;filter:drop-shadow(0 3px 5px #0a294266)}
+.nav-vehicle-icon{width:54px;height:62px;display:block}
+.nav-vehicle-center span{padding:2px 6px;border-radius:99px;background:#102c46;color:white;font-size:10px;font-weight:800;white-space:nowrap}
+.nav-vehicle-demo{position:absolute;z-index:650;left:12px;bottom:12px;padding:7px 10px;border-radius:10px;background:#fff9e8;border:1px solid #e5c981;color:#634b16;font-size:11px;font-weight:800;pointer-events:none}
+@media(max-width:760px){
+ body.vehicle-mode #mapCanvas{height:calc(100dvh - 300px);min-height:430px;max-height:620px;border-radius:0}
+ body.vehicle-mode .car-nav-hero{padding:8px 0 5px}
+ body.vehicle-mode .car-nav-main h1{margin:2px 0 8px;font-size:22px}
+ body.vehicle-mode .car-nav-form{gap:7px}
+ body.vehicle-mode .car-nav-form input{min-height:48px}
+ .nav-vehicle-center{width:60px;height:84px}
+ .nav-vehicle-icon{width:48px;height:56px}
+}

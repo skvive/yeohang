@@ -4,6 +4,7 @@ const won=n=>'₩'+Number(n||0).toLocaleString('ko-KR');
 const storageGet=(key,fallback)=>{try{return localStorage.getItem(key)||fallback}catch{return fallback}};
 const storageSet=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 const safeList=(k)=>{try{const v=JSON.parse(storageGet(k,'[]'));return Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,100):[]}catch{return []}};
+let navWatchId=null,navLastFix=null,navDemoTimer=null,navDemoMode=false,navDemoStep=0,navHeading=0,navDemoPosition=null;
 const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null};
 let toastTimer;
 function toast(s){const el=$('#toast');el.textContent=s;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3800)}
@@ -43,7 +44,7 @@ const CATEGORY_SET=['호텔','리조트','펜션·풀빌라','한옥','게스트
 const CITY_SET=['','서울','부산','제주','경주','전주','가평','평창','속초','고성','강릉'];
 
 const photoNote=p=>p.photo_url&&p.photo_license ? ('라이선스 확인 사진 · '+p.photo_license+' · '+(p.photo_author||'저작자 정보 확인')) : '인공지능 제작 분위기 이미지 · 해당 업소 실제 사진 아님';
-const nav=()=>{const current=location.hash.slice(1).split('?')[0];const hash=current||'nav';if(!current)history.replaceState(null,'',location.pathname+location.search+'#nav');$$('[data-nav]').forEach(x=>x.classList.toggle('active',x.dataset.nav===hash));const mode=hash==='nav'?'nav':'stay';$$('[data-mode]').forEach(x=>x.classList.toggle('active',x.dataset.mode===mode));$('#mainNav').classList.remove('show');return hash};
+const nav=()=>{const current=location.hash.slice(1).split('?')[0];const hash=current||'nav';if(!current)history.replaceState(null,'',location.pathname+location.search+'#nav');document.body.classList.toggle('vehicle-mode',hash==='nav');if(hash!=='nav')stopVehicleTracking();$$('[data-nav]').forEach(x=>x.classList.toggle('active',x.dataset.nav===hash));const mode=hash==='nav'?'nav':'stay';$$('[data-mode]').forEach(x=>x.classList.toggle('active',x.dataset.mode===mode));$('#mainNav').classList.remove('show');return hash};
 function sectionTitle(k,t,sub,link='',linkTitle='전체 보기'){return `<div class="section-head"><div><span class="eyebrow">${k}</span><h2>${t}</h2><p class="section-sub">${sub}</p></div>${link?`<a class="section-link" href="#${link}">${linkTitle} ↗</a>`:''}</div>`}
 function propertyCard(p){const heart=state.saved.has(p.id)?'♥':'♡';const label=p.sponsored?'광고 · 스폰서':(p.photo_url&&p.photo_license?'실제 사진 · 출처 표시':isPublic(p)?'공개자료 후보 · 업주 미인증':'인공지능 콘셉트 이미지');return `<article class="property-card" data-detail="${esc(p.id)}" tabindex="0" aria-label="${esc(p.name)} 숙소 상세"><div class="property-image"><img loading="lazy" src="${esc(imageOf(p))}" alt="${esc(p.name)} · ${esc(photoNote(p))}"><span class="property-label ${p.sponsored?'sponsor':''}">${esc(label)}</span><button class="heart" data-heart="${esc(p.id)}" aria-label="찜하기">${heart}</button></div><div class="property-copy"><div class="meta">⌖ ${esc(p.city)} · ${esc(p.area)} ${p.distance_km!==undefined?'· '+esc(p.distance_km)+' km':''}</div><h3>${esc(p.name)}</h3><p>${esc(p.category||p.tagline||'숙박시설')} ${p.address?`<small>· ${esc(p.address)}</small>`:''}</p><div class="property-tags"><span>${esc(p.category||'숙소')}</span>${(p.amenities||[]).slice(0,2).map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="card-bottom"><div class="price">${esc(priceLabel(p))}</div>${partnerBookBtns(p)}<button type="button" class="compare-toggle" data-compare="${esc(p.id)}" aria-label="${esc(p.name)} 비교 목록 ${state.compare.has(p.id)?'해제':'추가'}" aria-pressed="${state.compare.has(p.id)}">${state.compare.has(p.id)?'✓ 비교 중':'+ 비교'}</button></div></div></article>`}
 const listingGrid=p=>`<div class="property-grid">${p.map(propertyCard).join('')}</div>`;
@@ -108,17 +109,88 @@ function openCarRoute(destination,pin=null){
   document.body.append(link);link.click();link.remove();
   if(!match)toast('카카오맵에서 목적지를 선택한 뒤 차량 길찾기를 시작하세요.');
 }
+function headingBetween(a,b){
+  const rad=Math.PI/180,lat1=Number(a.lat)*rad,lat2=Number(b.lat)*rad,dLng=(Number(b.lng)-Number(a.lng))*rad;
+  const y=Math.sin(dLng)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+  return (Math.atan2(y,x)/rad+360)%360;
+}
+function headingLabel(value){
+  const directions=['북쪽','북동쪽','동쪽','남동쪽','남쪽','남서쪽','서쪽','북서쪽'];
+  return directions[Math.round((((Number(value)||0)%360)+360)%360/45)%8]+' 진행 방향';
+}
+function applyVehicleFix(loc,heading=null,demo=false){
+  if(!validCarPoint(loc))return;
+  let bearing=Number.isFinite(heading)?heading:(navLastFix?headingBetween(navLastFix,loc):navHeading);
+  bearing=(bearing+360)%360;
+  navHeading=bearing;
+  navLastFix={lat:Number(loc.lat),lng:Number(loc.lng)};
+  if(demo)navDemoPosition={lat:Number(loc.lat),lng:Number(loc.lng)};
+  else{
+    state.userLoc={...loc,lat:Number(loc.lat),lng:Number(loc.lng),heading:bearing};
+    window.YeohangGeo?.write?.(state.userLoc);
+  }
+  window.YeohangMultiMap?.updateNavigation?.(loc,bearing);
+  const direction=$('#navHeadingLabel');
+  if(direction)direction.textContent=headingLabel(bearing);
+  const badge=$('#navDemoBadge');
+  if(badge){badge.hidden=!demo;badge.textContent=demo?'시연 위치 · 실제 GPS 아님':''}
+  const status=$('#carNavStatus');
+  if(status)status.textContent=demo?'주행 시연 중 · 실제 GPS 위치나 길안내 경로에는 사용하지 않습니다.':'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.';
+}
+function stopVehicleTracking(){
+  window.YeohangGeo?.clearWatch?.(navWatchId);
+  navWatchId=null;
+  if(navDemoTimer){clearInterval(navDemoTimer);navDemoTimer=null}
+  navDemoMode=false;
+  navDemoPosition=null;
+  const button=$('[data-nav-demo]');
+  if(button)button.textContent='▶ 주행 시연';
+}
+function startVehicleTracking(){
+  if(nav()!=='nav'||navDemoMode||navWatchId!=null)return;
+  navWatchId=window.YeohangGeo?.watch?.(loc=>applyVehicleFix(loc,loc.heading,false),err=>{
+    const status=$('#carNavStatus');if(status)status.textContent=err.message;
+  })??null;
+}
+function startNavDemo(){
+  stopVehicleTracking();
+  navDemoMode=true;
+  navDemoStep=0;
+  const path=[
+    {lat:37.493060,lng:127.118060},
+    {lat:37.49342,lng:127.11844},
+    {lat:37.49370,lng:127.11892},
+    {lat:37.49345,lng:127.11940},
+    {lat:37.49298,lng:127.11935},
+    {lat:37.49270,lng:127.11888},
+    {lat:37.49282,lng:127.11835}
+  ];
+  applyVehicleFix(path[0],45,true);
+  const button=$('[data-nav-demo]');if(button)button.textContent='⏹ 시연 종료';
+  navDemoTimer=setInterval(()=>{
+    navDemoStep=(navDemoStep+1)%path.length;
+    applyVehicleFix(path[navDemoStep],((navDemoStep*47)+45)%360,true);
+  },1100);
+}
 function mapPage(vehicle=false){
-  if(vehicle)state.userLoc=window.YeohangGeo?.read?.()||state.userLoc||null;
+  if(vehicle){
+    state.userLoc=window.YeohangGeo?.read?.()||state.userLoc||null;
+    navLastFix=state.userLoc?{lat:state.userLoc.lat,lng:state.userLoc.lng}:null;
+    navHeading=Number.isFinite(state.userLoc?.heading)?state.userLoc.heading:0;
+    navDemoMode=false;navDemoPosition=null;
+  }
   else{state.userLoc=null;window.YeohangGeo?.clear?.();}
   const start=vehicle&&state.userLoc?state.userLoc:GARAK_MARKET_STATION;
   const pageIntro=vehicle?'':`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 차량 길찾기는 카카오맵에서 이어집니다.</p></div></div>`;
-  app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="주변 숙소 여러 위치를 표시하는 지도"></div><iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 차량 차량 길찾기는 카카오맵에서 이어집니다.</p></div></section>`);
+  app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="${vehicle?'차량 위치를 가운데 고정하고 진행 방향으로 회전하는 네비게이션 지도':'주변 숙소 여러 위치를 표시하는 지도'}"></div>${vehicle?'<div class="nav-vehicle-center" id="navVehicleCenter" aria-label="차량 위치, 지도 화면 중앙"><svg class="nav-vehicle-icon" viewBox="0 0 60 72" aria-hidden="true"><path d="M30 3 52 28 42 28 42 51 18 51 18 28 8 28Z" fill="#1679df" stroke="white" stroke-width="4" stroke-linejoin="round"/><path d="M20 54h20v9H20z" rx="3" fill="#102c46" stroke="white" stroke-width="2"/><circle cx="30" cy="66" r="4" fill="#ffc247" stroke="white" stroke-width="2"/></svg><span id="navHeadingLabel">북쪽 진행 방향</span></div><div class="nav-vehicle-demo" id="navDemoBadge" hidden>시연 위치 · 실제 GPS 아님</div>':''}<iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 차량 차량 길찾기는 카카오맵에서 이어집니다.</p></div></section>`);
   if(vehicle){
-    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">차량 길안내 시작 <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'현재 위치를 출발점으로 사용합니다.':'위치 권한을 허용하면 현재 위치에서 출발합니다.'}</p></div><p class="car-nav-provider">카카오맵에서 목적지를 검색하고 차량 길찾기를 시작합니다. 숙소 핀을 선택하면 차량 경로로 바로 연결합니다.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
+    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">차량 길안내 시작 <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><button type="button" class="car-nav-location" data-nav-demo>▶ 주행 시연</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.':'위치 권한을 허용하거나, 실제 위치와 분리된 주행 시연을 시작하세요.'}</p></div><p class="car-nav-provider">카카오맵에서 목적지를 검색하고 차량 길찾기를 시작합니다. 숙소 핀을 선택하면 차량 경로로 바로 연결합니다.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
     $('#app')?.insertAdjacentHTML('afterbegin',hero);
+    const demoBadge=$('#navDemoBadge');if(demoBadge)demoBadge.hidden=Boolean(state.userLoc);
   }
-  loadGoogleMap(start.lat,start.lng,'');maybeAutoGeo();
+  loadGoogleMap(start.lat,start.lng,'');
+  if(vehicle&&state.userLoc)startVehicleTracking();
+  maybeAutoGeo();
 }
 function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">🚗 카카오맵 차량 안내</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
 function showGoogleMap(pin,dir=false){
@@ -152,7 +224,7 @@ async function loadGoogleMap(lat,lng,city=''){
     state.mapSelected=pin?.id||'';
     showGoogleMap(pin||{lat,lng,name:city|| (origin==='default'?'가락시장역':'내 위치')},false);
     if(window.YeohangMultiMap){
-      window.YeohangMultiMap.render({pins:state.mapPins,center:{lat,lng},originLabel:origin==='default'?'가락시장역 · 기본 위치 (실제 위치 아님)':origin==='gps'?'현재 위치':'지역 검색 중심',userLoc:origin==='gps'?state.userLoc:null,selectedId:state.mapSelected,onSelect:(id,fromMap)=>selectMapPin(id,false,Boolean(fromMap))});
+      window.YeohangMultiMap.render({pins:state.mapPins,center:{lat,lng},originLabel:origin==='default'?'가락시장역 · 기본 위치 (실제 위치 아님)':origin==='gps'?'현재 위치':'지역 검색 중심',userLoc:origin==='gps'?state.userLoc:null,selectedId:state.mapSelected,onSelect:(id,fromMap)=>selectMapPin(id,false,Boolean(fromMap)),navigation:nav()==='nav',heading:navHeading,vehiclePosition:navDemoPosition||state.userLoc||{lat,lng}});
     }
     const label=(MAP_STAY_CATEGORY_OPTIONS.find(([id])=>id===category)||[])[1]||'전체';
     const context=city|| (origin==='gps'?'내 위치 주변':'가락시장역 기준 (실제 내 위치 아님)');
@@ -164,7 +236,19 @@ async function loadGoogleMap(lat,lng,city=''){
     toast(e.message);
   }
 }
-async function nearMe(){if(!window.YeohangGeo){toast('지도 모듈을 불러오지 못했습니다.');return}toast('위치 접근 권한을 확인하고 있습니다.');try{const loc=await window.YeohangGeo.request();state.userLoc=loc;if(!['map','nav'].includes(nav())){location.hash='#map';return}await loadGoogleMap(loc.lat,loc.lng,'');toast('내 위치 반경 5km 숙소를 표시했습니다.')}catch(e){toast(e.message)}}
+async function nearMe(){
+  if(!window.YeohangGeo){toast('지도 모듈을 불러오지 못했습니다.');return}
+  toast('위치 접근 권한을 확인하고 있습니다.');
+  try{
+    const loc=await window.YeohangGeo.request();
+    state.userLoc=loc;navLastFix={lat:loc.lat,lng:loc.lng};
+    navHeading=Number.isFinite(loc.heading)?loc.heading:navHeading;
+    if(!['map','nav'].includes(nav())){location.hash='#map';return}
+    if(nav()==='nav')startVehicleTracking();
+    await loadGoogleMap(loc.lat,loc.lng,'');
+    toast(nav()==='nav'?'차량을 현재 위치에 고정했습니다.':'내 위치 반경 5km 숙소를 표시했습니다.');
+  }catch(e){toast(e.message)}
+}
 async function mapCity(city){const coords={'서울':[37.5665,126.978],'부산':[35.1796,129.0756],'제주':[33.4996,126.5312],'강릉':[37.7519,128.8761]};const c=coords[city]||[GARAK_MARKET_STATION.lat,GARAK_MARKET_STATION.lng];state.mapSelected='';await loadGoogleMap(c[0],c[1],city)}
 async function maybeAutoGeo(){
   try {
@@ -180,7 +264,7 @@ async function maybeAutoGeo(){
       }
       return;
     }
-    if(perm.state==='granted'&&!state.userLoc)await nearMe();
+    if(perm.state==='granted'&&!state.userLoc)await nearMe();else if(perm.state==='granted'&&nav()==='nav')startVehicleTracking();
   }catch{}
 }
 function selectMapPin(id,dir=false,fromMap=false){
@@ -234,9 +318,10 @@ document.addEventListener('click',async e=>{let target=e.target.closest('[data-a
  target=e.target.closest('[data-adclick]');if(target){const id=target.dataset.adclick;api('/api/ads/event',{property_id:id,kind:'click',query:target.dataset.adquery||state.q||''}).catch(()=>{});location.assign('/stay/'+encodeURIComponent(id));return}
  target=e.target.closest('[data-detail]');if(target){location.assign('/stay/'+encodeURIComponent(target.dataset.detail));return}
  target=e.target.closest('[data-city]');if(target){const c=target.dataset.city;state.city=c;if(location.hash.startsWith('#discover'))location.hash='#discover?city='+encodeURIComponent(c)+'&q='+encodeURIComponent(state.q);else{$$('.region-pill').forEach(t=>t.classList.toggle('active',t===target));const props=state.allProperties.filter(p=>!c||p.city===c);const grid=$('#featuredGrid');if(grid)grid.innerHTML=listingGrid(props.slice(0,4))}return}
- target=e.target.closest('[data-nav-location]');if(target){e.preventDefault();target.disabled=true;const status=$('#carNavStatus');if(status)status.textContent='현재 위치를 확인하고 있습니다…';try{state.userLoc=await window.YeohangGeo.request();if(status)status.textContent='현재 위치를 출발점으로 사용합니다.';await loadGoogleMap(state.userLoc.lat,state.userLoc.lng,'');toast('현재 위치를 차량 경로 출발점으로 설정했습니다.')}catch(err){if(status)status.textContent=err.message;toast(err.message)}finally{target.disabled=false}return}
+ target=e.target.closest('[data-nav-location]');if(target){e.preventDefault();target.disabled=true;const status=$('#carNavStatus');if(status)status.textContent='현재 GPS 위치를 확인하고 있습니다…';try{stopVehicleTracking();state.userLoc=await window.YeohangGeo.request();navLastFix={lat:state.userLoc.lat,lng:state.userLoc.lng};navHeading=Number.isFinite(state.userLoc.heading)?state.userLoc.heading:0;await loadGoogleMap(state.userLoc.lat,state.userLoc.lng,'');startVehicleTracking();toast('GPS 위치를 네비 화면 중앙에 고정했습니다.')}catch(err){if(status)status.textContent=err.message;toast(err.message)}finally{target.disabled=false}return}
+ target=e.target.closest('[data-nav-demo]');if(target){if(navDemoMode)stopVehicleTracking();else startNavDemo();return}
  target=e.target.closest('[data-near]');if(target){nearMe();return}
- target=e.target.closest('[data-cleargeo]');if(target){window.YeohangGeo?.clear?.();state.userLoc=null;state.mapCenter=null;toast('위치를 지웠습니다. 가락시장역을 기본 위치로 표시합니다.');mapPage(nav()==='nav');return}
+ target=e.target.closest('[data-cleargeo]');if(target){stopVehicleTracking();window.YeohangGeo?.clear?.();state.userLoc=null;state.mapCenter=null;toast('위치를 지웠습니다. 가락시장역을 기본 위치로 표시합니다.');mapPage(nav()==='nav');return}
  target=e.target.closest('[data-mapdir]');if(target){e.preventDefault();e.stopPropagation();selectMapPin(target.dataset.mapdir,true);const pin=state.mapPins.find(p=>p.id===target.dataset.mapdir);if(pin)openCarRoute(pin.address||pin.name,pin);return}
  target=e.target.closest('[data-mappin]');if(target){selectMapPin(target.dataset.mappin,false);return}
  target=e.target.closest('[data-mapcategory]');if(target){const kind=target.dataset.mapcategory;if(!MAP_STAY_CATEGORY_OPTIONS.some(([id])=>id===kind))return;if(state.mapCategory===kind)return;state.mapCategory=kind;state.mapSelected='';document.querySelectorAll('[data-mapcategory]').forEach(btn=>{const on=btn.dataset.mapcategory===kind;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on))});const center=state.mapCenter||GARAK_MARKET_STATION;loadGoogleMap(center.lat,center.lng,center.city);return}

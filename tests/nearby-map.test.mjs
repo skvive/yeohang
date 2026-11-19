@@ -15,6 +15,8 @@ test('SPA wires filtered map and fallback without deleting the existing map', ()
   assert.match(source, /id="multiStayMap"/);
   assert.match(source, /id="googleStayMap"/);
   assert.match(source, /YeohangMultiMap\.render/);
+  assert.match(read('geo.js'), /watchPosition/);
+  assert.match(read('map-multipin.js'), /updateNavigation/);
   assert.match(source, /onSelect:\(id,fromMap\)/);
   assert.match(source, /props\.slice\(0,80\)/);
   assert.match(source, /mapCategoryControls\(\)/);
@@ -22,7 +24,7 @@ test('SPA wires filtered map and fallback without deleting the existing map', ()
 
 function mockNode(tag) {
   return {
-    tag, children: [], className: '', textContent: '', hidden: false,
+    tag, children: [], className: '', textContent: '', hidden: false, style: {},
     isConnected: true, classList: { add() {}, remove() {} },
     append(...nodes) { this.children.push(...nodes); },
     appendChild(node) { this.children.push(node); },
@@ -31,9 +33,10 @@ function mockNode(tag) {
 }
 function fakeLeaflet() {
   const markers = [];
+  const pane = mockNode('div');
   const map = {
-    layers: [], setView() { return this; }, remove() {},
-    removeLayer() {}, panTo() {}, fitBounds() {}, invalidateSize() {}
+    layers: [], views: [], setView(...args) { this.views.push(args); return this; }, remove() {},
+    removeLayer() {}, panTo() {}, fitBounds() {}, invalidateSize() {}, getPanes() { return { mapPane: pane }; }
   };
   const group = { clearLayers() { markers.length = 0; }, addTo() { return this; } };
   return {
@@ -52,10 +55,10 @@ function fakeLeaflet() {
     circleMarker() { return { bindTooltip() { return this; }, addTo() { return this; } }; },
     circle() { return { addTo() { return this; } }; },
     latLngBounds() { return { extend() { return this; }, pad() { return this; } }; },
-    __markers: markers
+    __markers: markers, __map: map, __pane: pane
   };
 }
-function initialize() {
+function initialize(hash = '#map') {
   const leaflet = fakeLeaflet();
   const nodes = {
     multiStayMap: mockNode('div'),
@@ -69,7 +72,7 @@ function initialize() {
     createElement: mockNode,
     head: mockNode('head')
   };
-  const location = { hash: '#map' };
+  const location = { hash };
   const window = {
     L: leaflet, YeohangGeo: { openDir: () => 'https://www.google.com/maps/dir/?api=1' },
     addEventListener(k, fn) { callbacks[k] = fn; }
@@ -101,6 +104,22 @@ test('all nearby pins are drawn and selecting a pin notifies the SPA', async () 
   assert.equal(selected, 'private-3');
   assert.equal(leaflet.__markers[2].content.children[0].textContent,
     '<img src=x onerror=alert(1)>', 'untrusted names must use textContent');
+});
+
+test('vehicle navigation centers the vehicle and rotates the map with heading', async () => {
+  const { leaflet, window } = initialize('#nav');
+  const position = { lat: 37.493060, lng: 127.118060 };
+  const ok = await window.YeohangMultiMap.render({
+    pins: [], center: position, vehiclePosition: position, navigation: true, heading: 90
+  });
+  assert.equal(ok, true, '#nav must be allowed to initialize the shared Leaflet map');
+  const firstView = leaflet.__map.views.at(-1);
+  assert.deepEqual(Array.from(firstView[0]), [position.lat, position.lng]);
+  assert.equal(firstView[1], 16, 'vehicle map starts at navigation zoom');
+  assert.equal(leaflet.__pane.style.rotate, '-90deg', 'eastbound heading rotates the map beneath an upright vehicle');
+  assert.equal(window.YeohangMultiMap.updateNavigation({ lat: 37.4932, lng: 127.1184 }, 135), true);
+  assert.deepEqual(Array.from(leaflet.__map.views.at(-1)[0]), [37.4932, 127.1184]);
+  assert.equal(leaflet.__pane.style.rotate, '-135deg', 'new heading updates the map bearing');
 });
 
 test('invalid coordinates are excluded; empty results and navigation cleanup succeed', async () => {

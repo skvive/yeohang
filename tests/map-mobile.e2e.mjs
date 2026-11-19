@@ -17,7 +17,7 @@ const browser = await chromium.launch({ headless: true });
 async function makePage(gps = false, route = '#map') {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 1,
-    ...(gps ? { permissions: ['geolocation'], geolocation: { latitude: 37.4900, longitude: 127.1190 } } : {})
+    ...(gps ? { permissions: ['geolocation'], geolocation: { latitude: 37.4900, longitude: 127.1190, accuracy: 10, heading: 90, speed: 5 } } : {})
   });
   const page = await context.newPage();
   const errors = [];
@@ -42,7 +42,7 @@ async function makePage(gps = false, route = '#map') {
   await page.route(/https:\/\/tile\.openstreetmap\.org\//, route => route.fulfill({ status: 204, body: '' }));
   await page.route(/https:\/\/maps\.google\.com\//, route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>지도 예비화면</title>' }));
   await page.goto(base + '/' + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
-  await page.locator('#mapGeoStatus').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator(route === '#nav' ? '#carNavStatus' : '#mapGeoStatus').waitFor({ state: 'visible', timeout: 15000 });
   await page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('반경 5km'), { timeout: 25000 });
   return { context, page, errors, requests };
 }
@@ -83,6 +83,22 @@ try {
   const navRun = await makePage(true, '#nav');
   assert.ok(await navRun.page.locator('#carNavForm').isVisible(), 'vehicle navigation page is available');
   await navRun.page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('내 위치 주변'));
+  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-90deg', { timeout: 20000 });
+  const centeredAtStart = await navRun.page.evaluate(() => {
+    const map = document.querySelector('#mapCanvas').getBoundingClientRect();
+    const car = document.querySelector('#navVehicleCenter').getBoundingClientRect();
+    return { dx: Math.abs((car.left + car.width / 2) - (map.left + map.width / 2)), dy: Math.abs((car.top + car.height / 2) - (map.top + map.height / 2)) };
+  });
+  assert.ok(centeredAtStart.dx <= 1 && centeredAtStart.dy <= 1, 'vehicle stays in the exact visual center of the map');
+  await navRun.context.setGeolocation({ latitude: 37.4906, longitude: 127.1197, accuracy: 8, heading: 135, speed: 8 });
+  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-135deg', { timeout: 20000 });
+  const centeredAfterTurn = await navRun.page.evaluate(() => {
+    const map = document.querySelector('#mapCanvas').getBoundingClientRect();
+    const car = document.querySelector('#navVehicleCenter').getBoundingClientRect();
+    return { dx: Math.abs((car.left + car.width / 2) - (map.left + map.width / 2)), dy: Math.abs((car.top + car.height / 2) - (map.top + map.height / 2)) };
+  });
+  assert.ok(centeredAfterTurn.dx <= 1 && centeredAfterTurn.dy <= 1, 'vehicle remains centered after a GPS update and turn');
+  await navRun.page.screenshot({ path: resolve(shotDir, 'vehicle-nav-centered-390px.png'), fullPage: true });
   const popupPromise = navRun.page.waitForEvent('popup');
   await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await navRun.page.locator('#carNavForm button[type="submit"]').click();
@@ -97,6 +113,11 @@ try {
   await navRun.context.close();
 
   const noGpsRun = await makePage(false, '#nav');
+  assert.equal(await noGpsRun.page.locator('#navDemoBadge').textContent(), '시연 위치 · 실제 GPS 아님');
+  const initialBearing = await noGpsRun.page.locator('#multiStayMap .leaflet-map-pane').evaluate(el => el.style.rotate);
+  await noGpsRun.page.locator('[data-nav-demo]').click();
+  await noGpsRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-45deg');
+  assert.notEqual(await noGpsRun.page.locator('#multiStayMap .leaflet-map-pane').evaluate(el => el.style.rotate), initialBearing, 'demo movement visibly changes heading');
   const noGpsPopup = noGpsRun.page.waitForEvent('popup');
   await noGpsRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await noGpsRun.page.locator('#carNavForm button[type="submit"]').click();
@@ -108,7 +129,7 @@ try {
   assert.equal(noGpsDestination.searchParams.get('rt2'), '가락 관광 호텔', 'destination pin is preserved without GPS');
   await noGpsRoute.close();
   await noGpsRun.context.close();
-  console.log('PASS: real mobile browser filter interaction, map markers, no-GPS fallback, granted GPS');
+  console.log('PASS: mobile map filters, centered vehicle, GPS heading changes, simulated no-GPS vehicle, and Kakao car routing');
 } finally {
   await browser.close();
 }

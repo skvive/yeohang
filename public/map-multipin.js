@@ -20,6 +20,8 @@
   let markers = new Map();
   let current = '';
   let ticket = 0;
+  let navigationMode = false;
+  let currentHeading = 0;
 
   function validPoint(p) {
     return p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)) &&
@@ -135,14 +137,32 @@
     if (popup) marker.openPopup();
     return true;
   }
-  async function render({ pins = [], center = null, userLoc = null, originLabel = '', selectedId = '', onSelect }) {
+  function setBearing(heading) {
+    if (!map || !navigationMode) return;
+    const bearing = Number(heading);
+    if (!Number.isFinite(bearing)) return;
+    currentHeading = ((bearing % 360) + 360) % 360;
+    const pane = map.getPanes?.().mapPane;
+    if (pane?.style) {
+      pane.style.transformOrigin = 'center center';
+      pane.style.rotate = (-currentHeading) + 'deg';
+    }
+  }
+  function updateNavigation(position, heading = currentHeading) {
+    if (!map || !navigationMode || !validPoint(position)) return false;
+    setBearing(heading);
+    map.setView([Number(position.lat), Number(position.lng)], 16, { animate: true });
+    return true;
+  }
+  async function render({ pins = [], center = null, userLoc = null, originLabel = '', selectedId = '', onSelect, navigation = false, heading = 0, vehiclePosition = null }) {
     const run = ++ticket;
     const surface = document.getElementById('multiStayMap');
     if (!surface) return false;
     const L = await loadLeaflet();
-    if (run !== ticket || !surface.isConnected || !location.hash.startsWith('#map')) return false;
+    if (run !== ticket || !surface.isConnected || !['#map', '#nav'].some(hash => location.hash.startsWith(hash))) return false;
     if (!L) { fallback('지도 라이브러리를 불러오지 못해 Google 지도 단일 위치 보기를 사용합니다.'); return false; }
     try {
+      navigationMode = Boolean(navigation);
       if (container !== surface) {
         if (map) destroy();
         // destroy() changes the ticket; new container stays valid for this render.
@@ -178,7 +198,7 @@
         markers.set(id, marker);
       }
       const originPoint = validPoint(userLoc) ? userLoc : center;
-      if (validPoint(originPoint)) {
+      if (!navigationMode && validPoint(originPoint)) {
         const pos = [Number(originPoint.lat), Number(originPoint.lng)];
         radiusCircle = L.circle(pos, { radius: 5000, color: '#047f82', weight: 2,
           opacity: 0.7, fillColor: '#10a49b', fillOpacity: 0.045, interactive: false }).addTo(map);
@@ -188,7 +208,12 @@
       }
       current = '';
       chooseIcon(selectedId);
-      if (points.length) {
+      if (navigationMode) {
+        const vehicle = validPoint(vehiclePosition) ? vehiclePosition : validPoint(userLoc) ? userLoc : center;
+        const p = validPoint(vehicle) ? vehicle : { lat: 37.493060, lng: 127.118060 };
+        map.setView([Number(p.lat), Number(p.lng)], 16, { animate: false });
+        setBearing(heading);
+      } else if (points.length) {
         const bounds = L.latLngBounds(points.map(p => [Number(p.lat), Number(p.lng)]));
         if (validPoint(originPoint)) bounds.extend([Number(originPoint.lat), Number(originPoint.lng)]);
         // 중심 반경 5km 전체가 모바일 지도 영역에 들어오도록 가시 범위를 조정한다.
@@ -210,7 +235,7 @@
     }
   }
   window.addEventListener('hashchange', () => {
-    if (!location.hash.startsWith('#map')) destroy();
+    if (!['#map', '#nav'].some(hash => location.hash.startsWith(hash))) destroy();
   });
-  window.YeohangMultiMap = { render, select, clearPins, destroy, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
+  window.YeohangMultiMap = { render, select, clearPins, destroy, updateNavigation, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
 })();
