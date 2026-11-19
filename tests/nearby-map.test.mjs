@@ -195,7 +195,7 @@ test('Vehicle navigation is the default route and opens car directions', () => {
   assert.match(source, /history\.replaceState\(null,'',location\.pathname\+location\.search\+'#nav'\)/);
   assert.match(source, /if\(r==='nav'\)mapPage\(true\)/);
   assert.match(source, /case'carNavForm'/);
-  assert.match(source, /travelmode:'driving'/);
+  assert.match(source, /openCarRoute\(destination\)/);
 });
 
 test('External directions work even without foreground GPS permission', () => {
