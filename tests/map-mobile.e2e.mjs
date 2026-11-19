@@ -80,15 +80,25 @@ try {
   const gpsMapErrors = gpsRun.errors.filter(message => /TypeError|ReferenceError|YeohangMultiMap|leaflet|map-multipin|app\.js/i.test(message));
   assert.equal(gpsMapErrors.length, 0, 'GPS map errors: ' + gpsMapErrors.join('; '));
   await gpsRun.context.close();
-  const navRun = await makePage(false, '#nav');
+  const navRun = await makePage(true, '#nav');
   assert.ok(await navRun.page.locator('#carNavForm').isVisible(), 'vehicle navigation page is available');
+  await navRun.page.waitForFunction(() => document.querySelector('#mapGeoStatus')?.textContent.includes('내 위치 주변'));
   const popupPromise = navRun.page.waitForEvent('popup');
   await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
   await navRun.page.locator('#carNavForm button[type="submit"]').click();
   const routePage = await popupPromise;
-  assert.match(routePage.url(), /https:\/\/map\.kakao\.com\/link\/to\//, 'a selected lodging opens a Kakao Map destination route');
+  assert.match(routePage.url(), /https:\/\/map\.kakao\.com\/link\/by\/car\//, 'a known lodging opens a Kakao Map car route from current GPS');
   await routePage.close();
   await navRun.context.close();
+
+  const noGpsRun = await makePage(false, '#nav');
+  const noGpsPopup = noGpsRun.page.waitForEvent('popup');
+  await noGpsRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
+  await noGpsRun.page.locator('#carNavForm button[type="submit"]').click();
+  const noGpsRoute = await noGpsPopup;
+  assert.match(noGpsRoute.url(), /https:\/\/map\.kakao\.com\/link\/to\//, 'without GPS, a known lodging opens Kakao Map destination guidance');
+  await noGpsRoute.close();
+  await noGpsRun.context.close();
   console.log('PASS: real mobile browser filter interaction, map markers, no-GPS fallback, granted GPS');
 } finally {
   await browser.close();
