@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
 
 export const viewport = { themeColor: '#092D43' };
+
+const kakaoJavaScriptKey = process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY?.trim() || '';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://yeohang.lexid.site'),
@@ -22,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <meta name="yeohang-map-tile-url" content={process.env.NEXT_PUBLIC_MAP_TILE_URL || ""} />
+        <meta name="yeohang-kakao-js-key" content={kakaoJavaScriptKey} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -38,7 +42,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/ai-search.css" />
         <link rel="stylesheet" href="/places.css" />
       </head>
-      <body>{children}</body>
+      <body>
+        {kakaoJavaScriptKey ? (
+          <>
+            <Script
+              src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.5/kakao.min.js"
+              strategy="beforeInteractive"
+              crossOrigin="anonymous"
+            />
+            <Script
+              src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(kakaoJavaScriptKey)}&libraries=services`}
+              strategy="beforeInteractive"
+            />
+          </>
+        ) : null}
+        {children}
+      </body>
     </html>
   );
 }
