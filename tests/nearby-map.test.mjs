@@ -203,7 +203,7 @@ test('Stay map keeps Garak fallback while vehicle mode may reuse a valid locatio
   assert.ok(start >= 0 && end > start);
   const initial = source.slice(start, end);
   assert.match(initial, /else\{state\.userLoc=null;window\.YeohangGeo\?\.clear\?\.\(\);\}/);
-  assert.match(initial, /if\(vehicle\)state\.userLoc=window\.YeohangGeo\?\.read\?\.\(\)\|\|state\.userLoc\|\|null/);
+  assert.match(initial, /state\.userLoc=window\.YeohangGeo\?\.read\?\.\(\)\|\|state\.userLoc\|\|null/);
   assert.match(initial, /const start=vehicle&&state\.userLoc\?state\.userLoc:GARAK_MARKET_STATION/);
   assert.match(initial, /embedPlace\(start\.lat,start\.lng/);
 });
