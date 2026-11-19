@@ -177,17 +177,25 @@ test('5km server and no-GPS Garak station default are enforced', () => {
   assert.match(client, /new URLSearchParams\(\{category,lat:String\(lat\),lng:String\(lng\),origin\}\)/);
 });
 
-test('Map starts at Garak without reusing an unverified cached location', () => {
+test('Stay map keeps Garak fallback while vehicle mode may reuse a valid location', () => {
   const source = read('app.js');
-  const start = source.indexOf('function mapPage(){');
+  const start = source.indexOf('function mapPage(vehicle=false){');
   const end = source.indexOf('function mapRows(', start);
   assert.ok(start >= 0 && end > start);
   const initial = source.slice(start, end);
-  assert.match(initial, /state\.userLoc=null/);
-  assert.match(initial, /YeohangGeo\?\.clear\?\.\(\)/);
-  assert.match(initial, /const start=GARAK_MARKET_STATION/);
-  assert.doesNotMatch(initial, /YeohangGeo\?\.read/);
-  assert.match(initial, /q=37\.493060,127\.118060/);
+  assert.match(initial, /else\{state\.userLoc=null;window\.YeohangGeo\?\.clear\?\.\(\);\}/);
+  assert.match(initial, /if\(vehicle\)state\.userLoc=window\.YeohangGeo\?\.read\?\.\(\)\|\|state\.userLoc\|\|null/);
+  assert.match(initial, /const start=vehicle&&state\.userLoc\?state\.userLoc:GARAK_MARKET_STATION/);
+  assert.match(initial, /embedPlace\(start\.lat,start\.lng/);
+});
+
+test('Vehicle navigation is the default route and opens car directions', () => {
+  const source = read('app.js');
+  assert.match(source, /const hash=current\|\|'nav'/);
+  assert.match(source, /history\.replaceState\(null,'',location\.pathname\+location\.search\+'#nav'\)/);
+  assert.match(source, /if\(r==='nav'\)mapPage\(true\)/);
+  assert.match(source, /case'carNavForm'/);
+  assert.match(source, /travelmode:'driving'/);
 });
 
 test('External directions work even without foreground GPS permission', () => {
@@ -199,10 +207,10 @@ test('External directions work even without foreground GPS permission', () => {
   assert.doesNotMatch(source.slice(start,end), /nearMe\(\)/);
 });
 
-test('Region choice remains explicit and independent of the fallback center', () => {
+test('Region choice remains explicit and vehicle mode keeps a Garak fallback', () => {
   const source = read('app.js');
   assert.match(source, /'서울':\[37\.5665,126\.978\]/);
-  assert.match(source, /const start=GARAK_MARKET_STATION/);
+  assert.match(source, /const start=vehicle&&state\.userLoc\?state\.userLoc:GARAK_MARKET_STATION/);
 });
 
 test('Vercel builds must not run DB migration, seed, or data imports', () => {
