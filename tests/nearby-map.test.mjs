@@ -200,7 +200,9 @@ test('Vehicle navigation is the default route and opens car directions', () => {
 
 test('External directions work even without foreground GPS permission', () => {
   const source = read('app.js');
-  assert.match(source, /openDir\(state\.userLoc\|\|null,pin,'driving'\)/);
+  assert.match(source, /map\.kakao\.com\/link\/by\/car\//);
+  assert.match(source, /map\.kakao\.com\/link\/to\//);
+  assert.match(source, /map\.kakao\.com\/link\/search\//);
   const start = source.indexOf('function selectMapPin(');
   const end = source.indexOf('function placesPage(', start);
   assert.ok(start > 0 && end > start);
