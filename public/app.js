@@ -82,9 +82,9 @@ function validCarPoint(point){
   return point&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lng))&&Number(point.lat)>=33&&Number(point.lat)<=39.6&&Number(point.lng)>=124.5&&Number(point.lng)<=132;
 }
 function findCarPin(query){
-  const key=String(query||'').replace(/\\s+/g,'').toLocaleLowerCase('ko-KR');
+  const key=String(query||'').replace(/\s+/g,'').toLocaleLowerCase('ko-KR');
   if(!key)return null;
-  const names=pin=>[pin.name,pin.address].filter(Boolean).map(x=>String(x).replace(/\\s+/g,'').toLocaleLowerCase('ko-KR'));
+  const names=pin=>[pin.name,pin.address].filter(Boolean).map(x=>String(x).replace(/\s+/g,'').toLocaleLowerCase('ko-KR'));
   return state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name===key))
     ||(key.length>=4?state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name.includes(key))):null);
 }
