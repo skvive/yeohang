@@ -36,3 +36,12 @@ body{font-size:15px;line-height:1.55} .section-sub,.mini-info,.property-copy p{c
 @media(max-width:390px){.catalog-gallery{grid-template-columns:1fr}}
 
 .category-shortcuts{margin:20px 0}.category-shortcuts h3{margin:4px 0 13px;font-size:17px}.category-nav{display:flex;gap:9px;flex-wrap:wrap}.category-nav a{text-decoration:none;display:inline-block}
+
+
+/* Kakao Navi destination choice list */
+.nav-candidate-modal{max-width:680px}
+.nav-candidate-list{display:grid;gap:10px;margin-top:20px}
+.nav-candidate-choice{display:block;width:100%;padding:16px 18px;border:1px solid #d9e4eb;border-radius:14px;background:#fff;text-align:left;color:#12334a;cursor:pointer}
+.nav-candidate-choice:hover,.nav-candidate-choice:focus-visible{border-color:#1679df;background:#f3f8fc;outline:2px solid #1679df;outline-offset:2px}
+.nav-candidate-choice strong,.nav-candidate-choice span{display:block}
+.nav-candidate-choice span{margin-top:5px;color:#607487;font-size:.88rem}
