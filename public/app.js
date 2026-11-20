@@ -3,6 +3,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const won=n=>'₩'+Number(n||0).toLocaleString('ko-KR');
 const storageGet=(key,fallback)=>{try{return localStorage.getItem(key)||fallback}catch{return fallback}};
 const storageSet=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
+const NAV_PROVIDER_KEY='yeohang-nav-provider';
+let navProvider=storageGet(NAV_PROVIDER_KEY,'kakao')==='google'?'google':'kakao';
 const safeList=(k)=>{try{const v=JSON.parse(storageGet(k,'[]'));return Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,100):[]}catch{return []}};
 let navWatchId=null,navLastFix=null,navDemoTimer=null,navDemoMode=false,navDemoStep=0,navHeading=0,navDemoPosition=null;
 const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null};
@@ -138,6 +140,21 @@ function findCarPin(query){
   return state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name===key))
     ||(key.length>=4?state.mapPins.find(pin=>validCarPoint(pin)&&names(pin).some(name=>name.includes(key))):null);
 }
+function googleCarRouteUrl(destination,pin=null){
+  const place=validCarPoint(pin)?Number(pin.lat)+','+Number(pin.lng):String(destination||'').trim();
+  if(!place)return '';
+  const params=new URLSearchParams({api:'1',destination:place,travelmode:'driving',dir_action:'navigate'});
+  if(validCarPoint(state.userLoc))params.set('origin',Number(state.userLoc.lat)+','+Number(state.userLoc.lng));
+  return 'https://www.google.com/maps/dir/?'+params;
+}
+function openCarDestinationUrl(url){
+  if(!url)return false;
+  const link=document.createElement('a');
+  link.href=url;
+  link.target='_blank';link.rel='noopener noreferrer';link.hidden=true;
+  document.body.append(link);link.click();link.remove();
+  return true;
+}
 function kakaoCarRouteUrl(pin){
   const name=String(pin.name||pin.address||'목적지').trim();
   const target=`${encodeURIComponent(name)},${Number(pin.lat)},${Number(pin.lng)}`;
@@ -198,6 +215,11 @@ async function openCarRoute(destination,pin=null){
   const query=String(destination||'').trim();
   if(!query){toast('목적지를 입력해 주세요.');return}
   const match=validCarPoint(pin)?pin:findCarPin(query);
+  if(navProvider==='google'&&location.hash.startsWith('#nav')){
+    openCarDestinationUrl(googleCarRouteUrl(query,match));
+    toast('Google Maps 앱 또는 웹에서 차량 경로를 확인하세요.');
+    return;
+  }
   if(match){startKakaoNavi(match);return}
   if(kakaoJavascriptKey()&&window.kakao?.maps?.services?.Places){
     const status=$('#carNavStatus');if(status)status.textContent='카카오 지도에서 목적지를 찾고 있습니다…';
@@ -278,6 +300,35 @@ function startNavDemo(){
     applyVehicleFix(path[navDemoStep],((navDemoStep*47)+45)%360,true);
   },1100);
 }
+function setNavProvider(provider,refresh=true){
+  if(provider!=='google'&&provider!=='kakao')return;
+  navProvider=provider;
+  storageSet(NAV_PROVIDER_KEY,provider);
+  document.body.classList.toggle('nav-provider-google',provider==='google');
+  $('[data-nav-provider]').forEach(button=>{
+    const selected=button.dataset.navProvider===provider;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-pressed',String(selected));
+  });
+  const help=$('#navProviderDescription');
+  if(help)help.textContent=provider==='google'
+    ?'Google Maps 지도를 미리 보고, 실제 차량 길안내는 Google Maps 앱·웹에서 시작합니다.'
+    :'공통 차량 지도에서 위치·진행 방향을 확인하고, 카카오내비 앱에서 실제 경로를 시작합니다.';
+  const cta=$('#carNavForm button[type="submit"]');
+  if(cta)cta.textContent=provider==='google'?'Google Maps 길안내 ↗':'카카오내비 경로 추천 ↗';
+  $('[data-mapdir]').forEach(button=>button.textContent=provider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천');
+  if(!refresh||!location.hash.startsWith('#nav'))return;
+  if(provider==='google'){
+    const pin=state.mapPins.find(p=>p.id===state.mapSelected)||state.userLoc||state.mapCenter||GARAK_MARKET_STATION;
+    showGoogleMap(pin,false);
+  }else{
+    const frame=$('#googleStayMap'),surface=$('#multiStayMap');
+    if(frame)frame.hidden=true;
+    if(surface)surface.hidden=false;
+    const center=state.mapCenter||state.userLoc||GARAK_MARKET_STATION;
+    loadGoogleMap(Number(center.lat),Number(center.lng),center.city||'');
+  }
+}
 function mapPage(vehicle=false){
   if(vehicle){
     state.userLoc=window.YeohangGeo?.read?.()||state.userLoc||null;
@@ -290,22 +341,34 @@ function mapPage(vehicle=false){
   const pageIntro=vehicle?'':`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 차량 길찾기는 카카오맵에서 이어집니다.</p></div></div>`;
   app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="${vehicle?'차량 위치를 가운데 고정하고 진행 방향으로 회전하는 네비게이션 지도':'주변 숙소 여러 위치를 표시하는 지도'}"></div>${vehicle?'<div class="nav-vehicle-center" id="navVehicleCenter" aria-label="차량 위치, 지도 화면 중앙"><svg class="nav-vehicle-icon" viewBox="0 0 60 72" aria-hidden="true"><path d="M30 3 52 28 42 28 42 51 18 51 18 28 8 28Z" fill="#1679df" stroke="white" stroke-width="4" stroke-linejoin="round"/><path d="M20 54h20v9H20z" rx="3" fill="#102c46" stroke="white" stroke-width="2"/><circle cx="30" cy="66" r="4" fill="#ffc247" stroke="white" stroke-width="2"/></svg><span id="navHeadingLabel">북쪽 진행 방향</span></div><div class="nav-vehicle-demo" id="navDemoBadge" hidden>시연 위치 · 실제 GPS 아님</div>':''}<iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 목적지를 고르면 카카오내비 SDK가 추천 경로 화면을 엽니다.</p></div></section>`);
   if(vehicle){
-    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">카카오내비 경로 추천 <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><button type="button" class="car-nav-location" data-nav-demo>▶ 주행 시연</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.':'위치 권한을 허용하거나, 실제 위치와 분리된 주행 시연을 시작하세요.'}</p></div><p class="car-nav-provider">카카오내비 SDK로 길찾기를 실행합니다. 숙소 핀은 바로 연결하고, 직접 입력한 목적지는 검색 결과를 골라 추천 경로를 확인하세요.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
+    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><div class="nav-provider-panel" role="group" aria-label="차량 길안내 서비스 선택"><div class="nav-provider-heading"><strong>길안내 서비스 선택</strong><small>언제든지 전환 가능</small></div><div class="nav-provider-options"><button type="button" class="nav-provider-option ${navProvider==='kakao'?'active':''}" data-nav-provider="kakao" aria-pressed="${navProvider==='kakao'}"><span>카카오내비</span><small>카카오 앱 길안내</small></button><button type="button" class="nav-provider-option ${navProvider==='google'?'active':''}" data-nav-provider="google" aria-pressed="${navProvider==='google'}"><span>Google Maps</span><small>구글 지도·길안내</small></button></div><p id="navProviderDescription" class="nav-provider-description">길안내 서비스 선택을 변경할 수 있습니다.</p></div><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">${navProvider==='google'?'Google Maps 길안내':'카카오내비 경로 추천'} <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><button type="button" class="car-nav-location" data-nav-demo>▶ 주행 시연</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.':'위치 권한을 허용하거나, 실제 위치와 분리된 주행 시연을 시작하세요.'}</p></div><p class="car-nav-provider">카카오내비 SDK로 길찾기를 실행합니다. 숙소 핀은 바로 연결하고, 직접 입력한 목적지는 검색 결과를 골라 추천 경로를 확인하세요.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
     $('#app')?.insertAdjacentHTML('afterbegin',hero);
     const demoBadge=$('#navDemoBadge');if(demoBadge)demoBadge.hidden=Boolean(state.userLoc);
+    setNavProvider(navProvider,false);
   }
   loadGoogleMap(start.lat,start.lng,'');
   if(vehicle&&state.userLoc)startVehicleTracking();
   maybeAutoGeo();
 }
-function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">🚗 카카오내비 경로 추천</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
+function mapRows(props){return (props||[]).length?props.slice(0,80).map(p=>`<div class="map-list-row ${state.mapSelected===p.id?'active':''}" data-mappin="${esc(p.id)}"><img src="${esc(imageOf(p))}" alt="${esc(p.name)}"><div><h4>${esc(p.name)}</h4><span>⌖ ${esc(p.city)} · ${esc(p.category||'숙소')} ${p.distance_km!==undefined?` · ${esc(p.distance_km)}km`:''}</span><strong>${esc(priceLabel(p))}</strong><div class="map-row-actions"><button type="button" class="near-button" data-mapdir="${esc(p.id)}">${navProvider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천'}</button>${partnerBookBtns(p)}<a href="/stay/${encodeURIComponent(p.id)}">숙소 보기</a></div></div></div>`).join('') :'<div class="empty"><h3>선택한 유형의 숙소가 없습니다.</h3><p>전체를 선택하거나 다른 지역·숙소 유형을 찾아보세요.</p></div>'}
 function showGoogleMap(pin,dir=false){
-  const geo=window.YeohangGeo;
-  const frame=$('#googleStayMap');
+  const geo=window.YeohangGeo,frame=$('#googleStayMap');
   if(!geo||!pin||pin.lat==null)return;
-  if(frame&&!window.YeohangMultiMap?.isReady?.())frame.src=dir&&state.userLoc?geo.embedDir(state.userLoc,pin):geo.embedPlace(pin.lat,pin.lng,pin.name);
+  const googleMode=location.hash.startsWith('#nav')&&navProvider==='google';
+  if(frame&&(googleMode||!window.YeohangMultiMap?.isReady?.())){
+    const url=dir&&validCarPoint(state.userLoc)?geo.embedDir(state.userLoc,pin):geo.embedPlace(pin.lat,pin.lng,pin.name);
+    if(frame.getAttribute('src')!==url)frame.src=url;
+  }
+  if(googleMode){
+    const multi=$('#multiStayMap');
+    if(multi)multi.hidden=true;
+    if(frame){frame.hidden=false;frame.classList.remove('map-fallback-hidden');}
+  }
   const open=$('#openGoogleMaps');
-  if(open)open.href=dir&&state.userLoc?geo.openDir(state.userLoc,pin,'driving'):geo.openPlace(pin.lat,pin.lng,pin.name);
+  if(open){
+    open.href=googleMode?googleCarRouteUrl(pin.name||pin.address||'목적지',pin):(dir&&state.userLoc?geo.openDir(state.userLoc,pin,'driving'):geo.openPlace(pin.lat,pin.lng,pin.name));
+    open.textContent=googleMode?'Google Maps에서 길안내 ↗':'Google 지도에서 열기 ↗';
+  }
 }
 async function loadGoogleMap(lat,lng,city=''){
   state.mapCenter={lat,lng,city};
@@ -329,7 +392,7 @@ async function loadGoogleMap(lat,lng,city=''){
     const pin=state.mapPins.find(p=>p.id===state.mapSelected)||state.mapPins[0];
     state.mapSelected=pin?.id||'';
     showGoogleMap(pin||{lat,lng,name:city|| (origin==='default'?'가락시장역':'내 위치')},false);
-    if(window.YeohangMultiMap){
+    if(window.YeohangMultiMap && !(nav()==='nav'&&navProvider==='google')){
       window.YeohangMultiMap.render({pins:state.mapPins,center:{lat,lng},originLabel:origin==='default'?'가락시장역 · 기본 위치 (실제 위치 아님)':origin==='gps'?'현재 위치':'지역 검색 중심',userLoc:origin==='gps'?state.userLoc:null,selectedId:state.mapSelected,onSelect:(id,fromMap)=>selectMapPin(id,false,Boolean(fromMap)),navigation:nav()==='nav',heading:navHeading,vehiclePosition:navDemoPosition||state.userLoc||{lat,lng}});
     }
     const label=(MAP_STAY_CATEGORY_OPTIONS.find(([id])=>id===category)||[])[1]||'전체';
@@ -418,7 +481,8 @@ function bindCommon(){/* All click and submit handlers are delegated from docume
 async function route(){const r=nav();if(r==='nav')mapPage(true);else if(r==='home')home();else if(r==='events')events();else if(r==='weekly')weeklyPage();else if(r==='kakao')kakaoPage();else if(r==='privacy')privacy();else if(r==='discover')discover();else if(r==='planner')plannerPage();else if(r==='ask')askPage();else if(r==='map')mapPage();else if(r==='images')imagesPage();else if(r==='places')placesPage();else if(r==='journal')journal();else if(r==='shorts')shorts();else if(r==='coupons')coupons();else if(r==='pricing')pricing();else if(r==='merchant')merchant();else if(r==='saved')saved();else if(r==='compare')comparePage();else if(r==='about')about();else{location.hash='#home';return}window.scrollTo({top:0,behavior:'instant'})}
 function formData(form){return Object.fromEntries(new FormData(form))}
 document.addEventListener('click',async e=>{let target=e.target.closest('[data-agodabook],[data-tripbook]');if(target){if(e.metaKey||e.ctrlKey||e.shiftKey||e.button===1)return;e.stopPropagation();const opened=openPartnerBook(target.getAttribute('href')||target.dataset.agodabook||target.dataset.tripbook,target.hasAttribute('data-tripbook')?'tripBooking':'agodaBooking');if(opened)e.preventDefault();return}target=e.target.closest('[data-compare]');if(target){e.preventDefault();e.stopPropagation();const id=target.dataset.compare;if(state.compare.has(id)){state.compare.delete(id);toast('비교 목록에서 제외했습니다.')}else if(state.compare.size>=3){toast('숙소는 최대 3곳까지 비교할 수 있습니다.');return}else{state.compare.add(id);toast('숙소를 비교 목록에 추가했습니다.')}storageSet('stayro-compare',JSON.stringify([...state.compare]));if(location.hash.startsWith('#compare'))comparePage();else{target.textContent=state.compare.has(id)?'✓ 비교 중':'+ 비교';target.setAttribute('aria-pressed',String(state.compare.has(id)));target.setAttribute('aria-label','숙소 비교 '+(state.compare.has(id)?'해제':'추가'))}return}target=e.target.closest('[data-smart]');if(target){state.q=target.dataset.smart;state.city='';location.hash='#ask?q='+encodeURIComponent(state.q);return}target=e.target.closest('[data-heart]');if(target){e.preventDefault();e.stopPropagation();const id=target.dataset.heart;state.saved.has(id)?state.saved.delete(id):state.saved.add(id);storageSet('stayro-saved',JSON.stringify([...state.saved]));target.textContent=state.saved.has(id)?'♥':'♡';toast(state.saved.has(id)?'여행 리스트에 저장했습니다.':'저장을 해제했습니다.');return}
- target=e.target.closest('[data-navi-choice]');if(target){e.preventDefault();const point={name:target.dataset.name,address:target.dataset.address,lat:Number(target.dataset.lat),lng:Number(target.dataset.lng)};closeModal();startKakaoNavi(point);return}target=e.target.closest('[data-privacy-link]');if(target){closeModal();return}target=e.target.closest('[data-navgo]');if(target){location.hash='#'+target.dataset.navgo;return}
+ target=e.target.closest('[data-nav-provider]');if(target){e.preventDefault();setNavProvider(target.dataset.navProvider);return}
+ target=e.target.closest('[data-navi-choice]');if(target){e.preventDefault();const point={name:target.dataset.name,address:target.dataset.address,lat:Number(target.dataset.lat),lng:Number(target.dataset.lng)};closeModal();openCarRoute(point.name||point.address,point);return}target=e.target.closest('[data-privacy-link]');if(target){closeModal();return}target=e.target.closest('[data-navgo]');if(target){location.hash='#'+target.dataset.navgo;return}
  target=e.target.closest('[data-voice-mic]');if(target){startVoice(target.dataset.voiceMic||'heroQuery');return}
  target=e.target.closest('[data-voice-speak]');if(target){speakAnswer($('#aiAnswerText')?.textContent||'');return}
  target=e.target.closest('[data-adclick]');if(target){const id=target.dataset.adclick;api('/api/ads/event',{property_id:id,kind:'click',query:target.dataset.adquery||state.q||''}).catch(()=>{});location.assign('/stay/'+encodeURIComponent(id));return}
