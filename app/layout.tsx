@@ -41,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/deal.css" />
         <link rel="stylesheet" href="/ai-search.css" />
         <link rel="stylesheet" href="/places.css" />
+        <link rel="stylesheet" href="/ui-v3.css" />
       </head>
       <body>
         {kakaoJavaScriptKey ? (
