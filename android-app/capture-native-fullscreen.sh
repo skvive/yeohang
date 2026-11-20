@@ -31,9 +31,27 @@ fi
 adb exec-out screencap -p > "$OUT/01-native-navigation-home.png"
 test -s "$OUT/01-native-navigation-home.png"
 
-# Pixel 7 @1080px: top-left menu button after status-bar insets.
-adb shell input tap 90 175
-sleep 3
+# Read the *actual accessible bounds*, rather than guessing screen coordinates.
+# A hardcoded tap landed above the menu on Android 35 and falsely failed QA.
+menu_coords="$(python3 - "$OUT/current-ui.xml" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter('node'):
+    if node.attrib.get('content-desc') != '메뉴 열기': continue
+    if node.attrib.get('clickable') != 'true': continue
+    match = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds',''))
+    if not match: continue
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom <= top: continue
+    print((left + right)//2, (top + bottom)//2)
+    break
+else:
+    sys.exit('ACCESSIBLE_MENU_NOT_FOUND: cannot safely simulate a tap')
+PY
+)"
+read -r menu_x menu_y <<< "$menu_coords"
+adb shell input tap "$menu_x" "$menu_y"
+sleep 4
 capture_ui
 if grep -Eiq "Pixel Launcher isn.t responding|isn.t responding|is not responding" "$OUT/current-ui.xml"; then
   echo 'EMULATOR_SYSTEM_ANR_WHILE_DRAWER_OPEN' >&2
