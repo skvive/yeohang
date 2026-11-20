@@ -311,9 +311,14 @@ function setNavProvider(provider,refresh=true){
     button.setAttribute('aria-pressed',String(selected));
   });
   const help=$('#navProviderDescription');
-  if(help)help.textContent=provider==='google'
-    ?'Google Maps 지도를 미리 보고, 실제 차량 길안내는 Google Maps 앱·웹에서 시작합니다.'
-    :'공통 차량 지도에서 위치·진행 방향을 확인하고, 카카오내비 앱에서 실제 경로를 시작합니다.';
+  if(help){
+    const kakaoReady=window.__YE0HANG_ANDROID_NAVI__===true||kakaoNaviReady();
+    help.textContent=provider==='google'
+      ?'Google Maps 지도를 미리 보고, 실제 차량 길안내는 Google Maps 앱·웹에서 시작합니다.'
+      :kakaoReady
+        ?'현재 환경에서 카카오내비 앱 실행 준비가 확인됐습니다. 실제 운행 안내는 카카오내비 앱에서 처리합니다.'
+        :'카카오내비 SDK 또는 도메인 인증을 확인할 수 없습니다. 현재는 카카오맵 웹 차량 경로로 연결됩니다.';
+  }
   const cta=$('#carNavForm button[type="submit"]');
   if(cta)cta.textContent=provider==='google'?'Google Maps 길안내 ↗':'카카오내비 경로 추천 ↗';
   $$('[data-mapdir]').forEach(button=>button.textContent=provider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천');
