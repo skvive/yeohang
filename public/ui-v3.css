@@ -147,3 +147,14 @@ body:not(.vehicle-mode) #app .partner-price-btns a{flex:1;white-space:normal;tex
 }
 @media(max-width:400px){.v3-mobile-tabs a small{font-size:10px}.v3-quick-action small{font-size:10px}.v3-quick-grid{gap:7px}}
 @media(prefers-reduced-motion:reduce){.v3-quick-action{transition:none}}
+
+/* Touch target improvements in driving mode, preserving existing SDK behavior. */
+body.vehicle-mode .car-nav-form input{min-height:52px;font-size:15px}
+body.vehicle-mode .car-nav-form button{min-height:52px;font-size:14px;padding:11px 16px}
+body.vehicle-mode .car-nav-controls button{min-height:48px;font-size:14px}
+body.vehicle-mode .app-mode-choice{min-height:48px}
+body.vehicle-mode .app-mode-mobile a{min-height:58px}
+@media(max-width:760px){
+ body.vehicle-mode .car-nav-form input{font-size:15px}
+ body.vehicle-mode .car-nav-form button{font-size:14px;min-height:50px}
+}
