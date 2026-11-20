@@ -7,6 +7,7 @@ const NAV_PROVIDER_KEY='yeohang-nav-provider';
 let navProvider=storageGet(NAV_PROVIDER_KEY,'kakao')==='google'?'google':'kakao';
 const safeList=(k)=>{try{const v=JSON.parse(storageGet(k,'[]'));return Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,100):[]}catch{return []}};
 let navWatchId=null,navLastFix=null,navDemoTimer=null,navDemoMode=false,navDemoStep=0,navHeading=0,navDemoPosition=null;
+let navSelectedDestination=null,navPreviewSequence=0;
 const state={allProperties:[],compare:new Set(safeList('stayro-compare')),properties:[],sponsored:[],coupons:[],filters:{},engine:'manual',saved:new Set(safeList('stayro-saved')),city:'',q:'',activeProperty:null,adminToken:'',adminData:null,videoResults:[],conversation:null,auth:null,csrf:'',selectedPlan:'growth',userLoc:null,mapPins:[],mapSelected:'',mapCategory:'all',mapCenter:null};
 let toastTimer;
 function toast(s){const el=$('#toast');el.textContent=s;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3800)}
@@ -176,22 +177,104 @@ function kakaoNaviReady(){
     return Boolean(sdk.isInitialized?.()&&sdk.Navi?.start);
   }catch{return false}
 }
+
+function selectVerifiedNavDestination(point){
+  if(!validCarPoint(point))return false;
+  navSelectedDestination={lat:Number(point.lat),lng:Number(point.lng),name:String(point.name||point.address||'목적지').trim().slice(0,120)};
+  const title=$('#navVerifiedDestination');
+  if(title)title.textContent='목적지: '+navSelectedDestination.name;
+  const feedback=$('#navRouteFeedback');
+  if(feedback)feedback.textContent='좌표가 확인됐습니다. 현재 위치 사용 후 공식 예상 경로를 조회할 수 있습니다.';
+  const results=$('#navRouteOptions');
+  if(results){results.hidden=true;results.replaceChildren();}
+  navPreviewSequence++;
+  return true;
+}
+async function previewKakaoRoute(priority='RECOMMEND'){
+  const feedback=$('#navRouteFeedback'),options=$('#navRouteOptions');
+  if(!feedback||!options||navProvider!=='kakao')return;
+  if(!['RECOMMEND','TIME','DISTANCE'].includes(priority))return;
+  const candidate=navSelectedDestination||findCarPin($('#carNavDestination')?.value||'');
+  if(!validCarPoint(candidate)){
+    feedback.textContent='목적지 좌표가 필요합니다. 숙소 핀을 선택하거나 카카오 장소 검색 결과를 선택하세요.';
+    return;
+  }
+  if(navDemoMode){
+    feedback.textContent='주행 시연 좌표는 실제 길찾기에 사용하지 않습니다. 시연을 종료하고 GPS를 켜 주세요.';
+    return;
+  }
+  const origin=window.YeohangGeo?.read?.();
+  if(!validCarPoint(origin)||!Number.isFinite(Number(origin.ts))||Date.now()-Number(origin.ts)>120000){
+    feedback.textContent='최근 2분 이내의 GPS 정보가 필요합니다. 「현재 위치 사용」을 눌러 출발점을 확인해 주세요.';
+    return;
+  }
+  const seq=++navPreviewSequence;
+  feedback.textContent='카카오모빌리티 공식 도로 경로를 조회하고 있습니다…';
+  options.hidden=true;options.replaceChildren();
+  const button=$('[data-nav-route-preview]');
+  if(button)button.disabled=true;
+  const query=new URLSearchParams({
+    origin:Number(origin.lng)+','+Number(origin.lat),
+    destination:Number(candidate.lng)+','+Number(candidate.lat),
+    priority
+  });
+  try{
+    const response=await fetch('/api/navigation/route?'+query.toString(),{cache:'no-store',signal:AbortSignal.timeout(9500)});
+    const json=await response.json();
+    if(seq!==navPreviewSequence||nav()!=='nav'||navProvider!=='kakao')return;
+    if(!response.ok||!json.ok){
+      feedback.textContent=String(json.message||'공식 경로를 조회하지 못했습니다. 카카오내비 앱 길안내를 이용하세요.').slice(0,180);
+      return;
+    }
+    if(!Array.isArray(json.routes)||!json.routes.length){
+      feedback.textContent='공식 경로가 반환되지 않았습니다. 목적지를 다시 확인해 주세요.';
+      return;
+    }
+    const date=new Date(json.fetchedAt),time=Number.isFinite(date.getTime())?date.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
+    feedback.textContent='카카오모빌리티 공식 경로 조회'+(time?' · '+time+' 기준':'')+' · 실제 주행 소요시간은 달라질 수 있습니다.';
+    for(const [index,route] of json.routes.slice(0,3).entries()){
+      if(!Number.isFinite(route.distanceMeters)||!Number.isFinite(route.durationSeconds))continue;
+      const distance=(route.distanceMeters/1000).toFixed(1)+'km';
+      const minutes=Math.max(1,Math.round(route.durationSeconds/60))+'분';
+      const row=document.createElement('div');row.className='nav-route-option';
+      row.textContent=(index===0?'우선 경로':'대안 '+index)+' · 예상 '+distance+' / '+minutes+
+        (Number.isFinite(route.tollWon)?' · 통행료 약 '+Number(route.tollWon).toLocaleString('ko-KR')+'원':'');
+      options.appendChild(row);
+    }
+    const note=document.createElement('small');
+    note.textContent='예상 경로 조회이며 카카오내비 앱에서는 경로가 다시 계산됩니다.';
+    options.appendChild(note);
+    options.hidden=false;
+  }catch{
+    if(seq===navPreviewSequence)feedback.textContent='네트워크 연결이 불안정하여 경로를 조회하지 못했습니다. 앱 길안내를 이용하세요.';
+  }finally{
+    if(button&&seq===navPreviewSequence)button.disabled=false;
+  }
+}
+
 function startKakaoNavi(point){
   if(!validCarPoint(point)){toast('목적지 좌표를 확인할 수 없습니다.');return false}
+  selectVerifiedNavDestination(point);
   const destination={name:String(point.name||point.address||'목적지').trim(),x:Number(point.lng),y:Number(point.lat),coordType:'wgs84'};
-  if(!kakaoNaviReady()){
-    const link=document.createElement('a');
-    link.href=kakaoCarRouteUrl(point);link.target='_blank';link.rel='noopener noreferrer';link.hidden=true;
-    document.body.append(link);link.click();link.remove();
-    toast('Kakao Navi SDK 설정을 확인할 수 없어 카카오맵 웹 차량 경로를 열었습니다.');
+  if(window.__YE0HANG_ANDROID_NAVI__===true){
+    const route=new URLSearchParams({name:destination.name,lat:String(destination.y),lng:String(destination.x)});
+    location.assign('yeohangnav://navigate?'+route.toString());
+    toast('여행갈지도 Android 카카오내비 지도로 연결 중입니다.');
+    return true;
+  }
+  const isMobile=Boolean(navigator.userAgentData?.mobile)||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(!isMobile||!kakaoNaviReady()){
+    openCarDestinationUrl(kakaoCarRouteUrl(point));
+    toast(isMobile?'카카오내비 SDK 또는 등록 도메인을 확인할 수 없어 카카오맵 웹 경로를 열었습니다.':'PC에서는 카카오내비 앱 실행을 지원하지 않아 카카오맵 웹 경로를 열었습니다.');
     return false;
   }
   try{
     window.Kakao.Navi.start(destination);
-    toast('카카오내비에서 추천 경로를 확인하세요.');
+    toast('카카오내비 앱 실행을 요청했습니다. 앱에서 실제 경로를 확인하세요.');
     return true;
   }catch{
-    toast('카카오내비 실행에 실패했습니다. 앱 설치와 카카오 앱 설정을 확인해 주세요.');
+    openCarDestinationUrl(kakaoCarRouteUrl(point));
+    toast('카카오내비 앱 실행 요청이 실패하여 카카오맵 웹 경로로 전환했습니다.');
     return false;
   }
 }
@@ -220,7 +303,7 @@ async function openCarRoute(destination,pin=null){
     toast('Google Maps 앱 또는 웹에서 차량 경로를 확인하세요.');
     return;
   }
-  if(match){startKakaoNavi(match);return}
+  if(match){selectVerifiedNavDestination(match);startKakaoNavi(match);return}
   if(kakaoJavascriptKey()&&window.kakao?.maps?.services?.Places){
     const status=$('#carNavStatus');if(status)status.textContent='카카오 지도에서 목적지를 찾고 있습니다…';
     const candidates=await searchKakaoDestinations(query);
@@ -336,6 +419,7 @@ function setNavProvider(provider,refresh=true){
 }
 function mapPage(vehicle=false){
   if(vehicle){
+    navSelectedDestination=null;navPreviewSequence++;
     state.userLoc=window.YeohangGeo?.read?.()||state.userLoc||null;
     navLastFix=state.userLoc?{lat:state.userLoc.lat,lng:state.userLoc.lng}:null;
     navHeading=Number.isFinite(state.userLoc?.heading)?state.userLoc.heading:0;
@@ -346,7 +430,7 @@ function mapPage(vehicle=false){
   const pageIntro=vehicle?'':`<div class="page-head"><div class="wrap"><span class="eyebrow">여러 숙소 지도 · 내 주변</span><h1>내 주변 숙소 찾기</h1><p>유형별 주변 숙소를 지도에 여러 핀으로 표시합니다. 위치 권한을 허용하면 가까운 숙소부터 찾고, 개별 차량 길찾기는 카카오맵에서 이어집니다.</p></div></div>`;
   app(`${pageIntro}<section class="section-tight"><div class="wrap"><div class="filters"><button class="filled-btn" data-near>⌖ 내 위치 사용</button><button class="region-pill" data-mapcity="서울">서울</button><button class="region-pill" data-mapcity="부산">부산</button><button class="region-pill" data-mapcity="제주">제주</button><button class="region-pill" data-mapcity="강릉">강릉</button>${state.userLoc?'<button class="outline-btn" data-cleargeo>위치 지우기</button>':''}</div>${mapCategoryControls()}<p class="map-geo-status" id="mapGeoStatus" role="status" aria-live="polite">${vehicle?'현재 위치 또는 지역을 선택하면 주변 숙소를 표시합니다.':'현재 위치를 사용하지 않으면 가락시장역 반경 5km를 표시합니다.'}</p><div class="map-wrap"><div class="map-canvas" id="mapCanvas"><div id="multiStayMap" class="map-multi-surface" hidden aria-label="${vehicle?'차량 위치를 가운데 고정하고 진행 방향으로 회전하는 네비게이션 지도':'주변 숙소 여러 위치를 표시하는 지도'}"></div>${vehicle?'<div class="nav-vehicle-center" id="navVehicleCenter" aria-label="차량 위치, 지도 화면 중앙"><svg class="nav-vehicle-icon" viewBox="0 0 60 72" aria-hidden="true"><path d="M30 3 52 28 42 28 42 51 18 51 18 28 8 28Z" fill="#1679df" stroke="white" stroke-width="4" stroke-linejoin="round"/><path d="M20 54h20v9H20z" rx="3" fill="#102c46" stroke="white" stroke-width="2"/><circle cx="30" cy="66" r="4" fill="#ffc247" stroke="white" stroke-width="2"/></svg><span id="navHeadingLabel">북쪽 진행 방향</span></div><div class="nav-vehicle-demo" id="navDemoBadge" hidden>시연 위치 · 실제 GPS 아님</div>':''}<iframe id="googleStayMap" title="주변 숙소 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${esc(window.YeohangGeo.embedPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}"></iframe><a class="map-open-google" id="openGoogleMaps" href="${esc(window.YeohangGeo.openPlace(start.lat,start.lng,vehicle&&state.userLoc?'내 위치':start.label||'가락시장역'))}" target="_blank" rel="noopener noreferrer">구글 지도에서 열기 ↗</a></div><div class="map-side" id="mapSide"><div class="loading">주변 숙소를 불러오는 중입니다…</div></div></div><p class="map-engine-status" id="mapEngineStatus" role="status" aria-live="polite">여러 숙소 지도를 준비하고 있습니다…</p><p class="disclosure">지도 좌표는 숙소 데이터 제공처 자료입니다. 지도 배경 © OpenStreetMap contributors · 현재 위치는 브라우저 세션에만 저장되고 계정에는 올리지 않습니다. 목적지를 고르면 카카오내비 SDK가 추천 경로 화면을 엽니다.</p></div></section>`);
   if(vehicle){
-    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><div class="nav-provider-panel" role="group" aria-label="차량 길안내 서비스 선택"><div class="nav-provider-heading"><strong>길안내 서비스 선택</strong><small>언제든지 전환 가능</small></div><div class="nav-provider-options"><button type="button" class="nav-provider-option ${navProvider==='kakao'?'active':''}" data-nav-provider="kakao" aria-pressed="${navProvider==='kakao'}"><span>카카오내비</span><small>카카오 앱 길안내</small></button><button type="button" class="nav-provider-option ${navProvider==='google'?'active':''}" data-nav-provider="google" aria-pressed="${navProvider==='google'}"><span>Google Maps</span><small>구글 지도·길안내</small></button></div><p id="navProviderDescription" class="nav-provider-description">길안내 서비스 선택을 변경할 수 있습니다.</p></div><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">${navProvider==='google'?'Google Maps 길안내':'카카오내비 경로 추천'} <span aria-hidden="true">↗</span></button></form><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><button type="button" class="car-nav-location" data-nav-demo>▶ 주행 시연</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.':'위치 권한을 허용하거나, 실제 위치와 분리된 주행 시연을 시작하세요.'}</p></div><p class="car-nav-provider">카카오내비 SDK로 길찾기를 실행합니다. 숙소 핀은 바로 연결하고, 직접 입력한 목적지는 검색 결과를 골라 추천 경로를 확인하세요.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
+    const hero=`<section class="car-nav-hero"><div class="wrap car-nav-layout"><div class="car-nav-main"><span class="car-nav-kicker">02 · VEHICLE NAVIGATION</span><h1>어디로 갈까요?</h1><p>목적지를 입력하고 차량 경로를 바로 확인하세요. 현재 위치를 설정하면 출발점으로 전달합니다.</p><div class="nav-provider-panel" role="group" aria-label="차량 길안내 서비스 선택"><div class="nav-provider-heading"><strong>길안내 서비스 선택</strong><small>언제든지 전환 가능</small></div><div class="nav-provider-options"><button type="button" class="nav-provider-option ${navProvider==='kakao'?'active':''}" data-nav-provider="kakao" aria-pressed="${navProvider==='kakao'}"><span>카카오내비</span><small>카카오 앱 길안내</small></button><button type="button" class="nav-provider-option ${navProvider==='google'?'active':''}" data-nav-provider="google" aria-pressed="${navProvider==='google'}"><span>Google Maps</span><small>구글 지도·길안내</small></button></div><p id="navProviderDescription" class="nav-provider-description">길안내 서비스 선택을 변경할 수 있습니다.</p></div><form id="carNavForm" class="car-nav-form"><label class="sr-only" for="carNavDestination">차량 목적지</label><input id="carNavDestination" name="destination" required maxlength="180" value="${esc(storageGet('yeohang-car-destination',''))}" placeholder="예: 부산역, 강릉 경포대, 제주공항" autocomplete="street-address"><button type="submit">${navProvider==='google'?'Google Maps 길안내':'카카오내비 경로 추천'} <span aria-hidden="true">↗</span></button></form><div class="nav-route-card" id="navRouteCard" aria-label="카카오 공식 경로 미리보기"><div class="nav-route-top"><strong id="navVerifiedDestination">목적지를 선택하세요</strong><button type="button" data-nav-route-preview>공식 경로 확인</button></div><p id="navRouteFeedback" role="status" aria-live="polite">현재 위치·목적지 좌표를 확인하면 예상 거리·시간을 조회할 수 있습니다.</p><div id="navRouteOptions" class="nav-route-options" hidden></div><div class="nav-route-priorities" aria-label="경로 조회 기준"><button type="button" data-nav-route-priority="RECOMMEND" aria-label="추천 경로 확인">추천</button><button type="button" data-nav-route-priority="TIME" aria-label="최단 시간 경로 확인">시간</button><button type="button" data-nav-route-priority="DISTANCE" aria-label="최단 거리 경로 확인">거리</button></div></div><div class="car-nav-controls"><button type="button" class="car-nav-location" data-nav-location>⌖ 현재 위치 사용</button><button type="button" class="car-nav-location" data-nav-demo>▶ 주행 시연</button><p id="carNavStatus" role="status" aria-live="polite">${state.userLoc?'GPS 위치를 따라 차량을 화면 가운데에 고정하고 있습니다.':'위치 권한을 허용하거나, 실제 위치와 분리된 주행 시연을 시작하세요.'}</p></div><p class="car-nav-provider">카카오내비 SDK로 길찾기를 실행합니다. 숙소 핀은 바로 연결하고, 직접 입력한 목적지는 검색 결과를 골라 추천 경로를 확인하세요.</p></div><aside class="car-nav-aside"><span>기본 모드</span><strong>차량 길안내</strong><p>출발 위치 · 목적지 · 주변 숙소</p><a href="#home">숙소 탐색 데모로 전환 ↗</a></aside></div></section>`;
     $('#app')?.insertAdjacentHTML('afterbegin',hero);
     const demoBadge=$('#navDemoBadge');if(demoBadge)demoBadge.hidden=Boolean(state.userLoc);
     setNavProvider(navProvider,false);
@@ -445,6 +529,7 @@ function selectMapPin(id,dir=false,fromMap=false){
   const pin=state.mapPins.find(p=>p.id===id);
   if(!pin)return;
   state.mapSelected=id;
+  if(nav()==='nav')selectVerifiedNavDestination(pin);
   showGoogleMap(pin,dir);
   if(!fromMap)window.YeohangMultiMap?.select?.(id,true,!dir);
   $$('.map-list-row').forEach(el=>el.classList.toggle('active',el.dataset.mappin===id));
@@ -493,6 +578,8 @@ document.addEventListener('click',async e=>{let target=e.target.closest('[data-a
  target=e.target.closest('[data-adclick]');if(target){const id=target.dataset.adclick;api('/api/ads/event',{property_id:id,kind:'click',query:target.dataset.adquery||state.q||''}).catch(()=>{});location.assign('/stay/'+encodeURIComponent(id));return}
  target=e.target.closest('[data-detail]');if(target){location.assign('/stay/'+encodeURIComponent(target.dataset.detail));return}
  target=e.target.closest('[data-city]');if(target){const c=target.dataset.city;state.city=c;if(location.hash.startsWith('#discover'))location.hash='#discover?city='+encodeURIComponent(c)+'&q='+encodeURIComponent(state.q);else{$$('.region-pill').forEach(t=>t.classList.toggle('active',t===target));const props=state.allProperties.filter(p=>!c||p.city===c);const grid=$('#featuredGrid');if(grid)grid.innerHTML=listingGrid(props.slice(0,4))}return}
+ target=e.target.closest('[data-nav-route-preview]');if(target){e.preventDefault();previewKakaoRoute();return}
+ target=e.target.closest('[data-nav-route-priority]');if(target){e.preventDefault();previewKakaoRoute(target.dataset.navRoutePriority);return}
  target=e.target.closest('[data-nav-location]');if(target){e.preventDefault();target.disabled=true;const status=$('#carNavStatus');if(status)status.textContent='현재 GPS 위치를 확인하고 있습니다…';try{stopVehicleTracking();state.userLoc=await window.YeohangGeo.request();navLastFix={lat:state.userLoc.lat,lng:state.userLoc.lng};navHeading=Number.isFinite(state.userLoc.heading)?state.userLoc.heading:0;await loadGoogleMap(state.userLoc.lat,state.userLoc.lng,'');startVehicleTracking();toast('GPS 위치를 네비 화면 중앙에 고정했습니다.')}catch(err){if(status)status.textContent=err.message;toast(err.message)}finally{target.disabled=false}return}
  target=e.target.closest('[data-nav-demo]');if(target){if(navDemoMode)stopVehicleTracking();else startNavDemo();return}
  target=e.target.closest('[data-near]');if(target){nearMe();return}
