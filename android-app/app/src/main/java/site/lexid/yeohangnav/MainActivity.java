@@ -42,7 +42,7 @@ import org.json.JSONObject;
  */
 public final class MainActivity extends Activity {
     private static final String TAG = "YeohangNav";
-    private static final String HOME = "https://yeohang.lexid.site/#map";
+    private static final String HOME = "https://yeohang.lexid.site/#nav";
     private static final String APP_HOST = "yeohang.lexid.site";
     private static final int LOCATION_REQUEST = 2309;
     private WebView webView;
