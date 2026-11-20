@@ -32,7 +32,15 @@ async function openHome(width,height){
 try{
   const mobile=await openHome(390,844);
   assert.equal(await mobile.page.locator('.v3-quick-action').count(),5);
+  const quickTop=await mobile.page.locator('.v3-quick-section').evaluate(el=>el.getBoundingClientRect().top);
+  assert.ok(quickTop<790,'home quick actions should begin within the initial mobile viewport: '+quickTop);
   assert.equal(await mobile.page.locator('.v3-destination-card').count(),4);
+
+  const font = await mobile.page.locator('.brand-hero h1 em').evaluate(el=>getComputedStyle(el).fontFamily);
+  assert.match(font,/Noto Sans KR/,'hero Korean text must not use Latin-only font');
+  const headline = await mobile.page.locator('.brand-hero h1 em').innerText();
+  assert.match(headline,/어디로 여행갈지도/);
+
   const tabs=mobile.page.locator('.v3-mobile-tabs a');
   assert.equal(await tabs.count(),5);
   for(const element of await tabs.all()){
@@ -72,6 +80,10 @@ try{
   assert.equal(await mobile.page.locator('[data-nav-provider="kakao"]').getAttribute('aria-pressed'),'false');
   assert.ok(await mobile.page.locator('#googleStayMap').isVisible(),'Google preview becomes visible');
   assert.ok(await mobile.page.locator('#multiStayMap').isHidden(),'non-Google preview is hidden');
+
+  const mapTop=await mobile.page.locator('#mapCanvas').evaluate(el=>el.getBoundingClientRect().top);
+  assert.ok(mapTop<730,'mobile navigation must show the map above the bottom navigation: '+mapTop);
+
   await mobile.page.locator('#carNavDestination').fill('서울역');
   const googlePopup=mobile.page.waitForEvent('popup',{timeout:15000});
   await mobile.page.locator('#carNavForm button[type="submit"]').click();

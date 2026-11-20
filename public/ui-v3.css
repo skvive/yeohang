@@ -181,3 +181,82 @@ body.vehicle-mode.nav-provider-google .map-open-google{z-index:650}
  body.vehicle-mode .nav-provider-option small{font-size:11px}
  body.vehicle-mode .nav-provider-description{font-size:11px}
 }
+
+/* 2026-11-20 visual QA: ensure Korean hero text renders in Noto Sans KR,
+   not the old Latin-only serif fallback, and expose the mobile driving map. */
+body:not(.vehicle-mode) .brand-hero h1 em{
+  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif!important;
+  font-weight:900!important;
+  font-style:normal;
+  display:inline-block;
+  max-width:100%;
+  white-space:normal;
+  word-break:keep-all;
+}
+body:not(.vehicle-mode) .brand-hero .hero-kicker{
+  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif!important;
+  letter-spacing:0!important;
+  font-weight:750;
+  word-break:keep-all;
+}
+@media(max-width:760px){
+  body:not(.vehicle-mode) .brand-hero h1{
+    font-size:clamp(29px,8.25vw,36px)!important;
+    line-height:1.25!important;
+  }
+  body:not(.vehicle-mode) .brand-hero h1 em{max-width:100%;font-size:inherit!important}
+  body.vehicle-mode .car-nav-hero{padding:6px 0 1px!important}
+  body.vehicle-mode .car-nav-kicker{display:none!important}
+  body.vehicle-mode .car-nav-main h1{font-size:23px!important;margin:0 0 5px!important}
+  body.vehicle-mode .nav-provider-panel{margin:5px 0 8px!important;padding:8px 10px!important;border-radius:14px!important}
+  body.vehicle-mode .nav-provider-heading{margin:0 0 5px!important}
+  body.vehicle-mode .nav-provider-heading strong{font-size:13px!important}
+  body.vehicle-mode .nav-provider-heading small{font-size:10px!important}
+  body.vehicle-mode .nav-provider-options{gap:6px!important}
+  body.vehicle-mode .nav-provider-option{min-height:48px!important;padding:5px 4px!important;gap:1px!important;font-size:13px!important;border-radius:10px!important}
+  body.vehicle-mode .nav-provider-option small{font-size:10px!important}
+  body.vehicle-mode .nav-provider-description{display:none!important}
+  body.vehicle-mode .car-nav-form{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(126px,39%)!important;flex-direction:row!important;gap:7px!important}
+  body.vehicle-mode #carNavDestination{width:100%!important;min-width:0!important;height:48px!important;min-height:48px!important;padding:9px 10px!important;font-size:14px!important}
+  body.vehicle-mode .car-nav-form button{width:100%!important;min-width:0!important;min-height:48px!important;padding:7px 8px!important;font-size:12px!important;line-height:1.25!important;white-space:normal!important}
+  body.vehicle-mode .car-nav-controls{display:flex!important;align-items:center!important;flex-direction:row!important;flex-wrap:wrap!important;gap:6px!important;margin-top:6px!important}
+  body.vehicle-mode .car-nav-controls button{min-height:44px!important;padding:8px 11px!important;font-size:12px!important}
+  body.vehicle-mode #carNavStatus{flex-basis:100%;font-size:10px!important;line-height:1.35!important;margin:2px 0 0!important}
+  body.vehicle-mode #mapCanvas{height:calc(100dvh - 370px);min-height:425px}
+}
+
+/* Final mobile visual audit: eliminate the duplicate masthead and keep the
+   destination input + primary route button on one accessible row. */
+@media(max-width:760px){
+ body:not(.vehicle-mode) .hero.brand-hero .brand-hero-inner{
+   padding:28px 0 52px!important;
+   min-height:0!important;
+ }
+ body:not(.vehicle-mode) .hero.brand-hero .hero-logo-stage{display:none!important}
+ body:not(.vehicle-mode) .hero.brand-hero h1{margin:13px 0 11px!important}
+ body:not(.vehicle-mode) .hero.brand-hero p{line-height:1.55!important;margin:7px 0 13px!important}
+ body:not(.vehicle-mode) .hero.brand-hero .hero-micro{margin-top:10px!important;gap:8px!important}
+ body:not(.vehicle-mode) .hero.brand-hero .hero-buttons{margin-top:12px!important;gap:7px!important}
+ body:not(.vehicle-mode) .hero.brand-hero .hero-buttons a{min-height:44px!important;padding:9px 13px!important;font-size:13px!important}
+ body:not(.vehicle-mode) #app .hero.brand-hero{min-height:0!important}
+ body.vehicle-mode .car-nav-form{position:relative}
+ body.vehicle-mode .car-nav-form .sr-only{
+   position:absolute!important;width:1px!important;height:1px!important;
+   padding:0!important;margin:-1px!important;overflow:hidden!important;
+   clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+ }
+}
+
+/* Home: the first three travel choices should begin above the fold on 390x844. */
+@media(max-width:760px){
+ body:not(.vehicle-mode) .hero.brand-hero .brand-hero-inner{
+   padding-top:11px!important;
+   padding-bottom:19px!important;
+ }
+ body:not(.vehicle-mode) .hero.brand-hero .hero-micro{display:none!important}
+ body:not(.vehicle-mode) .hero.brand-hero .hero-buttons{margin-top:7px!important}
+ body:not(.vehicle-mode) .hero.brand-hero .brand-disclosure{font-size:9px!important;margin:8px 0 0!important;line-height:1.25!important}
+ body:not(.vehicle-mode) .search-panel{margin-top:-40px!important}
+ body:not(.vehicle-mode) .v3-quick-section{padding-top:10px!important;padding-bottom:15px!important}
+ body:not(.vehicle-mode) .v3-quick-heading{margin-bottom:11px!important;font-size:19px!important}
+}
