@@ -32,6 +32,8 @@ async function openHome(width,height){
 try{
   const mobile=await openHome(390,844);
   assert.equal(await mobile.page.locator('.v3-quick-action').count(),5);
+  const quickTop=await mobile.page.locator('.v3-quick-section').evaluate(el=>el.getBoundingClientRect().top);
+  assert.ok(quickTop<790,'home quick actions should begin within the initial mobile viewport: '+quickTop);
   assert.equal(await mobile.page.locator('.v3-destination-card').count(),4);
 
   const font = await mobile.page.locator('.brand-hero h1 em').evaluate(el=>getComputedStyle(el).fontFamily);
