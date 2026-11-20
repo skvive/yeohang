@@ -1,0 +1,99 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+def kakaoMobilityAppKey = localProperties.getProperty('kakaoMobilityAppKey',
+    System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '').trim()
+def navReleaseKeystore = (System.getenv('NAV_RELEASE_KEYSTORE_PATH') ?: '').trim()
+def navReleaseStorePassword = (System.getenv('NAV_RELEASE_STORE_PASSWORD') ?: '').trim()
+def navReleaseKeyAlias = (System.getenv('NAV_RELEASE_KEY_ALIAS') ?: '').trim()
+def navReleaseKeyPassword = (System.getenv('NAV_RELEASE_KEY_PASSWORD') ?: '').trim()
+def navHasReleaseSigning = navReleaseKeystore && navReleaseStorePassword &&
+    navReleaseKeyAlias && navReleaseKeyPassword
+
+
+android {
+    namespace 'site.lexid.yeohangnav'
+    compileSdk 35
+    signingConfigs {
+        if (navHasReleaseSigning) {
+            navigationRelease {
+                storeFile file(navReleaseKeystore)
+                storePassword navReleaseStorePassword
+                keyAlias navReleaseKeyAlias
+                keyPassword navReleaseKeyPassword
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
+    defaultConfig {
+        applicationId 'site.lexid.yeohangnav'
+        minSdk 26
+        targetSdk 35
+        versionCode 10
+        versionName '10.0-kakao-navigation-preview'
+        buildConfigField 'String', 'KAKAO_MOBILITY_APP_KEY', '\"' + kakaoMobilityAppKey + '\"'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    buildFeatures { buildConfig true }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (navHasReleaseSigning) signingConfig signingConfigs.navigationRelease
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.kakaomobility.knsdk:knsdk_ui:1.12.8-hotfix05'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test:core:1.4.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+}
+
+// Embed the first-party V9 UI overlay into the APK. The production site may still
+// serve V8 until the website branch is approved and deployed.
+tasks.register('syncNavigationAssets', Copy) {
+    from("${rootProject.projectDir}/../public") {
+        include 'navigation-v9.js'
+        include 'navigation-v9.css'
+        include 'assets/mascot-jido.webp'
+        include 'assets/mascot-gilbyeoli.webp'
+    }
+    into("${projectDir}/src/main/assets")
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationAssets') }
+
+tasks.register('syncNavigationIcon', Copy) {
+    from("${rootProject.projectDir}/../public/assets/icon-192.png")
+    into("${projectDir}/src/main/res/drawable")
+    rename { 'yeohang_icon.png' }
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationIcon') }
+
+
+// Native credentials and repeatable signing are required before any release artifact.
+tasks.register('verifyNavReleaseCredentials') {
+    group = 'verification'
+    doLast {
+        if (!kakaoMobilityAppKey) throw new GradleException('RELEASE_BLOCKED: KAKAO_MOBILITY_APP_KEY is missing.')
+        if (!navHasReleaseSigning) throw new GradleException('RELEASE_BLOCKED: stable Android release signing is missing.')
+        if (!file(navReleaseKeystore).isFile()) throw new GradleException('RELEASE_BLOCKED: release keystore file not found.')
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    dependsOn tasks.named('verifyNavReleaseCredentials')
+}

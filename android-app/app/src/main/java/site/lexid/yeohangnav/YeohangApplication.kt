@@ -1,0 +1,47 @@
+package site.lexid.yeohangnav
+
+import android.app.Application
+import com.kakaomobility.knsdk.KNLanguageType
+import com.kakaomobility.knsdk.KNSDK
+
+class YeohangApplication : Application() {
+    private var authenticated = false
+
+    companion object {
+        lateinit var sdk: KNSDK
+            private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        sdk = KNSDK.apply {
+            install(this@YeohangApplication, "$filesDir/kakao-navigation")
+        }
+    }
+
+    fun authenticate(onResult: (Boolean, String?) -> Unit) {
+        if (authenticated) {
+            onResult(true, null)
+            return
+        }
+        val appKey = BuildConfig.KAKAO_MOBILITY_APP_KEY.trim()
+        if (appKey.isEmpty()) {
+            onResult(false, "APP_KEY_MISSING")
+            return
+        }
+        sdk.initializeWithAppKey(
+            aAppKey = appKey,
+            aClientVersion = BuildConfig.VERSION_NAME,
+            aLangType = KNLanguageType.KNLanguageType_KOREAN,
+            aCompletion = { error ->
+                authenticated = error == null
+                val detail = error?.let {
+                    "${it.code}: ${it.msg}"
+                        .replace(Regex("[A-Za-z0-9_-]{32,}"), "[REDACTED]")
+                        .take(120)
+                }
+                onResult(authenticated, detail)
+            }
+        )
+    }
+}

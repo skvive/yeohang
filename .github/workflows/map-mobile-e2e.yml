@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'public/app.js'
+      - 'app/api/navigation/route/route.ts'
       - 'app/page.tsx'
       - 'public/ui-v3.css'
       - 'tests/ui-v3.e2e.mjs'
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - 'public/app.js'
+      - 'app/api/navigation/route/route.ts'
       - 'public/map-multipin.js'
       - 'tests/map-mobile.e2e.mjs'
       - 'vercel.json'

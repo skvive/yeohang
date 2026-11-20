@@ -115,6 +115,48 @@ try {
   assert.equal(gpsRoute.searchParams.get('rt2'), '가락 관광 호텔', 'destination pin is preserved');
   assert.equal((gpsRoute.searchParams.get('rt') || '').split(',').filter(Boolean).length, 4, 'current GPS origin and destination coordinates are both carried');
   await routePage.close();
+  // Server-side Kakao directions: invalid coordinates must never cause an upstream request.
+  const badInput=await navRun.page.request.get(base+'/api/navigation/route?origin=0,0&destination=127.119,37.493');
+  assert.equal(badInput.status(),400);
+  assert.equal((await badInput.json()).code,'INVALID_ROUTE_INPUT');
+
+  // Only synthetic API fixtures are used in CI; never present sample ETA as live data.
+  const routeCalls=[];
+  await navRun.page.route(/\/api\/navigation\/route\?/, async route=>{
+    routeCalls.push(new URL(route.request().url()));
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+      ok:true,provider:'Kakao Mobility Directions API',priority:'RECOMMEND',
+      fetchedAt:'2026-11-20T00:00:00.000Z',liveGuidance:false,
+      routes:[{index:0,distanceMeters:12400,durationSeconds:1800,tollWon:1200}]
+    })});
+  });
+  await navRun.page.locator('[data-nav-route-preview]').click();
+  await navRun.page.waitForFunction(()=>document.querySelector('#navRouteOptions')?.textContent.includes('12.4km'),{timeout:15000});
+  assert.equal(routeCalls.length,1,'one click should request one official preview');
+  assert.equal(routeCalls[0].searchParams.get('priority'),'RECOMMEND');
+  assert.equal(routeCalls[0].searchParams.get('destination'),'127.118,37.4933');
+  assert.match(await navRun.page.locator('#navRouteFeedback').innerText(),/공식 경로 조회/);
+  assert.match(await navRun.page.locator('#navRouteOptions').innerText(),/예상/);
+  assert.match(await navRun.page.locator('#navRouteOptions').innerText(),/카카오내비 앱에서는 경로가 다시 계산/);
+  await navRun.page.screenshot({path:resolve(shotDir,'kakao-route-preview-390px.png')});
+
+  // Kakao native app handoff contract, mocked SDK: WGS84 longitude must be x, latitude y.
+  await navRun.page.evaluate(()=>{
+    const meta=document.querySelector('meta[name="yeohang-kakao-js-key"]');
+    if(meta)meta.content='qa-js-key';
+    Object.defineProperty(navigator,'userAgent',{configurable:true,get:()=> 'Mozilla/5.0 (Linux; Android 15; Pixel 7) Chrome/135'});
+    window.Kakao={
+      isInitialized:()=>true,
+      Navi:{start:destination=>{window.__navSdkInvocation=destination;}}
+    };
+  });
+  await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
+  await navRun.page.locator('#carNavForm button[type="submit"]').click();
+  const sdkCall=await navRun.page.evaluate(()=>window.__navSdkInvocation);
+  assert.equal(sdkCall.name,'가락 관광 호텔');
+  assert.equal(sdkCall.x,127.118);
+  assert.equal(sdkCall.y,37.4933);
+  assert.equal(sdkCall.coordType,'wgs84');
   await navRun.context.close();
 
   const noGpsRun = await makePage(false, '#nav');
