@@ -246,3 +246,17 @@ body:not(.vehicle-mode) .brand-hero .hero-kicker{
    clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
  }
 }
+
+/* Home: the first three travel choices should begin above the fold on 390x844. */
+@media(max-width:760px){
+ body:not(.vehicle-mode) .hero.brand-hero .brand-hero-inner{
+   padding-top:11px!important;
+   padding-bottom:19px!important;
+ }
+ body:not(.vehicle-mode) .hero.brand-hero .hero-micro{display:none!important}
+ body:not(.vehicle-mode) .hero.brand-hero .hero-buttons{margin-top:7px!important}
+ body:not(.vehicle-mode) .hero.brand-hero .brand-disclosure{font-size:9px!important;margin:8px 0 0!important;line-height:1.25!important}
+ body:not(.vehicle-mode) .search-panel{margin-top:-40px!important}
+ body:not(.vehicle-mode) .v3-quick-section{padding-top:10px!important;padding-bottom:15px!important}
+ body:not(.vehicle-mode) .v3-quick-heading{margin-bottom:11px!important;font-size:19px!important}
+}
