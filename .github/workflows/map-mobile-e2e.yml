@@ -48,16 +48,16 @@ jobs:
           done
           cat /tmp/yeohang-e2e-server.log
           exit 1
-      - name: Mobile map category and GPS E2E
-        run: node tests/map-mobile.e2e.mjs
-        env:
-          MAP_E2E_URL: http://127.0.0.1:3000
-          MAP_SCREENSHOT_DIR: test-results/map-mobile
       - name: UI v3 customer journey browser tests
         run: node tests/ui-v3.e2e.mjs
         env:
           MAP_E2E_URL: http://127.0.0.1:3000
           UI_V3_SCREENSHOT_DIR: test-results/ui-v3
+      - name: Mobile map category and GPS E2E
+        run: node tests/map-mobile.e2e.mjs
+        env:
+          MAP_E2E_URL: http://127.0.0.1:3000
+          MAP_SCREENSHOT_DIR: test-results/map-mobile
       - name: Upload mobile QA screenshots
         uses: actions/upload-artifact@v4
         if: always()

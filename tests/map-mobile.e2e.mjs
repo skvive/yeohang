@@ -90,8 +90,13 @@ try {
     return { dx: Math.abs((car.left + car.width / 2) - (map.left + map.width / 2)), dy: Math.abs((car.top + car.height / 2) - (map.top + map.height / 2)) };
   });
   assert.ok(centeredAtStart.dx <= 1 && centeredAtStart.dy <= 1, 'vehicle stays in the exact visual center of the map');
-  await navRun.context.setGeolocation({ latitude: 37.4906, longitude: 127.1197, accuracy: 8, heading: 135, speed: 8 });
-  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-135deg', { timeout: 20000 });
+  // Playwright's geolocation mock does not supply a heading/speed. Move due east
+  // to verify that the navigation computes the bearing from consecutive GPS fixes.
+  await navRun.context.setGeolocation({ latitude: 37.4900, longitude: 127.1201, accuracy: 8 });
+  await navRun.page.waitForFunction(() => {
+    const angle = parseFloat(document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate || '');
+    return Number.isFinite(angle) && Math.abs(angle + 90) < 2;
+  }, { timeout: 20000 });
   const centeredAfterTurn = await navRun.page.evaluate(() => {
     const map = document.querySelector('#mapCanvas').getBoundingClientRect();
     const car = document.querySelector('#navVehicleCenter').getBoundingClientRect();
