@@ -10,10 +10,30 @@ if (localPropertiesFile.exists()) {
 }
 def kakaoMobilityAppKey = localProperties.getProperty('kakaoMobilityAppKey',
     System.getenv('KAKAO_MOBILITY_APP_KEY') ?: '').trim()
+def navReleaseKeystore = (System.getenv('NAV_RELEASE_KEYSTORE_PATH') ?: '').trim()
+def navReleaseStorePassword = (System.getenv('NAV_RELEASE_STORE_PASSWORD') ?: '').trim()
+def navReleaseKeyAlias = (System.getenv('NAV_RELEASE_KEY_ALIAS') ?: '').trim()
+def navReleaseKeyPassword = (System.getenv('NAV_RELEASE_KEY_PASSWORD') ?: '').trim()
+def navHasReleaseSigning = navReleaseKeystore && navReleaseStorePassword &&
+    navReleaseKeyAlias && navReleaseKeyPassword
+
 
 android {
     namespace 'site.lexid.yeohangnav'
     compileSdk 35
+    signingConfigs {
+        if (navHasReleaseSigning) {
+            navigationRelease {
+                storeFile file(navReleaseKeystore)
+                storePassword navReleaseStorePassword
+                keyAlias navReleaseKeyAlias
+                keyPassword navReleaseKeyPassword
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
     defaultConfig {
         applicationId 'site.lexid.yeohangnav'
         minSdk 26
@@ -24,7 +44,12 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { buildConfig true }
-    buildTypes { release { minifyEnabled false } }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (navHasReleaseSigning) signingConfig signingConfigs.navigationRelease
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -58,3 +83,17 @@ tasks.register('syncNavigationIcon', Copy) {
     rename { 'yeohang_icon.png' }
 }
 tasks.named('preBuild').configure { dependsOn tasks.named('syncNavigationIcon') }
+
+
+// Native credentials and repeatable signing are required before any release artifact.
+tasks.register('verifyNavReleaseCredentials') {
+    group = 'verification'
+    doLast {
+        if (!kakaoMobilityAppKey) throw new GradleException('RELEASE_BLOCKED: KAKAO_MOBILITY_APP_KEY is missing.')
+        if (!navHasReleaseSigning) throw new GradleException('RELEASE_BLOCKED: stable Android release signing is missing.')
+        if (!file(navReleaseKeystore).isFile()) throw new GradleException('RELEASE_BLOCKED: release keystore file not found.')
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    dependsOn tasks.named('verifyNavReleaseCredentials')
+}
