@@ -305,7 +305,7 @@ function setNavProvider(provider,refresh=true){
   navProvider=provider;
   storageSet(NAV_PROVIDER_KEY,provider);
   document.body.classList.toggle('nav-provider-google',provider==='google');
-  $('[data-nav-provider]').forEach(button=>{
+  $$('[data-nav-provider]').forEach(button=>{
     const selected=button.dataset.navProvider===provider;
     button.classList.toggle('active',selected);
     button.setAttribute('aria-pressed',String(selected));
@@ -316,7 +316,7 @@ function setNavProvider(provider,refresh=true){
     :'공통 차량 지도에서 위치·진행 방향을 확인하고, 카카오내비 앱에서 실제 경로를 시작합니다.';
   const cta=$('#carNavForm button[type="submit"]');
   if(cta)cta.textContent=provider==='google'?'Google Maps 길안내 ↗':'카카오내비 경로 추천 ↗';
-  $('[data-mapdir]').forEach(button=>button.textContent=provider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천');
+  $$('[data-mapdir]').forEach(button=>button.textContent=provider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천');
   if(!refresh||!location.hash.startsWith('#nav'))return;
   if(provider==='google'){
     const pin=state.mapPins.find(p=>p.id===state.mapSelected)||state.userLoc||state.mapCenter||GARAK_MARKET_STATION;
