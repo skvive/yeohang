@@ -19,49 +19,31 @@ export default function HomePage() {
       </div>
       <header className="site-header">
         <div className="header-inner">
-          <a className="brand v2-brand" href="#nav" aria-label="여행갈지도 네비">
+          <a className="brand v2-brand" href="#nav" aria-label="여행갈지도 홈 및 네비">
             <img className="v2-wordmark" src="/assets/wordmark.svg" alt="여행갈지도" />
           </a>
-          <nav className="main-nav" id="mainNav" aria-label="기본 메뉴">
-            <a href="#home" data-nav="home">
-              홈
-            </a>
-            <a href="#discover" data-nav="discover">
-              숙소 탐색
-            </a>
-            <a href="#ask" data-nav="ask">
-              AI 검색
-            </a>
-            <a href="#map" data-nav="map">
-              내 주변
-            </a>
-            <a href="#images" data-nav="images">
-              숙소 사진
-            </a>
-            <a href="#places" data-nav="places">
-              국내 명소
-            </a>
-            <a href="#journal" data-nav="journal">
-              여행 저널
-            </a>
-            <a href="#shorts" data-nav="shorts">
-              여행 영상
-            </a>
-            <a href="#events" data-nav="events">
-              숙박 할인 행사
-            </a>
-            <a href="#coupons" data-nav="coupons">
-              쿠폰
-            </a>
-            <a href="#compare" data-nav="compare">
-              비교
-            </a>
-            <a className="nav-kakao" href="#kakao" data-nav="kakao">
-              톡 쿠폰
-            </a>
-            <a className="nav-weekly" href="#weekly" data-nav="weekly">
-              🎟 이번 주 혜택
-            </a>
+
+          <nav className="main-nav v3-primary-nav" id="mainNav" aria-label="주요 여행 메뉴">
+            <a href="#home" data-nav="home">홈</a>
+            <a href="#places" data-nav="places">여행지 찾기</a>
+            <a href="#discover" data-nav="discover">숙소 예약</a>
+            <a href="#planner" data-nav="planner">여행 일정</a>
+            <a href="#weekly" data-nav="weekly">혜택</a>
+            <details className="v3-more-nav">
+              <summary aria-label="추가 여행 메뉴">더보기 ▾</summary>
+              <div className="v3-more-list">
+                <a href="#ask" data-nav="ask">AI 여행 추천</a>
+                <a href="#map" data-nav="map">내 주변 숙소</a>
+                <a href="#images" data-nav="images">숙소 사진</a>
+                <a href="#journal" data-nav="journal">여행 저널</a>
+                <a href="#shorts" data-nav="shorts">여행 영상</a>
+                <a href="#events" data-nav="events">숙박 할인 행사</a>
+                <a href="#coupons" data-nav="coupons">쿠폰</a>
+                <a href="#compare" data-nav="compare">숙소 비교</a>
+                <a href="#kakao" data-nav="kakao">톡 쿠폰</a>
+                <a href="#saved" data-nav="saved">저장한 여행</a>
+              </div>
+            </details>
           </nav>
           <div className="header-actions">
             <HeaderUser />
@@ -88,6 +70,13 @@ export default function HomePage() {
         </nav>
       </header>
       <main id="app" tabIndex={-1} />
+      <nav className="mobile-nav v3-mobile-tabs" aria-label="모바일 여행 메뉴">
+        <a href="#home" data-nav="home"><span className="v3-tab-icon" aria-hidden="true">⌂</span><small>홈</small></a>
+        <a href="#places" data-nav="places"><span className="v3-tab-icon" aria-hidden="true">⌖</span><small>여행지</small></a>
+        <a href="#discover" data-nav="discover"><span className="v3-tab-icon" aria-hidden="true">▰</span><small>숙소</small></a>
+        <a href="#planner" data-nav="planner"><span className="v3-tab-icon" aria-hidden="true">▦</span><small>일정</small></a>
+        <a href="#saved" data-nav="saved"><span className="v3-tab-icon" aria-hidden="true">♡</span><small>내 여행</small></a>
+      </nav>
       <nav className="mobile-nav app-mode-mobile" aria-label="앱 모드">
         <a href="#home" data-mode="stay"><span aria-hidden="true">🏨</span><small>숙소 탐색 데모</small></a>
         <a href="#nav" data-mode="nav"><span aria-hidden="true">🚘</span><small>여행갈지도 네비</small></a>

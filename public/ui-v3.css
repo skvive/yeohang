@@ -1,0 +1,183 @@
+/* 여행갈지도 v3.0 — incremental UI upgrade
+   Reuses existing brand assets and preserves the separate vehicle navigation mode.
+   Scoped behind existing classes to avoid changing private/admin/detail routes.
+*/
+:root{
+  --v3-ink:#092d43;--v3-teal:#047f82;--v3-orange:#ff6d20;
+  --v3-bg:#f5f8f9;--v3-line:#dbe9eb;--v3-muted:#5c7580;
+  --v3-radius:16px;--v3-focus:#ff8b46;
+}
+body{overflow-x:clip}
+body:not(.vehicle-mode){background:var(--v3-bg)}
+body:not(.vehicle-mode) .site-header{background:rgba(255,255,255,.97);backdrop-filter:blur(14px)}
+body:not(.vehicle-mode) .site-header .header-inner{max-width:1320px}
+.v3-primary-nav{gap:18px;min-width:0}
+.v3-primary-nav>a{font-size:14px!important;font-weight:800!important}
+.v3-more-nav{position:relative;flex-shrink:0}
+.v3-more-nav>summary{list-style:none;display:flex;align-items:center;justify-content:center;padding:10px 12px;min-height:44px;border-radius:12px;color:var(--v3-ink);background:#eef7f6;cursor:pointer;font-size:13px;font-weight:800}
+.v3-more-nav>summary::-webkit-details-marker{display:none}
+.v3-more-nav[open]>summary{background:var(--v3-ink);color:white}
+.v3-more-list{position:absolute;z-index:70;right:0;top:calc(100% + 7px);width:210px;padding:8px;display:grid;gap:2px;background:#fff;border:1px solid var(--v3-line);border-radius:15px;box-shadow:0 22px 50px #092d432c}
+.v3-more-list>a{display:flex;align-items:center;min-height:44px;padding:10px 12px!important;color:var(--v3-ink)!important;border-radius:9px;box-shadow:none!important;font-size:13px!important}
+.v3-more-list>a:hover,.v3-more-list>a:focus-visible{background:#edf8f7}
+.v3-mobile-tabs{display:none}
+.v3-mobile-tabs a{flex:1 1 0;display:flex;min-width:0;min-height:58px;align-items:center;justify-content:center;flex-direction:column;gap:3px;text-align:center;color:#5d7580;font-weight:800;line-height:1.2}
+.v3-mobile-tabs a .v3-tab-icon{width:24px;height:24px;display:grid;place-items:center;font-size:21px;line-height:1}
+.v3-mobile-tabs a small{font-size:11px;letter-spacing:-.03em;white-space:nowrap}
+.v3-mobile-tabs a.active{color:var(--v3-teal)}
+body:not(.vehicle-mode) #app .hero.brand-hero{min-height:480px;background:linear-gradient(100deg,rgba(3,37,57,.86),rgba(3,37,57,.50) 58%,rgba(3,37,57,.12)),url('/assets/brand-hero.webp') center 52%/cover no-repeat}
+body:not(.vehicle-mode) .brand-hero h1{font-size:clamp(37px,5vw,67px);line-height:1.20;letter-spacing:-.065em}
+body:not(.vehicle-mode) .brand-hero .hero-buttons{display:flex;gap:12px;flex-wrap:wrap}
+body:not(.vehicle-mode) .brand-hero .hero-buttons a{min-height:48px;display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border-radius:14px;font-size:15px;font-weight:850}
+body:not(.vehicle-mode) .hero-logo-stage{width:min(270px,100%);height:93px}
+body:not(.vehicle-mode) .hero-logo-stage img{height:83px}
+body:not(.vehicle-mode) .search-panel{position:relative}
+body:not(.vehicle-mode) .search-card{padding:12px;gap:10px;box-shadow:0 17px 48px #092d4324}
+body:not(.vehicle-mode) .search-entry{min-height:54px}
+body:not(.vehicle-mode) #heroQuery{font-size:15px;min-height:42px}
+body:not(.vehicle-mode) #app button:focus-visible,
+body:not(.vehicle-mode) #app a:focus-visible,
+body:not(.vehicle-mode) .main-nav a:focus-visible,
+body:not(.vehicle-mode) .v3-mobile-tabs a:focus-visible{outline:3px solid var(--v3-focus)!important;outline-offset:2px}
+body:not(.vehicle-mode) #app .search-button,
+body:not(.vehicle-mode) #app .near-button,
+body:not(.vehicle-mode) #app .filled-btn,
+body:not(.vehicle-mode) #app .region-pill,
+body:not(.vehicle-mode) #app .smart-recs-buttons button,
+body:not(.vehicle-mode) #app .compare-toggle,
+body:not(.vehicle-mode) #app .agoda-book-btn,
+body:not(.vehicle-mode) #app .trip-book-btn,
+body:not(.vehicle-mode) #app .map-row-actions a,
+body:not(.vehicle-mode) #app .map-row-actions button,
+body:not(.vehicle-mode) #app .modal-actions a,
+body:not(.vehicle-mode) #app .modal-actions button,
+body:not(.vehicle-mode) #app .coupon-main button,
+body:not(.vehicle-mode) #app .tab-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.25;font-weight:800}
+body:not(.vehicle-mode) #app .search-button,
+body:not(.vehicle-mode) #app .filled-btn,
+body:not(.vehicle-mode) #app .agoda-book-btn,
+body:not(.vehicle-mode) #app .trip-book-btn{min-height:48px}
+body:not(.vehicle-mode) #app .heart,
+body:not(.vehicle-mode) #app .voice-mic,
+body:not(.vehicle-mode) #app .close-modal{min-width:44px;min-height:44px}
+body:not(.vehicle-mode) #app .field-input,
+body:not(.vehicle-mode) #app .select-input,
+body:not(.vehicle-mode) #app input,
+body:not(.vehicle-mode) #app select{min-height:48px}
+body:not(.vehicle-mode) #app .property-grid{gap:16px}
+body:not(.vehicle-mode) #app .property-card{border-radius:20px;box-shadow:0 8px 28px #092d430c}
+body:not(.vehicle-mode) #app .property-card .property-image{height:218px}
+body:not(.vehicle-mode) #app .property-card .property-copy h3{font-size:17px}
+body:not(.vehicle-mode) #app .property-card .card-bottom{align-items:flex-start;gap:8px}
+body:not(.vehicle-mode) #app .partner-price-btns{width:100%;gap:8px}
+body:not(.vehicle-mode) #app .partner-price-btns a{flex:1;white-space:normal;text-align:center}
+.v3-quick-section{padding:28px 0 18px!important}
+.v3-quick-heading{font-size:21px;font-weight:900;letter-spacing:-.05em;margin:0 0 17px;color:var(--v3-ink)}
+.v3-quick-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.v3-quick-action{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:116px;border:1px solid var(--v3-line);border-radius:18px;background:#fff;box-shadow:0 6px 19px #092d430a;padding:13px 9px;gap:7px;color:var(--v3-ink);transition:box-shadow .2s,transform .2s}
+.v3-quick-action:hover{transform:translateY(-2px);border-color:#98d3d1;box-shadow:0 12px 26px #092d431b}
+.v3-quick-action strong{font-size:15px;line-height:1.25}
+.v3-quick-action small{font-size:12px;line-height:1.3;color:var(--v3-muted)}
+.v3-quick-icon{display:grid;place-items:center;border-radius:15px;width:48px;height:48px;background:#e5f7f4;font-size:23px}
+.v3-quick-action:nth-child(2) .v3-quick-icon{background:#e6efff}
+.v3-quick-action:nth-child(3) .v3-quick-icon{background:#fff0e4}
+.v3-quick-action:nth-child(4) .v3-quick-icon{background:#eae7ff}
+.v3-quick-action:nth-child(5) .v3-quick-icon{background:#fff1e4}
+.v3-destination-section{padding:42px 0 36px;background:#eff7f6}
+.v3-destination-section .wrap{max-width:1280px}
+.v3-destination-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin-bottom:20px}
+.v3-destination-heading h2{font-size:clamp(24px,3vw,33px);margin:6px 0;letter-spacing:-.055em}
+.v3-destination-heading p{margin:0;color:var(--v3-muted);font-size:13px}
+.v3-destination-heading>a{min-height:44px;display:inline-flex;align-items:center;font-weight:800;color:var(--v3-teal)}
+.v3-destination-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.v3-destination-card{display:block;min-width:0;background:#fff;border:1px solid var(--v3-line);border-radius:18px;overflow:hidden;box-shadow:0 9px 22px #092d430c}
+.v3-destination-card img{width:100%;height:176px;object-fit:cover}
+.v3-destination-body{padding:13px 14px 15px}
+.v3-destination-body strong{display:block;font-size:17px}
+.v3-destination-body small{display:block;color:var(--v3-muted);font-size:12px;margin-top:4px}
+.v3-destination-note{font-size:11px;color:#56727c;margin:12px 0 0}
+.v3-planner-header{padding:46px 0 40px;background:linear-gradient(110deg,#e0f3f2,#f7fbfa)}
+.v3-planner-header h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.06em;margin:8px 0}
+.v3-planner-header p{color:var(--v3-muted);margin:0}
+.v3-planner{padding:34px 0 80px;max-width:900px!important}
+.v3-planner-card{background:#fff;padding:30px;border:1px solid var(--v3-line);border-radius:24px;box-shadow:0 14px 40px #092d4310}
+.v3-planner-card h2{font-size:23px;margin:0 0 20px;letter-spacing:-.04em}
+.v3-planner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.v3-planner-field{display:flex;flex-direction:column;gap:8px;color:var(--v3-ink);font-size:14px;font-weight:800}
+.v3-planner-field select,.v3-planner-field input{display:block;width:100%;min-height:52px;padding:11px 13px;border:1px solid #c7dcdf;border-radius:13px;background:#fff;color:var(--v3-ink);font:inherit}
+.v3-planner-field select:focus-visible,.v3-planner-field input:focus-visible{outline:3px solid var(--v3-focus);outline-offset:2px}
+.v3-planner-cta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:23px}
+.v3-planner-cta button,.v3-planner-cta a{min-height:48px;padding:12px 20px;border-radius:13px;border:0;background:var(--v3-teal);color:#fff;font-weight:850;font-size:15px}
+.v3-planner-cta a{background:#eaf6f5;color:var(--v3-teal)}
+.v3-plan-output{margin-top:28px;border:1px solid #cce5e3;border-radius:18px;background:#f3fbfa;padding:22px}
+.v3-plan-output[hidden]{display:none}
+.v3-plan-output h3{margin:0 0 14px;font-size:21px}
+.v3-plan-output ol{padding-left:23px;margin:12px 0 18px;line-height:1.9}
+.v3-plan-output p{font-size:12px;color:var(--v3-muted);line-height:1.7}
+.v3-planner-note{margin-top:20px;font-size:12px;color:var(--v3-muted);line-height:1.7}
+@media(max-width:1180px){.v3-primary-nav{gap:10px}.v3-primary-nav>a{font-size:12px!important}.v3-more-nav>summary{font-size:12px}}
+@media(max-width:900px){.v3-primary-nav{display:none}.site-header .header-inner{justify-content:space-between}}
+@media(max-width:760px){
+  body:not(.vehicle-mode) .v3-mobile-tabs{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:79;background:#fff;border-top:1px solid var(--v3-line);padding:3px 7px calc(3px + env(safe-area-inset-bottom));box-shadow:0 -7px 22px #092d4315}
+  body:not(.vehicle-mode) .app-mode-mobile{display:none!important}
+  body.vehicle-mode .v3-mobile-tabs{display:none!important}
+  body.vehicle-mode .app-mode-mobile{display:flex!important}
+  body:not(.vehicle-mode) #app{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+  body:not(.vehicle-mode) #app .hero.brand-hero{min-height:390px;background-position:center 54%}
+  body:not(.vehicle-mode) .brand-hero h1{font-size:36px}
+  body:not(.vehicle-mode) .hero-logo-stage{width:207px;height:78px}
+  body:not(.vehicle-mode) .hero-logo-stage img{height:70px}
+  body:not(.vehicle-mode) .brand-hero .hero-buttons a{min-height:48px;flex:1 1 auto}
+  body:not(.vehicle-mode) .search-panel{margin-top:-32px}
+  body:not(.vehicle-mode) .search-card{display:grid;grid-template-columns:1fr 1fr;padding:12px}
+  body:not(.vehicle-mode) .search-entry{grid-column:1/-1;min-width:0;padding:4px 5px}
+  body:not(.vehicle-mode) .search-button,body:not(.vehicle-mode) .near-button{width:100%;margin:0!important;min-height:48px}
+  .v3-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+  .v3-quick-action{min-height:112px;padding:10px 5px}
+  .v3-quick-action strong{font-size:13px}
+  .v3-quick-action small{font-size:10px}
+  .v3-quick-icon{height:42px;width:42px;font-size:20px}
+  .v3-destination-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px}
+  .v3-destination-card{flex:0 0 min(68vw,250px);scroll-snap-align:start}
+  .v3-destination-card img{height:159px}
+  .v3-planner{padding-top:20px}
+  .v3-planner-card{padding:19px}
+  .v3-planner-grid{grid-template-columns:1fr}
+  .v3-planner-cta button,.v3-planner-cta a{width:100%;justify-content:center;text-align:center}
+}
+@media(max-width:400px){.v3-mobile-tabs a small{font-size:10px}.v3-quick-action small{font-size:10px}.v3-quick-grid{gap:7px}}
+@media(prefers-reduced-motion:reduce){.v3-quick-action{transition:none}}
+
+/* Touch target improvements in driving mode, preserving existing SDK behavior. */
+body.vehicle-mode .car-nav-form input{min-height:52px;font-size:15px}
+body.vehicle-mode .car-nav-form button{min-height:52px;font-size:14px;padding:11px 16px}
+body.vehicle-mode .car-nav-controls button{min-height:48px;font-size:14px}
+body.vehicle-mode .app-mode-choice{min-height:48px}
+body.vehicle-mode .app-mode-mobile a{min-height:58px}
+@media(max-width:760px){
+ body.vehicle-mode .car-nav-form input{font-size:15px}
+ body.vehicle-mode .car-nav-form button{font-size:14px;min-height:50px}
+}
+
+/* Selectable, accessible provider controls for the two vehicle navigation services. */
+body.vehicle-mode .nav-provider-panel{margin:15px 0 16px;padding:14px;border:1px solid #d7e5ec;border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 9px 20px #092d4310;color:#0a2b40}
+body.vehicle-mode .nav-provider-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;margin:0 0 10px}
+body.vehicle-mode .nav-provider-heading strong{font-size:15px;font-weight:900;letter-spacing:-.025em}
+body.vehicle-mode .nav-provider-heading small{font-size:12px;color:#56717f}
+body.vehicle-mode .nav-provider-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body.vehicle-mode .nav-provider-option{min-height:63px!important;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;background:#f2f7f8;color:#173a50;border:2px solid #d6e4e8;border-radius:13px;font-size:15px;font-weight:900;padding:9px 6px;cursor:pointer}
+body.vehicle-mode .nav-provider-option small{font-size:12px;font-weight:600;color:#627783}
+body.vehicle-mode .nav-provider-option.active{border-color:#116bc0;background:#e8f3ff;color:#064e97;box-shadow:0 0 0 1px #116bc033}
+body.vehicle-mode .nav-provider-option.active small{color:#28608b}
+body.vehicle-mode .nav-provider-option:focus-visible{outline:3px solid #ff8b46;outline-offset:3px}
+body.vehicle-mode .nav-provider-description{margin:10px 2px 0;font-size:12px;line-height:1.6;color:#385968}
+body.vehicle-mode.nav-provider-google #multiStayMap{display:none!important}
+body.vehicle-mode.nav-provider-google #googleStayMap{display:block!important;width:100%;height:100%;min-height:300px;position:relative;z-index:3;background:#f1f6f8}
+body.vehicle-mode.nav-provider-google .nav-vehicle-center,body.vehicle-mode.nav-provider-google .nav-vehicle-demo{display:none!important}
+body.vehicle-mode.nav-provider-google .map-open-google{z-index:650}
+@media(max-width:760px){
+ body.vehicle-mode .nav-provider-panel{margin:10px 0 14px;padding:11px}
+ body.vehicle-mode .nav-provider-option{min-height:60px!important;font-size:14px}
+ body.vehicle-mode .nav-provider-option small{font-size:11px}
+ body.vehicle-mode .nav-provider-description{font-size:11px}
+}

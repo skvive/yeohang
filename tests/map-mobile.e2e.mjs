@@ -13,7 +13,7 @@ const hotels = [
   { id: 'm1', name: '가락 모텔', city: '서울', category: '모텔', stay_type: 'motel', distance_km: 0.6, lat: 37.4942, lng: 127.1225, image_url: '/assets/listing-1.webp', source: 'agoda' },
   { id: 'p1', name: '송파 프라이빗 하우스', city: '서울', category: '프라이빗 하우스', stay_type: 'private', distance_km: 1.2, lat: 37.4970, lng: 127.1270, image_url: '/assets/listing-1.webp', source: 'agoda' }
 ];
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, channel:process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined });
 async function makePage(gps = false, route = '#map') {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 1,
@@ -90,8 +90,13 @@ try {
     return { dx: Math.abs((car.left + car.width / 2) - (map.left + map.width / 2)), dy: Math.abs((car.top + car.height / 2) - (map.top + map.height / 2)) };
   });
   assert.ok(centeredAtStart.dx <= 1 && centeredAtStart.dy <= 1, 'vehicle stays in the exact visual center of the map');
-  await navRun.context.setGeolocation({ latitude: 37.4906, longitude: 127.1197, accuracy: 8, heading: 135, speed: 8 });
-  await navRun.page.waitForFunction(() => document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate === '-135deg', { timeout: 20000 });
+  // Playwright's geolocation mock does not supply a heading/speed. Move due east
+  // to verify that the navigation computes the bearing from consecutive GPS fixes.
+  await navRun.context.setGeolocation({ latitude: 37.4900, longitude: 127.1201, accuracy: 8 });
+  await navRun.page.waitForFunction(() => {
+    const angle = parseFloat(document.querySelector('#multiStayMap .leaflet-map-pane')?.style.rotate || '');
+    return Number.isFinite(angle) && Math.abs(angle + 90) < 2;
+  }, { timeout: 20000 });
   const centeredAfterTurn = await navRun.page.evaluate(() => {
     const map = document.querySelector('#mapCanvas').getBoundingClientRect();
     const car = document.querySelector('#navVehicleCenter').getBoundingClientRect();
