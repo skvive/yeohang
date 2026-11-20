@@ -56,6 +56,41 @@ try{
   await mobile.page.locator('#tripPlanResult').waitFor({state:'visible',timeout:20000});
   assert.equal(await mobile.page.locator('#tripPlanStops li').count(),2,'trip plan saved in local browser');
   assert.deepEqual(mobile.errors.filter(e=>/SyntaxError|ReferenceError|TypeError|app\.js/.test(e)),[]);
+
+  // Both navigation providers are a user choice, not a hard-coded single vendor.
+  // Mock only external Google Maps navigation here; no location permission is granted.
+  await mobile.context.route('https://www.google.com/maps/dir/**',route=>route.fulfill({
+    status:200,contentType:'text/html',body:'<!doctype html><title>Google Maps route fixture</title>'
+  }));
+  await mobile.page.goto(base+'/#nav',{waitUntil:'domcontentloaded'});
+  const providers=mobile.page.locator('[data-nav-provider]');
+  await providers.first().waitFor({state:'visible',timeout:15000});
+  assert.equal(await providers.count(),2);
+  assert.equal(await mobile.page.locator('[data-nav-provider="kakao"]').getAttribute('aria-pressed'),'true','default maintains existing Kakao Navi');
+  await mobile.page.locator('[data-nav-provider="google"]').click();
+  assert.equal(await mobile.page.locator('[data-nav-provider="google"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await mobile.page.locator('[data-nav-provider="kakao"]').getAttribute('aria-pressed'),'false');
+  assert.ok(await mobile.page.locator('#googleStayMap').isVisible(),'Google preview becomes visible');
+  assert.ok(await mobile.page.locator('#multiStayMap').isHidden(),'non-Google preview is hidden');
+  await mobile.page.locator('#carNavDestination').fill('서울역');
+  const googlePopup=mobile.page.waitForEvent('popup',{timeout:15000});
+  await mobile.page.locator('#carNavForm button[type="submit"]').click();
+  const routePage=await googlePopup;
+  await routePage.waitForURL(/www\.google\.com\/maps\/dir\//,{timeout:10000});
+  const url=new URL(routePage.url());
+  assert.equal(url.searchParams.get('destination'),'서울역');
+  assert.equal(url.searchParams.get('travelmode'),'driving');
+  assert.equal(url.searchParams.get('dir_action'),'navigate');
+  await routePage.close();
+  await mobile.page.screenshot({path:resolve(output,'google-provider-390.png')});
+  await mobile.page.reload({waitUntil:'domcontentloaded'});
+  await mobile.page.locator('[data-nav-provider="google"]').waitFor({state:'visible'});
+  assert.equal(await mobile.page.locator('[data-nav-provider="google"]').getAttribute('aria-pressed'),'true','provider persists through reload');
+  await mobile.page.locator('[data-nav-provider="kakao"]').click();
+  assert.equal(await mobile.page.locator('[data-nav-provider="kakao"]').getAttribute('aria-pressed'),'true','can return to Kakao Navi');
+  assert.match(await mobile.page.locator('#carNavForm button[type=submit]').innerText(),/카카오내비/);
+  await mobile.page.screenshot({path:resolve(output,'kakao-provider-390.png')});
+
   await mobile.context.close();
 
   const desktop=await openHome(1440,900);
