@@ -20,6 +20,8 @@ on:
   workflow_dispatch: {}
 permissions:
   contents: read
+env:
+  PLAYWRIGHT_BROWSER_CHANNEL: chrome
 jobs:
   mobile-browser:
     runs-on: ubuntu-24.04
@@ -35,8 +37,8 @@ jobs:
       - run: npm ci
       - name: Install temporary browser test dependencies
         run: npm install --no-save --package-lock=false playwright@1.55.0 leaflet@1.9.4
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Verify preinstalled Google Chrome
+        run: google-chrome --version
       - name: Build without DB migration or seed
         run: npm run build
       - name: Start local production app

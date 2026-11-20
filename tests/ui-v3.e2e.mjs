@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const base = process.env.MAP_E2E_URL || 'http://127.0.0.1:3000';
 const output = process.env.UI_V3_SCREENSHOT_DIR || 'test-results/ui-v3';
 mkdirSync(output, { recursive:true });
-const browser = await chromium.launch({ headless:true });
+const browser = await chromium.launch({ headless:true, channel:process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined });
 
 async function openHome(width,height){
   const context = await browser.newContext({viewport:{width,height},deviceScaleFactor:1});

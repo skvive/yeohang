@@ -13,7 +13,7 @@ const hotels = [
   { id: 'm1', name: '가락 모텔', city: '서울', category: '모텔', stay_type: 'motel', distance_km: 0.6, lat: 37.4942, lng: 127.1225, image_url: '/assets/listing-1.webp', source: 'agoda' },
   { id: 'p1', name: '송파 프라이빗 하우스', city: '서울', category: '프라이빗 하우스', stay_type: 'private', distance_km: 1.2, lat: 37.4970, lng: 127.1270, image_url: '/assets/listing-1.webp', source: 'agoda' }
 ];
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, channel:process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined });
 async function makePage(gps = false, route = '#map') {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 1,
