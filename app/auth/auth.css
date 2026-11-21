@@ -144,3 +144,9 @@
   color: #6a8792;
   text-decoration: none;
 }
+
+/* Kakao OAuth: familiar contrast with accessible disabled state. */
+.auth-oauth-btn.kakao { display:block; text-align:center; text-decoration:none; background:#fee500; border-color:#fee500; color:#171717; }
+.auth-oauth-btn.kakao:hover:not(:disabled) { background:#f8dc00; border-color:#f8dc00; }
+.auth-oauth-btn.kakao:disabled { background:#f4f5f6; border-color:#dce9eb; color:#697982; cursor:not-allowed; }
+.auth-oauth-btn:focus-visible, .auth-submit:focus-visible { outline:3px solid #037c82; outline-offset:3px; }
