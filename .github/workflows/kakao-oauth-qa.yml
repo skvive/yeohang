@@ -1,0 +1,53 @@
+name: Kakao OAuth Privacy and Integration QA
+on:
+  pull_request:
+    paths:
+      - 'lib/kakao/**'
+      - 'app/api/kakao/**'
+      - 'app/auth/**'
+      - 'app/account/page.tsx'
+      - 'tests/kakao-oauth.test.mjs'
+      - '.github/workflows/kakao-oauth-qa.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/kakao/**'
+      - 'app/api/kakao/**'
+      - 'app/auth/**'
+      - 'app/account/page.tsx'
+      - 'tests/kakao-oauth.test.mjs'
+      - '.github/workflows/kakao-oauth-qa.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  oauth-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify OAuth boundary, CSRF and secret policy
+        run: node --test tests/kakao-oauth.test.mjs
+      - name: Type-check and production build
+        run: npm run build
+      - name: Start production-mode app without any Kakao credentials
+        run: |
+          nohup npm run start -- --port 3001 > /tmp/kakao-oauth-server.log 2>&1 &
+          for i in $(seq 1 55); do
+            if curl -sf http://127.0.0.1:3001/api/kakao/oauth/config > /tmp/kakao-oauth-config.json; then break; fi
+            sleep 2
+          done
+          node -e "const fs=require('fs');let j=JSON.parse(fs.readFileSync('/tmp/kakao-oauth-config.json','utf8'));if(j.enabled!==false)process.exit(1)"
+      - name: Ensure OAuth start refuses missing credentials, no secret disclosure
+        run: |
+          status=$(curl -s -o /tmp/kakao-oauth-start.txt -w '%{http_code}' http://127.0.0.1:3001/api/kakao/oauth/start)
+          test "$status" = '503'
+          ! grep -Eqi '(access_token|client_secret|KakaoAK)' /tmp/kakao-oauth-start.txt
+      - name: Server log on failure
+        if: failure()
+        run: tail -120 /tmp/kakao-oauth-server.log || true
