@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { routeDetails } from '@/lib/navigation-route';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Read-only Kakao Mobility driving route preview. The native Kakao Navi app,
- * not this endpoint, owns live turn-by-turn guidance and rerouting.
+ * Read-only Kakao Mobility driving route and geometry preview. The native
+ * Kakao Navi SDK owns live turn-by-turn guidance and rerouting.
  * No location data is logged, cached or persisted.
  */
 type Point = { lng: number; lat: number };
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     origin: origin.lng + ',' + origin.lat,
     destination: destination.lng + ',' + destination.lat,
     priority,
-    summary: 'true',
+    summary: 'false',
     alternatives: 'true',
   });
   const url = 'https://apis-navi.kakaomobility.com/v1/directions?' + query.toString();
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest) {
         distanceMeters: Number.isFinite(distance) && distance >= 0 ? Math.round(distance) : null,
         durationSeconds: Number.isFinite(duration) && duration >= 0 ? Math.round(duration) : null,
         tollWon: Number.isFinite(Number(fare.toll)) ? Math.max(0, Math.round(Number(fare.toll))) : null,
+        ...routeDetails(route),
       };
     }).filter((route: { distanceMeters: number | null; durationSeconds: number | null }) =>
       route.distanceMeters !== null && route.durationSeconds !== null);

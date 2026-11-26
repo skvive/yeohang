@@ -33,15 +33,17 @@ function mockNode(tag) {
 }
 function fakeLeaflet() {
   const markers = [];
+  const lines = [];
   const pane = mockNode('div');
   const map = {
     layers: [], views: [], setView(...args) { this.views.push(args); return this; }, remove() {},
-    removeLayer() {}, panTo() {}, fitBounds() {}, invalidateSize() {}, getPanes() { return { mapPane: pane }; }
+    removeLayer(layer) { const index = lines.indexOf(layer); if (index !== -1) lines.splice(index, 1); }, panTo() {}, fitBounds() {}, invalidateSize() {}, getPanes() { return { mapPane: pane }; }
   };
   const group = { clearLayers() { markers.length = 0; }, addTo() { return this; } };
   return {
     map() { return map; }, tileLayer() { return { addTo() {} }; },
     layerGroup() { return group; }, divIcon(props) { return props; },
+    polyline(points, opts) { return { points, opts, addTo() { lines.push(this); return this; } }; },
     marker([lat, lng], opts) {
       const marker = {
         coords: [lat, lng], opts, events: {}, content: null,
@@ -55,7 +57,7 @@ function fakeLeaflet() {
     circleMarker() { return { bindTooltip() { return this; }, addTo() { return this; } }; },
     circle() { return { addTo() { return this; } }; },
     latLngBounds() { return { extend() { return this; }, pad() { return this; } }; },
-    __markers: markers, __map: map, __pane: pane
+    __markers: markers, __lines: lines, __map: map, __pane: pane
   };
 }
 function initialize(hash = '#map') {
@@ -120,6 +122,21 @@ test('vehicle navigation centers the vehicle and rotates the map with heading', 
   assert.equal(window.YeohangMultiMap.updateNavigation({ lat: 37.4932, lng: 127.1184 }, 135), true);
   assert.deepEqual(Array.from(leaflet.__map.views.at(-1)[0]), [37.4932, 127.1184]);
   assert.equal(leaflet.__pane.style.rotate, '-135deg', 'new heading updates the map bearing');
+});
+
+test('official route line follows road vertices and is cleared when destination changes', async () => {
+  const { leaflet, window } = initialize('#nav');
+  await window.YeohangMultiMap.render({ center: { lat: 37.493, lng: 127.118 }, navigation: true });
+  assert.equal(window.YeohangMultiMap.setRoute([
+    [37.493, 127.118], [37.494, 127.119], [50, 120], [37.495, 127.120]
+  ]), true);
+  assert.equal(leaflet.__lines.length, 1);
+  assert.equal(leaflet.__lines[0].points.length, 3, 'out of range route vertices are excluded');
+  assert.equal(leaflet.__lines[0].opts.color, '#137cf3');
+  window.YeohangMultiMap.updateNavigation({ lat: 37.494, lng: 127.119 }, 90);
+  assert.equal(leaflet.__lines.length, 1, 'GPS movement keeps the route on the map');
+  window.YeohangMultiMap.setRoute([]);
+  assert.equal(leaflet.__lines.length, 0, 'replacing the destination removes stale geometry');
 });
 
 test('invalid coordinates are excluded; empty results and navigation cleanup succeed', async () => {

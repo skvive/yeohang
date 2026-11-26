@@ -22,6 +22,8 @@
   let ticket = 0;
   let navigationMode = false;
   let currentHeading = 0;
+  let routeLine = null;
+  let routeCoordinates = [];
 
   function validPoint(p) {
     return p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)) &&
@@ -70,6 +72,7 @@
     group = null;
     origin = null;
     radiusCircle = null;
+    routeLine = null;
     container = null;
     markers = new Map();
     current = '';
@@ -154,6 +157,19 @@
     map.setView([Number(position.lat), Number(position.lng)], 16, { animate: true });
     return true;
   }
+  function setRoute(coordinates) {
+    routeCoordinates = Array.isArray(coordinates) ? coordinates.filter(p =>
+      Array.isArray(p) && p.length === 2 && validPoint({ lat: p[0], lng: p[1] })).slice(0, 8000) : [];
+    if (routeLine && map) map.removeLayer(routeLine);
+    routeLine = null;
+    if (map && navigationMode && routeCoordinates.length > 1 && window.L.polyline) {
+      routeLine = window.L.polyline(routeCoordinates, {
+        color: '#137cf3', weight: 9, opacity: 0.94, lineCap: 'round', lineJoin: 'round',
+        className: 'ym-driving-route', interactive: false
+      }).addTo(map);
+    }
+    return Boolean(routeLine);
+  }
   async function render({ pins = [], center = null, userLoc = null, originLabel = '', selectedId = '', onSelect, navigation = false, heading = 0, vehiclePosition = null }) {
     const run = ++ticket;
     const surface = document.getElementById('multiStayMap');
@@ -171,7 +187,8 @@
         const fallbackIframe = document.getElementById('googleStayMap');
         if (fallbackIframe) { fallbackIframe.classList.add('map-fallback-hidden'); fallbackIframe.hidden = true; }
         const initial = validPoint(center) ? [Number(center.lat), Number(center.lng)] : [37.5665, 126.978];
-        map = L.map(surface, { preferCanvas: true, scrollWheelZoom: false, zoomControl: true }).setView(initial, 11);
+        // SVG keeps the driving route crisp and inspectable; nearby pins can use Canvas.
+        map = L.map(surface, { preferCanvas: !navigationMode, scrollWheelZoom: false, zoomControl: true }).setView(initial, 11);
         L.tileLayer(safeTiles(), {
           minZoom: 5, maxZoom: 18, attribution: ATTRIBUTION, detectRetina: false,
           updateWhenIdle: true, keepBuffer: 2
@@ -179,6 +196,7 @@
         group = L.layerGroup().addTo(map);
       }
       group.clearLayers();
+      setRoute(routeCoordinates);
       if (origin) { map.removeLayer(origin); origin = null; }
       if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
       markers = new Map();
@@ -225,7 +243,9 @@
       }
       requestAnimationFrame(() => { if (map && surface.isConnected) map.invalidateSize(); });
       const status = document.getElementById('mapEngineStatus');
-      if (status) status.textContent = '반경 5km · 숙소 ' + points.length + '곳 지도 핀 · 선택한 유형만 표시됩니다.';
+      if (status) status.textContent = navigationMode ?
+        (routeLine ? '공식 도로 경로를 지도에 표시했습니다.' : '목적지를 선택하면 공식 도로 경로를 확인할 수 있습니다.') :
+        '반경 5km · 숙소 ' + points.length + '곳 지도 핀 · 선택한 유형만 표시됩니다.';
       return true;
     } catch (error) {
       console.warn('여행갈지도 멀티핀 지도 오류', error);
@@ -237,5 +257,5 @@
   window.addEventListener('hashchange', () => {
     if (!['#map', '#nav'].some(hash => location.hash.startsWith(hash))) destroy();
   });
-  window.YeohangMultiMap = { render, select, clearPins, destroy, updateNavigation, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
+  window.YeohangMultiMap = { render, select, clearPins, destroy, updateNavigation, setRoute, validPoint, isReady: () => Boolean(map && container && container.isConnected) };
 })();

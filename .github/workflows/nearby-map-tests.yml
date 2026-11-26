@@ -4,9 +4,12 @@ on:
     paths:
       - 'public/app.js'
       - 'public/map-multipin.js'
+      - 'app/api/navigation/route/route.ts'
+      - 'lib/navigation-route.ts'
       - 'vercel.json'
       - 'lib/handler.ts'
       - 'tests/nearby-map.test.mjs'
+      - 'tests/navigation-route.test.mjs'
       - '.github/workflows/nearby-map-tests.yml'
   push:
     branches:
@@ -23,5 +26,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test multi-pin map integration and XSS-safe popups
-        run: node --test tests/nearby-map.test.mjs
+      - name: Test map integration and normalized Kakao road routes
+        run: node --test tests/nearby-map.test.mjs tests/navigation-route.test.mjs

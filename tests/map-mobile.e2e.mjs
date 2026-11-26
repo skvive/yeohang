@@ -104,43 +104,35 @@ try {
   });
   assert.ok(centeredAfterTurn.dx <= 1 && centeredAfterTurn.dy <= 1, 'vehicle remains centered after a GPS update and turn');
   await navRun.page.screenshot({ path: resolve(shotDir, 'vehicle-nav-centered-390px.png'), fullPage: true });
-  const popupPromise = navRun.page.waitForEvent('popup');
-  await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
-  await navRun.page.locator('#carNavForm button[type="submit"]').click();
-  const routePage = await popupPromise;
-  await routePage.waitForURL(/target=car/, { timeout: 20000 });
-  const gpsRoute = new URL(routePage.url());
-  assert.equal(gpsRoute.hostname, 'map.kakao.com');
-  assert.equal(gpsRoute.searchParams.get('target'), 'car', 'Kakao Map resolves the link into car route mode');
-  assert.equal(gpsRoute.searchParams.get('rt2'), '가락 관광 호텔', 'destination pin is preserved');
-  assert.equal((gpsRoute.searchParams.get('rt') || '').split(',').filter(Boolean).length, 4, 'current GPS origin and destination coordinates are both carried');
-  await routePage.close();
-  // Server-side Kakao directions: invalid coordinates must never cause an upstream request.
-  const badInput=await navRun.page.request.get(base+'/api/navigation/route?origin=0,0&destination=127.119,37.493');
-  assert.equal(badInput.status(),400);
-  assert.equal((await badInput.json()).code,'INVALID_ROUTE_INPUT');
-
-  // Only synthetic API fixtures are used in CI; never present sample ETA as live data.
+  // API responses are synthetic in CI. The web map must draw the road path before native handoff.
   const routeCalls=[];
   await navRun.page.route(/\/api\/navigation\/route\?/, async route=>{
     routeCalls.push(new URL(route.request().url()));
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
       ok:true,provider:'Kakao Mobility Directions API',priority:'RECOMMEND',
       fetchedAt:'2026-11-20T00:00:00.000Z',liveGuidance:false,
-      routes:[{index:0,distanceMeters:12400,durationSeconds:1800,tollWon:1200}]
+      routes:[{
+        index:0,distanceMeters:12400,durationSeconds:1800,tollWon:1200,
+        geometry:[[37.4900,127.1201],[37.491,127.119],[37.492,127.1185],[37.4933,127.118]],
+        guides:[{lat:37.491,lng:127.119,guidance:'우회전',type:2}]
+      }]
     })});
   });
-  await navRun.page.locator('[data-nav-route-preview]').click();
-  await navRun.page.waitForFunction(()=>document.querySelector('#navRouteOptions')?.textContent.includes('12.4km'),{timeout:15000});
-  assert.equal(routeCalls.length,1,'one click should request one official preview');
+  await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
+  await navRun.page.locator('#carNavForm button[type="submit"]').click();
+  await navRun.page.waitForFunction(()=>document.querySelector('#multiStayMap .ym-driving-route') && document.querySelector('#navTurnBanner')?.hidden === false,{timeout:15000});
+  assert.equal(routeCalls.length,1,'destination submission loads one official road preview');
   assert.equal(routeCalls[0].searchParams.get('priority'),'RECOMMEND');
   assert.equal(routeCalls[0].searchParams.get('destination'),'127.118,37.4933');
-  assert.match(await navRun.page.locator('#navRouteFeedback').innerText(),/공식 경로 조회/);
-  assert.match(await navRun.page.locator('#navRouteOptions').innerText(),/예상/);
-  assert.match(await navRun.page.locator('#navRouteOptions').innerText(),/카카오내비 앱에서는 경로가 다시 계산/);
+  assert.match(await navRun.page.locator('#navTurnText').innerText(),/우회전/);
+  assert.match(await navRun.page.locator('#navRouteOptions').innerText(),/12.4km/);
   await navRun.page.screenshot({path:resolve(shotDir,'kakao-route-preview-390px.png')});
+  // Invalid coordinates must never be sent upstream.
+  const badInput=await navRun.page.request.get(base+'/api/navigation/route?origin=0,0&destination=127.119,37.493');
+  assert.equal(badInput.status(),400);
+  assert.equal((await badInput.json()).code,'INVALID_ROUTE_INPUT');
 
-  // Kakao native app handoff contract, mocked SDK: WGS84 longitude must be x, latitude y.
+  // The separate action starts full native navigation on a real device.
   await navRun.page.evaluate(()=>{
     const meta=document.querySelector('meta[name="yeohang-kakao-js-key"]');
     if(meta)meta.content='qa-js-key';
@@ -150,8 +142,7 @@ try {
       Navi:{start:destination=>{window.__navSdkInvocation=destination;}}
     };
   });
-  await navRun.page.locator('#carNavDestination').fill('가락 관광 호텔');
-  await navRun.page.locator('#carNavForm button[type="submit"]').click();
+  await navRun.page.locator('[data-nav-start]').click();
   const sdkCall=await navRun.page.evaluate(()=>window.__navSdkInvocation);
   assert.equal(sdkCall.name,'가락 관광 호텔');
   assert.equal(sdkCall.x,127.118);
