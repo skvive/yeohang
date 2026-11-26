@@ -187,7 +187,8 @@
         const fallbackIframe = document.getElementById('googleStayMap');
         if (fallbackIframe) { fallbackIframe.classList.add('map-fallback-hidden'); fallbackIframe.hidden = true; }
         const initial = validPoint(center) ? [Number(center.lat), Number(center.lng)] : [37.5665, 126.978];
-        map = L.map(surface, { preferCanvas: true, scrollWheelZoom: false, zoomControl: true }).setView(initial, 11);
+        // SVG keeps the driving route crisp and inspectable; nearby pins can use Canvas.
+        map = L.map(surface, { preferCanvas: !navigationMode, scrollWheelZoom: false, zoomControl: true }).setView(initial, 11);
         L.tileLayer(safeTiles(), {
           minZoom: 5, maxZoom: 18, attribution: ATTRIBUTION, detectRetina: false,
           updateWhenIdle: true, keepBuffer: 2
