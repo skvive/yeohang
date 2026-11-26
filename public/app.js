@@ -474,7 +474,7 @@ function setNavProvider(provider,refresh=true){
         :'카카오내비 SDK 또는 도메인 인증을 확인할 수 없습니다. 현재는 카카오맵 웹 차량 경로로 연결됩니다.';
   }
   const cta=$('#carNavForm button[type="submit"]');
-  if(cta)cta.textContent=provider==='google'?'Google Maps 길안내 ↗':'지도에서 경로 보기';
+  if(cta)cta.textContent=provider==='google'?'Google Maps 길안내 ↗':'카카오내비 경로 지도 보기';
   updateNavGuidance();
   $$('[data-mapdir]').forEach(button=>button.textContent=provider==='google'?'🚘 Google Maps 길안내':'🚗 카카오내비 경로 추천');
   if(!refresh||!location.hash.startsWith('#nav'))return;
