@@ -1,5 +1,13 @@
+import type { Metadata } from 'next';
 import Script from 'next/script';
 import { HeaderUser } from '@/app/components/HeaderUser';
+
+
+export const metadata: Metadata = {
+  title: '여행갈지도 | 여행·숙소 탐색 프로토타입',
+  description: '여행지 탐색, 여행 일정, AI 여행 추천 및 숙소 탐색을 소개하는 디자인·기능 프로토타입입니다. 숙소·쿠폰은 시연 데이터이며 실시간 요금·재고를 제공하지 않습니다.',
+  alternates: { canonical: 'https://yeohang.lexid.site/' },
+};
 
 export default function HomePage() {
   return (
