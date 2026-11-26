@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Web GPS 차량 중심/진행 방향 표시 | `public/map-multipin.js` (Leaflet, OSM 탐색 지도) | Chrome GPS 모의 이동·방향, 390px/1440px, 권한 거부 |
 | Web 목적지 검색 및 좌표 확인 | `public/app.js`의 숙소/카카오 장소 검색 및 확인 | 동명이소·미검색·SDK 누락 테스트 |
-| Kakao Mobility 경로 **미리보기** | `app/api/navigation/route/route.ts` (서버 REST, `summary=true`) | 좌표 검증, 실키 API 200/실패 검사, ETA 원천 표시 |
+| Kakao Mobility 경로 **미리보기** | `app/api/navigation/route/route.ts` (서버 REST, `summary=false`), 지도 경로선과 다음 안내 지점 | 좌표 검증, 실키 API 200/실패 검사, 도로 경로선·안내 지점·ETA 원천 표시 |
 | Android 웹에서 네이티브 화면 이동 | `yeohangnav://navigate?name=...&lat=...&lng=...` | WebView first-party 허용 목록 + Android 에뮬레이터 |
 | Android **실제 인앱 주행 안내** | 기존 KNSDK Android `KakaoNavigationActivity` 재사용 | Kakao 등록·KNSDK 실제 인증·GPS·경로·음성·재탐색 실기기 |
 | 일반 모바일 Web 카카오내비 실행 | Kakao JavaScript SDK `Kakao.Navi.start` | 공식 JS 키/SDK 도메인, 앱 설치·미설치 Android/iOS 기기 |
@@ -44,8 +44,9 @@ Production에 임의 키를 복사하지 않는다. 우선 카카오디벨로퍼
 
 - 대한민국 범위 내 유효 WGS84 좌표만 허용; 동일 출발/도착 거부
 - 서버에서만 `KAKAO_REST_API_KEY` 사용, KakaoAK Authorization 전달
-- 공식 Kakao Mobility Directions `/v1/directions` 사용; `summary=true`와 `alternatives=true`
-- 경로 정보는 서버 응답의 거리(m), 소요 시간(s), 통행료(원), 조회 시간만 표시
+- 공식 Kakao Mobility Directions `/v1/directions` 사용; `summary=false`와 `alternatives=true`
+- 경로 정보는 서버 응답의 거리(m), 소요 시간(s), 통행료(원), 조회 시간, 상세 도로 좌표와 안내 지점만 표시
+- 웹은 현재 GPS를 경로선에 투영해 다음 안내 지점을 표시한다. 자동 재탐색·음성 안내는 Android KNSDK 또는 카카오내비 앱에서 처리한다.
 - **실제 주행시간·재탐색·음성·차량 지도 타일과 혼동 금지**
 - 민감한 좌표/응답 원문/키를 로그·DB·캐시에 저장하지 않는다
 - 요청 실패: 잘못된 좌표 400, 동일 좌표 400, 미설정 키 503, 공급자 인증 503, 제공자 장애 502/504, 남용 제한 429, 경로 없음 422
